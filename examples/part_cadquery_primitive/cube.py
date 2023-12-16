@@ -12,5 +12,7 @@ import partcad as pc
 import cadquery as cq
 
 shape = cq.Workplane("front").box(1.0, 1.0, 1.0)
-part = pc.Part(shape=shape)
-part.finalize()
+show_object(shape)
+# TODO(clairbee): add a wrapper for 'atexit' to 'cadquery' to enable the below
+# part = pc.Part(shape=shape)
+# pc.finalize(part)
