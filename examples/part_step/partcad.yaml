@@ -1,0 +1,6 @@
+parts:
+  bolt:
+    type: step
+    description: M8x30-screw
+render:
+  markdown: README.md

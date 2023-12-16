@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+#
+# OpenVMP, 2023
+#
+# Author: Roman Kuzmenko
+# Created: 2023-08-19
+#
+# Licensed under Apache License, Version 2.0.
+#
+
+# Projects used by some built-in tests
+import:
+  example_part_step:
+    type: local
+    path: ../examples/part_step
+  example_part_cadquery_primitive:
+    type: local
+    path: ../examples/part_cadquery_primitive
+  example_part_cadquery_logo:
+    type: local
+    path: ../examples/part_cadquery_logo
+  example_assembly_primitive:
+    type: local
+    path: ../examples/assembly_primitive
+  example_assembly_logo:
+    type: local
+    path: ../examples/assembly_logo

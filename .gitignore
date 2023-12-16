@@ -1,0 +1,12 @@
+.conda
+*.egg-info
+__pycache__
+.pytest_cache
+*.pyc
+.tox
+generated_files/*.stl
+generated_files/*.obj
+generated_files/*.svg
+.partcad
+/build
+.ocp_vscode

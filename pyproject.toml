@@ -1,0 +1,19 @@
+[project]
+name = "partcad"
+version = "0.1.0"
+requires-python = ">=3.10"
+license = {file = "LICENSE.txt"}
+authors = [
+  {name = "Roman Kuzmenko", email = "openvmp@proton.me" }
+]
+maintainers = [
+  {name = "Roman Kuzmenko", email = "openvmp@proton.me" }
+]
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[tool.pytest.ini_options]
+# addopts = -ra -s -rx
+pythonpath = "src"

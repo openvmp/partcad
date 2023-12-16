@@ -1,0 +1,41 @@
+{
+  "files.trimFinalNewlines": true,
+  "files.encoding": "utf8",
+  "editor.useTabStops": false,
+  "editor.detectIndentation": false,
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.formatOnSave": true,
+  "editor.formatOnType": true,
+  "editor.autoIndent": "full",
+  "editor.rulers": [
+    80
+  ],
+  "files.exclude": {
+    ".git/**": true,
+    "**/__pycache__": true,
+    "**/*.egg-info": true,
+    "**/.pytest_cache": true,
+    "**/apache20.svg": true,
+    "**/LICENSE.txt": true,
+    ".conda": true,
+    ".tox": true,
+    "**/.partcad": true
+  },
+  "markdown.extension.toc.omittedFromToc": {
+    "README.md": [
+        "# PartCAD"
+    ] 
+  },
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  "python.testing.pytestArgs": [
+    "tests"
+  ],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "python.terminal.executeInFileDir": true,
+  "python.terminal.launchArgs": [
+  ]
+}

@@ -1,0 +1,7 @@
+parts:
+  head_half:
+  bone:
+
+render:
+  png: .
+  markdown: README.md

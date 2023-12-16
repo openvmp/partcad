@@ -1,0 +1,8 @@
+parts:
+  cube:
+    desc: "This is a cube from examples"
+  cylinder:
+    path: cylinder.py
+    desc: "This is a cylinder from examples"
+render:
+  markdown: README.md

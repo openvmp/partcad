@@ -1,0 +1,20 @@
+import:
+  example_part_step:
+    type: local
+    path: ../part_step
+  example_part_cadquery_logo:
+    type: local
+    path: ../part_cadquery_logo
+
+assemblies:
+  logo:
+    build:
+      size: 10.0
+    run:
+      angle:
+        type: float
+        default: 0.0
+
+render:
+  png: .
+  markdown: README.md
