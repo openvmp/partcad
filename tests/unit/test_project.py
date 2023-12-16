@@ -44,5 +44,5 @@ def test_project_import_1():
 
 def test_project_import_1():
     ctx = pc.Context()
-    factory = pc.ProjectFactoryGit(ctx, test_config_import_git)
+    factory = pc.ProjectFactoryGit(ctx, None, test_config_import_git)
     assert factory.project is not None

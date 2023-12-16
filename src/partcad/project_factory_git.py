@@ -18,7 +18,7 @@ from . import project_factory as pf
 class GitImportConfiguration:
     def __init__(self):
         self.import_config_url = self.config_obj.get("url")
-        self.import_rel_path = self.config_obj.get("rel_path")
+        self.import_rel_path = self.config_obj.get("relPath")
 
 
 class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
@@ -62,7 +62,7 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
                 # Try to open the existing repository and update it.
                 repo = Repo(cache_path)
                 origin = repo.remote("origin")
-                origin.fetch()
+                origin.pull()
                 repo.head.checkout(origin.head.name, force=True)
                 return cache_path
             except Exception:
