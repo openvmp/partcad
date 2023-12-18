@@ -46,7 +46,7 @@ def finalize(shape, show_object_fn):
 
 
 def finalize_real():
-    return init()._finalize_real()
+    return init()._finalize_real(True)
 
 
 # Context
@@ -151,7 +151,9 @@ class Context(project_config.Configuration):
         self._last_to_finalize = shape
         self._show_object_fn = show_object_fn
 
-    def _finalize_real(self):
+    def _finalize_real(self, embedded=False):
         if self._last_to_finalize is not None:
-            self._last_to_finalize._finalize_real(self._show_object_fn)
+            self._last_to_finalize._finalize_real(
+                self._show_object_fn, embedded=embedded
+            )
         self._last_to_finalize = None

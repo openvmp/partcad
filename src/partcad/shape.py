@@ -27,23 +27,25 @@ DEFAULT_EXPORT_SVQ_OPTS = {
 class Shape:
     def __init__(self, name):
         self.name = name
+        self.shape = None
 
         # Leave the svg path empty to get it created on demand
         self.svg_path = None
         self.svg_url = None
-        self.shape = None
 
-    def _finalize_real(self, show_object, export_path=None):
+    def _finalize_real(self, show_object, export_path=None, embedded=False):
         if self.shape is not None:
-            try:
-                ov.config.status()
-                print('Visualizing in "OCP CAD Viewer"...')
-                ov.show(self.shape)
-            except Exception as e:
-                print(e)
-                print('No VS Code or "OCP CAD Viewer" extension detected.')
+            if not embedded:
+                try:
+                    ov.config.status()
+                    print('Visualizing in "OCP CAD Viewer"...')
+                    print(self.shape)
+                    ov.show(self.shape)
+                except Exception as e:
+                    print(e)
+                    print('No VS Code or "OCP CAD Viewer" extension detected.')
 
-            if not export_path is None:
+            if not export_path is None and not embedded:
                 # TODO(clairbee): remove compounding!!!
                 self.shape = self.shape.toCompound()
 
