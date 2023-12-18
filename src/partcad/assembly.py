@@ -44,12 +44,6 @@ class Assembly(shape.Shape):
         for child in self.children:
             child.ref_inc()
 
-    def set_script(self, script):
-        # FIXME(clairbee): lazy load
-        # FIXME(clairbee): add build parameters
-        result = script.build(build_parameters={})
-        self.shape = result.first_result.shape
-
     def _export_txt_real(self, file):
         for child in self.children:
             child._export_txt_real(file)

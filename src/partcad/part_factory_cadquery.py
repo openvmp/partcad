@@ -19,14 +19,13 @@ class PartFactoryCadquery(pf.PartFactory):
         self._create(part_config)
 
         cadquery_script = open(self.path, "r").read()
+        if "import partcad as pc" in cadquery_script:
+            cadquery_script += "\npc.finalize_real()\n"
+        print(cadquery_script)
         script = cqgi.parse(cadquery_script)
-        result = script.build()
-        if not result.success:
-            print("Failed to load a cadquery part")
-            print(result.exception)
-            raise Exception(result.exception)
-        first_result = result.first_result
-        part = first_result.shape
-        self.part.set_shape(part)
+        result = script.build(build_parameters={})
+        # print(result)
+        # print(result.first_result)
+        self.shape = result.first_result.shape
 
         self._save()

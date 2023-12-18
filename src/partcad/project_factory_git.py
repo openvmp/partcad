@@ -75,4 +75,7 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
             except Exception as e:
                 raise RuntimeError(f"Failed to clone repository: {e}")
 
-        return os.path.join(cache_path, self.import_rel_path)
+        if not self.import_rel_path is None:
+            cache_path = os.path.join(cache_path, self.import_rel_path)
+
+        return cache_path

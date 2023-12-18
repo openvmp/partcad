@@ -41,8 +41,12 @@ def get_part(project_name, part_name):
     return init().get_part(project_name, part_name)
 
 
-def finalize(shape):
-    return init().finalize(shape)
+def finalize(shape, show_object_fn):
+    return init().finalize(shape, show_object_fn)
+
+
+def finalize_real():
+    return init()._finalize_real()
 
 
 # Context
@@ -143,10 +147,11 @@ class Context(project_config.Configuration):
             return None
         return prj.get_assembly(assembly_name)
 
-    def finalize(self, shape):
+    def finalize(self, shape, show_object_fn):
         self._last_to_finalize = shape
+        self._show_object_fn = show_object_fn
 
     def _finalize_real(self):
         if self._last_to_finalize is not None:
-            self._last_to_finalize._finalize_real()
+            self._last_to_finalize._finalize_real(self._show_object_fn)
         self._last_to_finalize = None

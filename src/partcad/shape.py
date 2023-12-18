@@ -9,7 +9,7 @@
 
 import ocp_vscode as ov
 import cadquery as cq
-from cq_server.ui import ui, show_object
+
 import cairosvg
 
 DEFAULT_EXPORT_SVQ_OPTS = {
@@ -31,8 +31,9 @@ class Shape:
         # Leave the svg path empty to get it created on demand
         self.svg_path = None
         self.svg_url = None
+        self.shape = None
 
-    def _finalize_real(self, export_path=None):
+    def _finalize_real(self, show_object, export_path=None):
         if self.shape is not None:
             try:
                 ov.config.status()
@@ -41,7 +42,6 @@ class Shape:
             except Exception as e:
                 print(e)
                 print('No VS Code or "OCP CAD Viewer" extension detected.')
-                _ignore = 1
 
             if not export_path is None:
                 # TODO(clairbee): remove compounding!!!

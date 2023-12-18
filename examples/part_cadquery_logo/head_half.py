@@ -10,6 +10,9 @@
 
 import cadquery as cq
 
+if __name__ != "__cqgi__":
+    from cq_server.ui import ui, show_object
+
 (L, W, H, t) = (20.0, 40.0, 50.0, 2.5)
 pts = [
     (0, 0),

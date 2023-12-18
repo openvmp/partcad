@@ -10,10 +10,13 @@
 
 import partcad as pc
 
+if __name__ != "__cqgi__":
+    from cq_server.ui import ui, show_object
+
 part1 = pc.get_part("example_part_cadquery_primitive", "cube")
 part2 = pc.get_part("example_part_cadquery_primitive", "cylinder")
 
 model = pc.Assembly()
 model.add(part1, loc=pc.Location((0, 0, 0), (0, 0, 1), 0))
-model.add(part2, loc=pc.Location((0, 0, 10), (0, 0, 1), 0))
-pc.finalize(model)
+model.add(part2, loc=pc.Location((0, 0, 0.5), (0, 0, 1), 0))
+pc.finalize(model, show_object)

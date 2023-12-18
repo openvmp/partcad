@@ -2,7 +2,9 @@
 
 [![License](./apache20.svg)](./LICENSE.txt)
 
-PartCAD is a framework for maintaining information about mechanical parts and
+PartCAD is the first package manager for CAD models.
+
+It is a framework for maintaining information about mechanical parts and
 how they come together to form larger models.
 
 - [Modelling](#modelling)

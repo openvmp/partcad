@@ -1,6 +1,6 @@
 from cadquery import Location
 
-from .context import Context, init, get_part, finalize, _partcad_context
+from .context import Context, init, get_part, finalize, finalize_real, _partcad_context
 from .assembly import Assembly
 from .part import Part
 from .project_factory_local import ProjectFactoryLocal

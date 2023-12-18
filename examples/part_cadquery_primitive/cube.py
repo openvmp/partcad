@@ -11,8 +11,13 @@
 import partcad as pc
 import cadquery as cq
 
+if __name__ != "__cqgi__":
+    from cq_server.ui import ui, show_object
+
 shape = cq.Workplane("front").box(1.0, 1.0, 1.0)
-show_object(shape)
-# TODO(clairbee): add a wrapper for 'atexit' to 'cadquery' to enable the below
-# part = pc.Part(shape=shape)
-# pc.finalize(part)
+
+# This example demonstrates that partcad is compatible with CQGI.
+
+# show_object(shape)
+part = pc.Part(shape=shape)
+pc.finalize(part, show_object)

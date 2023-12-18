@@ -10,5 +10,8 @@
 
 import cadquery as cq
 
+if __name__ != "__cqgi__":
+    from cq_server.ui import ui, show_object
+
 shape = cq.Workplane("front").circle(1.0).extrude(1.0)
 show_object(shape)
