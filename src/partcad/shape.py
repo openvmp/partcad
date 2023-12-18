@@ -35,7 +35,7 @@ class Shape:
 
     def _finalize_real(self, show_object, export_path=None, embedded=False):
         if self.shape is not None:
-            if not embedded:
+            if not embedded and not show_object is None:
                 try:
                     ov.config.status()
                     print('Visualizing in "OCP CAD Viewer"...')
@@ -64,10 +64,11 @@ class Shape:
                 print("Generating PNG...")
                 self.export_png(export_path + "/" + self.name + ".png")
 
-            show_object(
-                self.shape,
-                options={},
-            )
+            if not show_object is None:
+                show_object(
+                    self.shape,
+                    options={},
+                )
 
     def export_stl(self, filepath=None, tolerance=0.5, angularTolerance=5.0):
         if filepath is None:

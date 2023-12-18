@@ -24,8 +24,9 @@ class PartFactoryCadquery(pf.PartFactory):
         print(cadquery_script)
         script = cqgi.parse(cadquery_script)
         result = script.build(build_parameters={})
-        # print(result)
-        # print(result.first_result)
-        self.shape = result.first_result.shape
+        if result.success:
+            self.part.shape = result.first_result.shape
+        else:
+            print(result.exception)
 
         self._save()

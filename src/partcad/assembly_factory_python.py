@@ -21,9 +21,13 @@ class AssemblyFactoryPython(af.AssemblyFactory):
         cadquery_script = open(self.path, "r").read()
         if "import partcad as pc" in cadquery_script:
             cadquery_script += "\npc.finalize_real()\n"
-        # print(cadquery_script)
+        print(cadquery_script)
         script = cqgi.parse(cadquery_script)
-        result = script.build(build_parameters={})
-        self.shape = result.first_result.shape
+        # result = script.build(build_parameters={})
+        result = script.build()
+        if result.success:
+            self.assembly.shape = result.first_result.shape
+        else:
+            print(result.exception)
 
         self._save()

@@ -37,7 +37,7 @@ class Assembly(shape.Shape):
         name=None,
         loc=cq.Location((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), 0.0),
     ):
-        self.shape.add(child.shape, name=name, loc=loc)
+        self.shape = self.shape.add(child.shape, name=name, loc=loc)
         child.ref_inc()
 
     def ref_inc(self):

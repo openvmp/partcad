@@ -21,7 +21,7 @@ def test_assembly_primitive1():
     model = pc.Assembly("example1")
     model.add(part1, loc=pc.Location((0, 0, 0), (0, 0, 1), 0))
     model.add(part2, loc=pc.Location((0, 0, 1), (0, 0, 1), 0))
-    ctx.finalize(model)
+    ctx.finalize(model, None)
 
 
 def test_assembly_example_primitive():
