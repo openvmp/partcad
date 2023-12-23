@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # OpenVMP, 2023
 #
@@ -27,9 +26,13 @@ class Assembly(shape.Shape):
         else:
             self.name = name
         self.shape = cq.Assembly(name=self.name)
+        self.compound = None
 
         # self.children contains all child parts and assemblies
         self.children = {}
+
+        # TODO(clairbee): add reference counter to assemblies
+        self.count = 0
 
     def add(
         self,
@@ -44,10 +47,15 @@ class Assembly(shape.Shape):
         for child in self.children:
             child.ref_inc()
 
-    def _export_txt_real(self, file):
-        for child in self.children:
-            child._export_txt_real(file)
+    def getCompound(self):
+        if self.compound is None:
+            self.compound = self.shape.toCompound()
+        return self.compound
 
-    def _export_markdown_real(self, file):
+    def _render_txt_real(self, file):
         for child in self.children:
-            child._export_markdown_real(file)
+            child._render_txt_real(file)
+
+    def _render_markdown_real(self, file):
+        for child in self.children:
+            child._render_markdown_real(file)

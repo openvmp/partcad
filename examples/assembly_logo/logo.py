@@ -13,9 +13,9 @@ import partcad as pc
 if __name__ != "__cqgi__":
     from cq_server.ui import ui, show_object
 
-bolt = pc.get_part("example_part_step", "bolt")
-bone = pc.get_part("example_part_cadquery_logo", "bone")
-head_half = pc.get_part("example_part_cadquery_logo", "head_half")
+bolt = pc.get_part("bolt", "example_part_step")
+bone = pc.get_part("bone", "example_part_cadquery_logo")
+head_half = pc.get_part("head_half", "example_part_cadquery_logo")
 
 model = pc.Assembly()
 model.add(bone, loc=pc.Location((0, 0, 0), (0, 0, 1), 0))

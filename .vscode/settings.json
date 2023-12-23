@@ -18,9 +18,11 @@
     "**/.pytest_cache": true,
     "**/apache20.svg": true,
     "**/LICENSE.txt": true,
+    ".ocp_vscode": true,
     ".conda": true,
     ".tox": true,
-    "**/.partcad": true
+    "**/.partcad": true,
+    "build": true
   },
   "markdown.extension.toc.omittedFromToc": {
     "README.md": [

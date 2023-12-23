@@ -5,5 +5,5 @@ import:
 assemblies:
   assembly:
 render:
-  png: .
+  png: ./
   markdown: README.md

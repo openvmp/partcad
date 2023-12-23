@@ -14,7 +14,7 @@ import cadquery as cq
 if __name__ != "__cqgi__":
     from cq_server.ui import ui, show_object
 
-shape = cq.Workplane("front").box(1.0, 1.0, 1.0)
+shape = cq.Workplane("front").box(10.0, 10.0, 10.0)
 
 # This example demonstrates that partcad is compatible with CQGI.
 

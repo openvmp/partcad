@@ -35,7 +35,7 @@ def test_part_get_1():
 def test_part_get_2():
     """Load part from the context by the project and part names"""
     ctx = pc.Context("examples/part_step")
-    bolt = ctx.get_part("this", "bolt")
+    bolt = ctx.get_part("bolt", "this")
     assert bolt is not None
 
 
@@ -43,7 +43,7 @@ def test_part_get_3():
     """Instantiate a project by a local import config and load a part"""
     ctx = pc.Context()  # Empty config
     _ = pc.ProjectFactoryLocal(ctx, None, test_config_local)
-    cylinder = ctx.get_part("primitive_local", "cylinder")
+    cylinder = ctx.get_part("cylinder", "primitive_local")
     assert cylinder is not None
 
 
@@ -58,16 +58,16 @@ def test_part_get_4():
 def test_part_example_primitive():
     """Instantiate all parts from the example: part_cadquery_primitive"""
     ctx = pc.init("tests/partcad-examples.yaml")
-    cube = ctx.get_part("example_part_cadquery_primitive", "cube")
+    cube = ctx.get_part("cube", "example_part_cadquery_primitive")
     assert cube is not None
-    cylinder = ctx.get_part("example_part_cadquery_primitive", "cylinder")
+    cylinder = ctx.get_part("cylinder", "example_part_cadquery_primitive")
     assert cylinder is not None
 
 
 def test_part_example_logo():
     """Instantiate all parts from the example: part_cadquery_logo"""
     ctx = pc.init("tests/partcad-examples.yaml")
-    bone = ctx.get_part("example_part_cadquery_logo", "bone")
+    bone = ctx.get_part("bone", "example_part_cadquery_logo")
     assert bone is not None
-    head_half = ctx.get_part("example_part_cadquery_logo", "head_half")
+    head_half = ctx.get_part("head_half", "example_part_cadquery_logo")
     assert head_half is not None

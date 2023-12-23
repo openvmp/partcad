@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # OpenVMP, 2023
 #
@@ -34,6 +33,11 @@ class Project(project_config.Configuration):
             self.assembly_configs = {}
         # self.assemblies contains all the initialized assemblies in this project
         self.assemblies = {}
+
+        if "desc" in self.config_obj and isinstance(self.config_obj["desc"], str):
+            self.desc = self.config_obj["desc"]
+        else:
+            self.desc = ""
 
     def get_part_config(self, part_name):
         if not part_name in self.part_configs:
@@ -109,3 +113,45 @@ class Project(project_config.Configuration):
                 return None
 
         return self.assemblies[assembly_name]
+
+    def render(self):
+        print("Rendering the project: ", self.path)
+        if not "render" in self.config_obj:
+            return
+        render = self.config_obj["render"]
+
+        parts = {}
+        if "parts" in self.config_obj:
+            parts = self.config_obj["parts"].keys()
+        assemblies = {}
+        if "assemblies" in self.config_obj:
+            assemblies = self.config_obj["assemblies"].keys()
+
+        if "png" in render:
+            print("Rendering PNG...")
+            if isinstance(render["png"], str):
+                render_path = render["png"]
+                render_width = None
+                render_height = None
+            else:
+                png = render["png"]
+                render_path = png["prefix"]
+                render_width = png["width"]
+                render_height = png["height"]
+
+            for part_name in parts:
+                part = self.get_part(part_name)
+                if not part is None:
+                    part.render_png(
+                        render_path + part_name + ".png",
+                        width=render_width,
+                        height=render_height,
+                    )
+            for assembly_name in assemblies:
+                assembly = self.get_assembly(assembly_name)
+                if not assembly is None:
+                    assembly.render_png(
+                        render_path + assembly_name + ".png",
+                        width=render_width,
+                        height=render_height,
+                    )

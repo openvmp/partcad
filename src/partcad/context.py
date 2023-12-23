@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # OpenVMP, 2023
 #
@@ -9,10 +8,13 @@
 
 import os
 import atexit
+from progress.spinner import Spinner
 
+from . import consts
 from . import project_config
 from . import project_factory_local as rfl
 from . import project_factory_git as rfg
+from . import project_factory_tar as rft
 
 global _partcad_context
 _partcad_context = None
@@ -24,7 +26,7 @@ def init(config_path="."):
     global _partcad_context_path
 
     if _partcad_context is None:
-        print("Initializing (%s)..." % __name__)
+        # print("Initializing (%s)..." % __name__)
 
         _partcad_context = Context(config_path)
         _partcad_context_path = config_path
@@ -36,9 +38,14 @@ def init(config_path="."):
     return _partcad_context
 
 
-def get_part(project_name, part_name):
-    """Get the part for a given project"""
-    return init().get_part(project_name, part_name)
+def get_assembly(assembly_name, project_name=consts.THIS):
+    """Get the assembly from the given project"""
+    return init().get_assembly(assembly_name, project_name)
+
+
+def get_part(part_name, project_name=consts.THIS):
+    """Get the part from the given project"""
+    return init().get_part(part_name, project_name)
 
 
 def finalize(shape, show_object_fn):
@@ -47,6 +54,10 @@ def finalize(shape, show_object_fn):
 
 def finalize_real():
     return init()._finalize_real(True)
+
+
+def render():
+    return init().render()
 
 
 # Context
@@ -68,14 +79,20 @@ class Context(project_config.Configuration):
         self._projects_being_loaded = {}
         self._last_to_finalize = None
 
+        spinner = Spinner("PartCAD: Loading dependencies...")
+        spinner.start()
+        spinner.next()
         self.import_project(
             None,  # parent
             {
-                "name": "this",
+                "name": consts.THIS,
                 "type": "local",
                 "path": config_path,
             },
+            spinner=spinner,
         )
+        spinner.writeln("PartCAD: Finished loading dependencies.")
+        print()
 
         atexit.register(Context._finalize_real, self)
 
@@ -88,14 +105,16 @@ class Context(project_config.Configuration):
         config = self.projects[project_name]
         return config
 
-    def import_project(self, parent, project_import_config):
+    def import_project(self, parent, project_import_config, spinner=None):
         if not "name" in project_import_config or not "type" in project_import_config:
             print("Invalid project configuration found: %s" % project_import_config)
             return None
 
         name = project_import_config["name"]
 
-        print("Importing project: %s..." % name)
+        if not spinner is None:
+            spinner.message = "PartCAD: Loading %s..." % name
+            spinner.next()
 
         if name in self._projects_being_loaded:
             print("Recursive project loading detected (%s), aborting." % name)
@@ -109,9 +128,14 @@ class Context(project_config.Configuration):
             rfl.ProjectFactoryLocal(self, parent, project_import_config)
         elif project_import_config["type"] == "git":
             rfg.ProjectFactoryGit(self, parent, project_import_config)
+        elif project_import_config["type"] == "tar":
+            rft.ProjectFactoryTar(self, parent, project_import_config)
         else:
             print("Invalid project type found: %s." % name)
             return None
+
+        if not spinner is None:
+            spinner.next()
 
         # Check whether the factory was able to successfully add the project
         if not name in self.projects:
@@ -123,24 +147,28 @@ class Context(project_config.Configuration):
         # Load the dependencies recursively
         # while preventing circular dependencies
         self._projects_being_loaded[name] = True
-        print("Imported config: %s..." % imported_project.config_obj)
+        # print("Imported config: %s..." % imported_project.config_obj)
         if "import" in imported_project.config_obj:
             for prj_name in imported_project.config_obj["import"]:
+                # print("Importing: %s..." % prj_name)
                 prj_conf = imported_project.config_obj["import"][prj_name]
                 prj_conf["name"] = prj_name
-                self.import_project(imported_project, prj_conf)
+                self.import_project(imported_project, prj_conf, spinner=spinner)
         del self._projects_being_loaded[name]
+
+        if not spinner is None:
+            spinner.next()
 
         return imported_project
 
-    def get_part(self, project_name, part_name):
+    def get_part(self, part_name, project_name):
         prj = self.get_project(project_name)
         if prj is None:
             # Don't print anything as self.get_project is expected to report errors
             return None
         return prj.get_part(part_name)
 
-    def get_assembly(self, project_name, assembly_name):
+    def get_assembly(self, assembly_name, project_name):
         prj = self.get_project(project_name)
         if prj is None:
             # Don't print anything as self.get_project is expected to report errors
@@ -157,3 +185,7 @@ class Context(project_config.Configuration):
                 self._show_object_fn, embedded=embedded
             )
         self._last_to_finalize = None
+
+    def render(self):
+        prj = self.get_project(consts.THIS)
+        prj.render()

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # OpenVMP, 2023
 #
@@ -47,7 +46,7 @@ class Part(shape.Shape):
             self.count_per_sku = config["count_per_sku"]
         else:
             self.count_per_sku = 1
-        self.count = 1
+        self.count = 0
 
     def set_shape(self, shape):
         self.shape = shape
@@ -60,10 +59,13 @@ class Part(shape.Shape):
         cloned.count = self.count
         return cloned
 
-    def _export_txt_real(self, file):
+    def getCompound(self):
+        return self.shape
+
+    def _render_txt_real(self, file):
         file.write(self.name + ": " + self.count + "\n")
 
-    def _export_markdown_real(self, file):
+    def _render_markdown_real(self, file):
         name = self.name
         vendor = ""
         sku = ""

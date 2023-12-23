@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # OpenVMP, 2023
 #
@@ -26,7 +25,6 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
         pf.ProjectFactory.__init__(self, ctx, parent, config, name)
         GitImportConfiguration.__init__(self)
 
-        # TODO(clairbee): Clone self.import_config_url to self.cache_path
         self.cache_path = self._clone_or_update_repo(self.import_config_url)
 
         # Complement the config object here if necessary
@@ -62,15 +60,21 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
                 # Try to open the existing repository and update it.
                 repo = Repo(cache_path)
                 origin = repo.remote("origin")
+                before = repo.active_branch.commit
                 origin.pull()
-                repo.head.checkout(origin.head.name, force=True)
+                after = repo.active_branch.commit
+                # repo.head.checkout(after, force=True)
+                if before != after:
+                    print("\nUpdated the GIT repo: %s" % self.import_config_url)
                 return cache_path
-            except Exception:
+            except Exception as e:
+                print("\nException: %s" % e)
                 # If update fails, fall back to cloning a new copy.
                 pass
         else:
             # Clone the repository if not cached.
             try:
+                print("\nCloning the GIT repo: %s" % self.import_config_url)
                 Repo.clone_from(repo_url, cache_path)
             except Exception as e:
                 raise RuntimeError(f"Failed to clone repository: {e}")

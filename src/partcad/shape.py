@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # OpenVMP, 2023
 #
@@ -7,21 +6,12 @@
 #
 # Licensed under Apache License, Version 2.0.
 
-import ocp_vscode as ov
 import cadquery as cq
 
 import cairosvg
+import tempfile
 
-DEFAULT_EXPORT_SVQ_OPTS = {
-    "width": 1024,
-    "height": 320,
-    "showAxes": False,
-    "projectionDir": [0.5, 0.25, 0.5],
-    "strokeWidth": 1.0,
-    "strokeColor": [64, 192, 64],
-    "hiddenColor": [32, 64, 32],
-    "showHidden": False,
-}
+from .render import *
 
 
 class Shape:
@@ -33,44 +23,44 @@ class Shape:
         self.svg_path = None
         self.svg_url = None
 
-    def _finalize_real(self, show_object, export_path=None, embedded=False):
+    def show(self, show_object=None):
         if self.shape is not None:
-            if not embedded and not show_object is None:
-                try:
-                    ov.config.status()
-                    print('Visualizing in "OCP CAD Viewer"...')
-                    print(self.shape)
-                    ov.show(self.shape)
-                except Exception as e:
-                    print(e)
-                    print('No VS Code or "OCP CAD Viewer" extension detected.')
+            import ocp_vscode as ov
 
-            if not export_path is None and not embedded:
-                # TODO(clairbee): remove compounding!!!
-                self.shape = self.shape.toCompound()
+            try:
+                ov.config.status()
+                print('Visualizing in "OCP CAD Viewer"...')
+                print(self.shape)
+                ov.show(self.shape)
+            except Exception as e:
+                print(e)
+                print('No VS Code or "OCP CAD Viewer" extension detected.')
 
-                print("Generating STL...")
-                self.export_stl(export_path + "/" + self.name + ".stl")
-
-                print("Generating OBJ...")
-                self.export_obj(export_path + "/" + self.name + ".obj")
-
-                # TODO(clairbee): change the SVG params to drop the rotation step
-                self.shape = self.shape.rotate((0, 0, 0), (1, 0, 0), -90)
-
-                print("Generating SVG...")
-                self.export_svg(export_path + "/" + self.name + ".svg")
-
-                print("Generating PNG...")
-                self.export_png(export_path + "/" + self.name + ".png")
-
-            if not show_object is None:
+            if show_object is not None:
                 show_object(
                     self.shape,
                     options={},
                 )
 
-    def export_stl(self, filepath=None, tolerance=0.5, angularTolerance=5.0):
+    def _finalize_real(self, show_object, render_path=None, embedded=False):
+        if not embedded and not show_object is None:
+            self.show()
+
+        if self.shape is not None:
+            if not render_path is None and not embedded:
+                print("Generating STL...")
+                self.render_stl(render_path + "/" + self.name + ".stl")
+
+                print("Generating OBJ...")
+                self.render_obj(render_path + "/" + self.name + ".obj")
+
+                print("Generating SVG...")
+                self.render_svg(render_path + "/" + self.name + ".svg")
+
+                print("Generating PNG...")
+                self.render_png(render_path + "/" + self.name + ".png")
+
+    def render_stl(self, filepath=None, tolerance=0.5, angularTolerance=5.0):
         if filepath is None:
             filepath = self.path + "/part.stl"
 
@@ -80,7 +70,7 @@ class Shape:
             angularTolerance,
         )
 
-    def export_obj(self, filepath=None):
+    def render_obj(self, filepath=None):
         if filepath is None:
             filepath = self.path + "/part.obj"
 
@@ -99,12 +89,15 @@ class Shape:
         except:
             print("Exception while exporting to " + filepath)
 
-    def export_svg(self, filepath, opt=DEFAULT_EXPORT_SVQ_OPTS):
+    def render_svg(self, filepath=None, opt=DEFAULT_RENDER_SVG_OPTS):
         if filepath is None:
-            filepath = self.path + "/part.svg"
+            filepath = tempfile.mktemp(".svg")
 
+        compound = self.getCompound()
+        if hasattr(compound, "rotate"):
+            compound = compound.rotate((0, 0, 0), (1, 0, 0), -90)
         cq.exporters.export(
-            self.shape,
+            compound,
             filepath,
             opt=opt,
         )
@@ -113,7 +106,7 @@ class Shape:
 
     def _get_svg_path(self):
         if self.svg_path is None:
-            self.export_svg()
+            self.render_svg()
         return self.svg_path
 
     def _get_svg_url(self):
@@ -123,14 +116,15 @@ class Shape:
             self.svg_url = "./part.svg"
         return self.svg_url
 
-    def export_png(
+    def render_png(
         self,
         filepath,
-        width=DEFAULT_EXPORT_SVQ_OPTS["width"],
-        height=DEFAULT_EXPORT_SVQ_OPTS["height"],
+        width=DEFAULT_RENDER_WIDTH,
+        height=DEFAULT_RENDER_HEIGHT,
     ):
         if filepath is None:
             filepath = self.path + "/part.png"
+        print("Rendering: ", filepath)
         svg_path = self._get_svg_path()
 
         cairosvg.svg2png(
@@ -140,16 +134,16 @@ class Shape:
             output_height=height,
         )
 
-    def export_txt(self, filepath=None):
+    def render_txt(self, filepath=None):
         if filepath is None:
             filepath = self.path + "/bom.txt"
 
         file = open(filepath, "w+")
         file.write("BoM:\n")
-        self._export_txt_real(file)
+        self._render_txt_real(file)
         file.close()
 
-    def export_markdown(self, filepath):
+    def render_markdown(self, filepath):
         if filepath is None:
             filepath = self.path + "/README.md"
 
@@ -162,7 +156,7 @@ class Shape:
             + "| Part | Count* | Vendor | SKU | Preview |\n"
             + "| -- | -- | -- | -- | -- |\n"
         )
-        self._export_markdown_real(bom_file)
+        self._render_markdown_real(bom_file)
         bom_file.write(
             """
 (\\*) The `Count` field is the number of SKUs to be ordered.

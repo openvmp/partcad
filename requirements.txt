@@ -1,4 +1,4 @@
-build123d==0.1.1
+build123d==0.2.0
 cadquery==2.3.1
 cadquery-server==0.4.1
 numpy==1.25.2
@@ -8,3 +8,5 @@ pyyaml==6.0.1
 cairosvg==2.7.0
 ocp_vscode==2.0.13
 GitPython==3.1.40
+progress==1.6
+ruamel.yaml==0.18.5

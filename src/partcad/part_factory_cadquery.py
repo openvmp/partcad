@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # OpenVMP, 2023
 #
@@ -8,7 +7,7 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-from cadquery import cqgi
+import cadquery as cq
 from . import part_factory as pf
 
 
@@ -21,11 +20,16 @@ class PartFactoryCadquery(pf.PartFactory):
         cadquery_script = open(self.path, "r").read()
         if "import partcad as pc" in cadquery_script:
             cadquery_script += "\npc.finalize_real()\n"
-        print(cadquery_script)
-        script = cqgi.parse(cadquery_script)
+        # print(cadquery_script)
+        script = cq.cqgi.parse(cadquery_script)
         result = script.build(build_parameters={})
         if result.success:
-            self.part.shape = result.first_result.shape
+            shape = result.first_result.shape
+            if not hasattr(shape, "wrapped"):
+                cq_solid = cq.Solid.makeBox(1, 1, 1)
+                cq_solid.wrapped = shape
+                shape = cq_solid
+            self.part.shape = shape
         else:
             print(result.exception)
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # OpenVMP, 2023
 #
@@ -28,6 +27,8 @@ class ProjectFactoryLocal(pf.ProjectFactory, LocalImportConfiguration):
             self.import_config_path = self.config_dir + "/" + self.import_config_path
 
         self.path = self.import_config_path
+        if not os.path.exists(self.import_config_path):
+            raise Exception("PartCAD project not found: %s" % self.import_config_path)
 
         # Complement the config object here if necessary
         self._create(config)

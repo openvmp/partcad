@@ -16,5 +16,8 @@ assemblies:
         default: 0.0
 
 render:
-  png: .
+  png:
+    prefix: ./
+    width: 256
+    height: 256
   markdown: README.md

@@ -11,6 +11,12 @@ maintainers = [
 ]
 dynamic = ["dependencies"]
 
+[project.scripts]
+pc = "partcad:main_cli"
+
+[tool.setuptools.package-data]
+"partcad.template" = ["*.yaml"]
+
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
 

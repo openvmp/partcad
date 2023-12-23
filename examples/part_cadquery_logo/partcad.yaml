@@ -1,7 +1,10 @@
+desc: PartCAD example project which implements its logo
 parts:
   head_half:
+    desc: Bracket used as one side of the head on PartCAD logo
   bone:
+    desc: Plate used as one of the bones on PartCAD logo
 
 render:
-  png: .
+  png: ./
   markdown: README.md

@@ -1,8 +1,13 @@
+desc: PartCAD example project which demonstrates parts created using CadQuery
 parts:
   cube:
-    desc: "This is a cube from examples"
+    desc: This is a cube from examples
   cylinder:
     path: cylinder.py
-    desc: "This is a cylinder from examples"
+    desc: This is a cylinder from examples
 render:
+  png:
+    prefix: ./
+    width: 256
+    height: 128
   markdown: README.md
