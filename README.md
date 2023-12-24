@@ -7,6 +7,8 @@ and a Python package to consume these packages in CAD scripts (`cadquery` and `b
 It brings the same power to CAD scripting
 as `pip` to Python, `npm` to JavaScript, `maven` to Java etc.
 
+[Join our Discord channel!](https://discord.gg/AXbP47zYw5)
+
 PartCAD allows to maintain information about mechanical parts,
 how they come together to form larger assemblies,
 and to reuse the same parts in multiple assemblies, multiple projects.
