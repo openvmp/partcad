@@ -51,6 +51,7 @@ def test_part_get_4():
     """Instantiate a project by a git import config and load a part"""
     ctx = pc.Context()  # Emplty config
     factory = pc.ProjectFactoryGit(ctx, None, test_config_git)
+    assert factory.project.path.endswith(test_config_git["relPath"])
     cube = factory.project.get_part("cube")
     assert cube is not None
 

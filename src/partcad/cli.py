@@ -24,42 +24,6 @@ def main():
     parser = argparse.ArgumentParser(
         description="PartCAD command line tool",
     )
-    # parser.add_argument(
-    #     "-r",
-    #     help="Recursively process all imported packages",
-    #     dest="recursive",
-    #     action="store_true",
-    # )
-    # parser.add_argument(
-    #     "-u",
-    #     help="Only process objects (parts, assemblies etc) used by the given assembly or scene.",
-    #     dest="used_by",
-    #     type=str,
-    #     required=False,
-    # )
-    # parser.add_argument(
-    #     "command",
-    #     help="Command to perform",
-    #     type=str,
-    #     choices=[
-    #         "help",
-    #         "add",
-    #         "init",
-    #         "install",
-    #         "list",
-    #         "list-parts",
-    #         "list-assemblies",
-    #         "render",
-    #         "show",
-    #     ],
-    # )
-    # parser.add_argument(
-    #     "params",
-    #     help="Command-dependant parameters",
-    #     type=str,
-    #     nargs="*",
-    #     # required=False,
-    # )
     subparsers = parser.add_subparsers(dest="command")
     cli_help_add(subparsers)
     cli_help_init(subparsers)
@@ -80,6 +44,10 @@ def main():
 
     elif args.command == "list":
         cli_list(args)
+
+    elif args.command == "list-all":
+        cli_list_assemblies(args)
+        cli_list_parts(args)
 
     elif args.command == "list-parts":
         cli_list_parts(args)

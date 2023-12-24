@@ -66,7 +66,6 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
                 # repo.head.checkout(after, force=True)
                 if before != after:
                     print("\nUpdated the GIT repo: %s" % self.import_config_url)
-                return cache_path
             except Exception as e:
                 print("\nException: %s" % e)
                 # If update fails, fall back to cloning a new copy.

@@ -8,6 +8,7 @@
 #
 
 import cadquery as cq
+from cadquery import cqgi
 from . import part_factory as pf
 
 
@@ -18,17 +19,17 @@ class PartFactoryCadquery(pf.PartFactory):
         self._create(part_config)
 
         cadquery_script = open(self.path, "r").read()
+
+        # TODO(clairbee): this is a workaround to lack of support for 'atexit()'
+        # in CQGI
         if "import partcad as pc" in cadquery_script:
             cadquery_script += "\npc.finalize_real()\n"
         # print(cadquery_script)
-        script = cq.cqgi.parse(cadquery_script)
+
+        script = cqgi.parse(cadquery_script)
         result = script.build(build_parameters={})
         if result.success:
             shape = result.first_result.shape
-            if not hasattr(shape, "wrapped"):
-                cq_solid = cq.Solid.makeBox(1, 1, 1)
-                cq_solid.wrapped = shape
-                shape = cq_solid
             self.part.shape = shape
         else:
             print(result.exception)

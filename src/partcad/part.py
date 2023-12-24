@@ -12,6 +12,8 @@ import random
 import string
 from . import shape
 
+import cadquery as cq
+
 
 class Part(shape.Shape):
     def __init__(self, name=None, config={}, shape=None):
@@ -61,6 +63,27 @@ class Part(shape.Shape):
 
     def getCompound(self):
         return self.shape
+        # shape = self.shape
+        # # if not hasattr(shape, "wrapped"):
+        # #     cq_solid = cq.Solid.makeBox(1, 1, 1)
+        # #     cq_solid.wrapped = shape
+        # #     shape = cq_solid
+        # if self.compound is None:
+        #     # self.compound = cq.Compound.makeCompound(shape)
+        #     # self.compound = shape.toCompound()
+        #     if hasattr(shape, "toCompound"):
+        #         self.compound = shape.toCompound()
+        #         if not hasattr(self.compound, "wrapped"):
+        #             cq_solid = cq.Solid.makeBox(1, 1, 1)
+        #             cq_solid.wrapped = self.compound
+        #             self.compound = cq_solid
+        #     else:
+        #         self.compound = shape
+        #     # else:
+        #     #     self.compound = cq.Compound.makeCompound(shape.wrapped)
+        # else:
+        #     self.compound = shape
+        # return self.compound
 
     def _render_txt_real(self, file):
         file.write(self.name + ": " + self.count + "\n")

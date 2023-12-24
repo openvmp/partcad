@@ -18,6 +18,7 @@ class Shape:
     def __init__(self, name):
         self.name = name
         self.shape = None
+        self.compound = None
 
         # Leave the svg path empty to get it created on demand
         self.svg_path = None
@@ -30,7 +31,7 @@ class Shape:
             try:
                 ov.config.status()
                 print('Visualizing in "OCP CAD Viewer"...')
-                print(self.shape)
+                # print(self.shape)
                 ov.show(self.shape)
             except Exception as e:
                 print(e)
@@ -43,10 +44,10 @@ class Shape:
                 )
 
     def _finalize_real(self, show_object, render_path=None, embedded=False):
-        if not embedded and not show_object is None:
-            self.show()
+        if not show_object is None:
+            self.show(show_object)
 
-        if self.shape is not None:
+        if not embedded and self.shape is not None:
             if not render_path is None and not embedded:
                 print("Generating STL...")
                 self.render_stl(render_path + "/" + self.name + ".stl")

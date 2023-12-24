@@ -40,11 +40,15 @@ def init(config_path="."):
 
 def get_assembly(assembly_name, project_name=consts.THIS):
     """Get the assembly from the given project"""
+    if project_name is None:
+        project_name = consts.THIS
     return init().get_assembly(assembly_name, project_name)
 
 
 def get_part(part_name, project_name=consts.THIS):
     """Get the part from the given project"""
+    if project_name is None:
+        project_name = consts.THIS
     return init().get_part(part_name, project_name)
 
 
@@ -180,6 +184,13 @@ class Context(project_config.Configuration):
         self._show_object_fn = show_object_fn
 
     def _finalize_real(self, embedded=False):
+        """
+        embedded: PartCAD within PartCAD. True if
+          - this is a PartCAD module (calls pc.finalize() at the end, not show_object())
+            - internally pc.finalize() uses atexit() to schedule show_object()
+          - it is being called by PartCAD using CQGI
+            - atexit() handlers are not getting called until the process exits
+        """
         if self._last_to_finalize is not None:
             self._last_to_finalize._finalize_real(
                 self._show_object_fn, embedded=embedded

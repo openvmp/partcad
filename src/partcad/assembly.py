@@ -26,7 +26,6 @@ class Assembly(shape.Shape):
         else:
             self.name = name
         self.shape = cq.Assembly(name=self.name)
-        self.compound = None
 
         # self.children contains all child parts and assemblies
         self.children = {}

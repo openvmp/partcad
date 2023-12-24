@@ -15,6 +15,10 @@ def cli_help_list(subparsers):
         "list",
         help="List imported packages",
     )
+    parser_list_all = subparsers.add_parser(
+        "list-all",
+        help="List available parts, assemblies and scenes",
+    )
     parser_list_parts = subparsers.add_parser(
         "list-parts",
         help="List available parts",
@@ -24,6 +28,12 @@ def cli_help_list(subparsers):
         help="List available assemblies",
     )
 
+    parser_list_all.add_argument(
+        "-r",
+        help="Recursively process all imported packages",
+        dest="recursive",
+        action="store_true",
+    )
     parser_list_parts.add_argument(
         "-r",
         help="Recursively process all imported packages",
@@ -37,6 +47,13 @@ def cli_help_list(subparsers):
         action="store_true",
     )
 
+    parser_list_all.add_argument(
+        "-u",
+        help="Only process objects used by the given assembly or scene.",
+        dest="used_by",
+        type=str,
+        required=False,
+    )
     parser_list_parts.add_argument(
         "-u",
         help="Only process objects used by the given assembly or scene.",
