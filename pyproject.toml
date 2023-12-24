@@ -1,6 +1,9 @@
 [project]
 name = "partcad"
 version = "0.1.0"
+description = "Framework for packaging CAD models"
+readme = "README.md"
+keywords = ["cadquery", "build123d"]
 requires-python = ">=3.10"
 license = {file = "LICENSE.txt"}
 authors = [

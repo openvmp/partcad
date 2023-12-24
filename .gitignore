@@ -9,4 +9,5 @@ generated_files/*.obj
 generated_files/*.svg
 .partcad
 /build
+/dist
 .ocp_vscode

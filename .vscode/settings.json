@@ -22,7 +22,8 @@
     ".conda": true,
     ".tox": true,
     "**/.partcad": true,
-    "build": true
+    "build": true,
+    "dist": true
   },
   "markdown.extension.toc.omittedFromToc": {
     "README.md": [
