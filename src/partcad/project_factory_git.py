@@ -17,6 +17,7 @@ from . import project_factory as pf
 class GitImportConfiguration:
     def __init__(self):
         self.import_config_url = self.config_obj.get("url")
+        self.import_revision = self.config_obj.get("revision")
         self.import_rel_path = self.config_obj.get("relPath")
 
 
@@ -52,6 +53,8 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
 
         # Generate a unique identifier for the repository based on its URL.
         repo_hash = hashlib.sha256(repo_url.encode()).hexdigest()
+        if self.import_revision is not None:
+            repo_hash += "-" + self.import_revision
         cache_path = os.path.join(cache_dir, repo_hash)
 
         # Check if the repository is already cached.
@@ -61,9 +64,12 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
                 repo = Repo(cache_path)
                 origin = repo.remote("origin")
                 before = repo.active_branch.commit
-                origin.pull()
+                if self.import_revision is None:
+                    origin.pull()
+                else:
+                    origin.fetch()
+                    repo.git.checkout(self.import_revision, force=True)
                 after = repo.active_branch.commit
-                # repo.head.checkout(after, force=True)
                 if before != after:
                     print("\nUpdated the GIT repo: %s" % self.import_config_url)
             except Exception as e:
