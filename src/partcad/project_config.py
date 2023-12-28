@@ -39,8 +39,6 @@ class Configuration:
             # See what version of PartCAD is required for this package
             partcad_requirements = SpecifierSet(self.config_obj["partcad"])
             partcad_version = version("partcad")
-            print(partcad_requirements)
-            print(partcad_version)
             if partcad_version not in partcad_requirements:
                 # TODO(clairbee): add better error and exception handling
                 raise Exception(
