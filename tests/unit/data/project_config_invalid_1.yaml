@@ -1,0 +1,2 @@
+# This configuration file has the version requirements that always fail
+partcad: "<0.1.0"
