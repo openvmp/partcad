@@ -1,40 +1,28 @@
-
 [project]
-  description = "Framework for packaging CAD models"
-  dynamic = ["dependencies"]
-  keywords = ["cadquery", "build123d"]
-  name = "partcad"
-  readme = "README.md"
-  requires-python = ">=3.10"
-  version = "0.1.1"
+name = "partcad"
+version = "0.1.1"
+description = "Framework for packaging CAD models"
+readme = "README.md"
+keywords = ["cadquery", "build123d"]
+requires-python = ">=3.10"
+license = {file = "LICENSE.txt"}
+authors = [
+  {name = "Roman Kuzmenko", email = "openvmp@proton.me" }
+]
+maintainers = [
+  {name = "Roman Kuzmenko", email = "openvmp@proton.me" }
+]
+dynamic = ["dependencies"]
 
-  [[project.authors]]
-    email = "openvmp@proton.me"
-    name = "Roman Kuzmenko"
+[project.scripts]
+pc = "partcad:main_cli"
 
-  [project.license]
-    file = "LICENSE.txt"
+[tool.setuptools.package-data]
+"partcad.template" = ["*.yaml"]
 
-  [[project.maintainers]]
-    email = "openvmp@proton.me"
-    name = "Roman Kuzmenko"
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
 
-  [project.scripts]
-    pc = "partcad:main_cli"
-
-[tool]
-
-  [tool.pytest]
-
-    [tool.pytest.ini_options]
-      pythonpath = "src"
-
-  [tool.setuptools]
-
-    [tool.setuptools.dynamic]
-
-      [tool.setuptools.dynamic.dependencies]
-        file = ["requirements.txt"]
-
-    [tool.setuptools.package-data]
-      "partcad.template" = ["*.yaml"]
+[tool.pytest.ini_options]
+# addopts = -ra -s -rx
+pythonpath = "src"
