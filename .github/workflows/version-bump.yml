@@ -23,6 +23,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install bump-my-version setuptools wheel twine
 
+      - name: Configure git
+        run: |
+          git config --global user.name 'PartCAD GitHub Action'
+          git config --global user.email 'openvmp@proton.me'
+
       # If a commit starts with [MAJOR] a new major verion upgrade will be
       # triggered. Use with caution as Major upgrades denote backwards
       # incompatibility. Yet I like it to be integrated in the CI
