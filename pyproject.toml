@@ -29,6 +29,11 @@ pythonpath = "src"
 
 [tool.bumpversion]
 current_version = "0.1.1"
+commit = "true"
+commit_args = "--no-verify"
+tag = "true"
+tag_name = "{new_version}"
+message = "Version updated from {current_version} to {new_version}"
 
 [[tool.bumpversion.files]]
 filename = "src/partcad/__init__.py"
