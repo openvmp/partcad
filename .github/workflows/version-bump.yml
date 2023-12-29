@@ -1,0 +1,18 @@
+name: Updates version and tags
+on:
+  push:
+    branches:
+      - main
+permissions:
+  contents: write
+jobs:
+  update_version_and_tag:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Python 3
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Update version
+      uses: kurtmc/github-action-python-versioner@f86ba7f3a5ed2cc96ba7ef6b857fdf44a849cea1 # v1
