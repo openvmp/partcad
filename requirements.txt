@@ -10,3 +10,4 @@ ocp_vscode==2.0.13
 GitPython==3.1.40
 progress==1.6
 ruamel.yaml==0.18.5
+packaging==23.1

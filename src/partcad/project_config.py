@@ -9,6 +9,8 @@
 import os
 import json
 import yaml
+from importlib.metadata import version
+from packaging.specifiers import SpecifierSet
 
 DEFAULT_CONFIG_FILENAME = "partcad.yaml"
 
@@ -22,7 +24,7 @@ class Configuration:
         if os.path.isdir(config_path):
             config_path += "/" + DEFAULT_CONFIG_FILENAME
         if not os.path.isfile(config_path):
-            print("PartCad configuration file is not found: %s" % config_path)
+            print("PartCAD configuration file is not found: %s" % config_path)
             return
         self.config_path = config_path
 
@@ -32,3 +34,14 @@ class Configuration:
             self.config_obj = yaml.safe_load(open(config_path, "r"))
         if config_path.endswith(".json"):
             self.config_obj = json.load(open(config_path, "r"))
+
+        if "partcad" in self.config_obj:
+            # See what version of PartCAD is required for this package
+            partcad_requirements = SpecifierSet(self.config_obj["partcad"])
+            partcad_version = version("partcad")
+            if partcad_version not in partcad_requirements:
+                # TODO(clairbee): add better error and exception handling
+                raise Exception(
+                    "ERROR: Incompatible PartCAD version! %s does not satisfy %s"
+                    % (partcad_version, partcad_requirements)
+                )
