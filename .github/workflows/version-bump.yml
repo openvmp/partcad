@@ -13,7 +13,7 @@ jobs:
       - name: Install Python 3
         uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: 3.10
       - name: Setup env variables
         run: |
           echo "SKIPBUMP=FALSE" >> $GITHUB_ENV
@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install bump2version setuptools wheel twine
+          pip install bump-my-version setuptools wheel twine
 
       # If a commit starts with [MAJOR] a new major verion upgrade will be
       # triggered. Use with caution as Major upgrades denote backwards
@@ -30,7 +30,7 @@ jobs:
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          bump2version major
+          bump-my-version bump major
           echo "SKIPBUMP=TRUE" >> $GITHUB_ENV
         if: startsWith(github.event.head_commit.message, '[MAJOR]')
 
@@ -38,7 +38,7 @@ jobs:
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          bump2version minor
+          bump-my-version bump minor
           echo "SKIPBUMP=TRUE" >> $GITHUB_ENV
         if: startsWith(github.event.head_commit.message, '[FEATURE]')
 
@@ -47,7 +47,7 @@ jobs:
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          bump2version patch
+          bump-my-version bump patch
         if: env.SKIPBUMP == 'FALSE'
 
       - name: Commit version change to master
