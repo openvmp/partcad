@@ -1,6 +1,5 @@
 [project]
 name = "partcad"
-version = "0.1.1"
 description = "Framework for packaging CAD models"
 readme = "README.md"
 keywords = ["cadquery", "build123d"]
@@ -12,7 +11,7 @@ authors = [
 maintainers = [
   {name = "Roman Kuzmenko", email = "openvmp@proton.me" }
 ]
-dynamic = ["dependencies"]
+dynamic = ["version", "dependencies"]
 
 [project.scripts]
 pc = "partcad:main_cli"
@@ -21,8 +20,15 @@ pc = "partcad:main_cli"
 "partcad.template" = ["*.yaml"]
 
 [tool.setuptools.dynamic]
+version = {attr = "partcad.__version__"}
 dependencies = {file = ["requirements.txt"]}
 
 [tool.pytest.ini_options]
 # addopts = -ra -s -rx
 pythonpath = "src"
+
+[tool.bumpversion]
+current_version = "0.1.1"
+
+[[tool.bumpversion.files]]
+filename = "src/partcad/__init__.py"

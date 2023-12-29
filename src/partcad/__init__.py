@@ -38,3 +38,5 @@ __all__ = [
     "scene",
     "main_cli",
 ]
+
+__version__: str = "0.1.1"
