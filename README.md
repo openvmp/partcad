@@ -113,16 +113,16 @@ while having parts and assemblies often maintained by third parties.
 
 PartCAD allows to define parts using any of the following methods:
 
-| Method                                          | Example                                                                  | Result                                         |
-| ----------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------- |
-| STEP file                                       | parts:<br/>&nbsp;&nbsp;bolt:<br/>&nbsp;&nbsp;&nbsp;&nbsp;type:&nbsp;step | ![](examples/part_step/bolt.png)               |
-| Original<br/>CadQuery<br/>Gateway<br/>Interface | parts:<br/>&nbsp;&nbsp;cube:                                             | ![](examples/part_cadquery_primitive/cube.png) |
+| Method                                                       | Example                                                                  | Result                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------ | ---------------------------------------------- |
+| STEP file                                                    | parts:<br/>&nbsp;&nbsp;bolt:<br/>&nbsp;&nbsp;&nbsp;&nbsp;type:&nbsp;step | ![](examples/part_step/bolt.png)               |
+| CadQuery<br/>Gateway<br/>Interface<br/>(including build123d) | parts:<br/>&nbsp;&nbsp;cube:                                             | ![](examples/part_cadquery_primitive/cube.png) |
 
 <!--
 | Extension for<br/>parametrized<br/>CadQuery scripts | TODO                                                                | TODO   |
 -->
 
-Other methods to define parts are in coming soon (e.g. `build123d`).
+Other methods to define parts are coming in soon (e.g. OpenSCAD).
 
 ### Assemblies
 
@@ -211,7 +211,7 @@ Individual parts, assemblies and scenes can be rendered and exported into the
 following formats:
 
 - PNG
-- STL
+- STL (not yet)
 
 ### Other modelling formats
 
@@ -225,8 +225,8 @@ Additionally, assemblies and scenes can be exported into the following formats:
 The bill of materials for each assembly can be produced using the following
 formats:
 
-- CSV
-- Markdown
+- CSV (not yet / in progress)
+- Markdown (not yet / in progress)
 
 ## Tools for mechanical engineering
 
