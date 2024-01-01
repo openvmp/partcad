@@ -3,7 +3,7 @@
 [![License](./apache20.svg)](./LICENSE.txt)
 
 PartCAD is the first package manager for CAD models,
-and a Python package to consume these packages in CAD scripts (`cadquery` and `build123d`).
+and a Python package to consume these packages in CAD scripts ([`cadquery`][CadQuery] and [`build123d`][build123d]).
 It brings the same power to CAD scripting
 as `pip` to Python, `npm` to JavaScript, `maven` to Java etc.
 
@@ -13,7 +13,7 @@ PartCAD allows to maintain information about mechanical parts,
 how they come together to form larger assemblies,
 and to reuse the same parts in multiple assemblies, multiple projects.
 The implementation of parts can change over time
-(e.g. optimize or migrate to CadQuery from STEP) without the need to update
+(e.g. optimize or migrate to [CadQuery] from [STEP]) without the need to update
 all of the consumers.
 
 - [Installation](#installation)
@@ -113,10 +113,10 @@ while having parts and assemblies often maintained by third parties.
 
 PartCAD allows to define parts using any of the following methods:
 
-| Method                                                       | Example                                                                  | Result                                         |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------ | ---------------------------------------------- |
-| STEP file                                                    | parts:<br/>&nbsp;&nbsp;bolt:<br/>&nbsp;&nbsp;&nbsp;&nbsp;type:&nbsp;step | ![](examples/part_step/bolt.png)               |
-| CadQuery<br/>Gateway<br/>Interface<br/>(including build123d) | parts:<br/>&nbsp;&nbsp;cube:                                             | ![](examples/part_cadquery_primitive/cube.png) |
+| Method                                                           | Example                                                                  | Result                                         |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------- |
+| [STEP] file                                                      | parts:<br/>&nbsp;&nbsp;bolt:<br/>&nbsp;&nbsp;&nbsp;&nbsp;type:&nbsp;step | ![](examples/part_step/bolt.png)               |
+| [CadQuery]<br/>Gateway<br/>Interface<br/>(including [build123d]) | parts:<br/>&nbsp;&nbsp;cube:                                             | ![](examples/part_cadquery_primitive/cube.png) |
 
 <!--
 | Extension for<br/>parametrized<br/>CadQuery scripts | TODO                                                                | TODO   |
@@ -211,22 +211,22 @@ Individual parts, assemblies and scenes can be rendered and exported into the
 following formats:
 
 - PNG
-- STL (not yet)
+- [STL](https://en.wikipedia.org/wiki/STL_(file_format)) (not yet)
 
 ### Other modelling formats
 
 Additionally, assemblies and scenes can be exported into the following formats:
 
-- SDF (not yet / in progress)
-- FreeCAD project (not yet / in progress)
+- [SDF](http://sdformat.org/) (not yet / in progress)
+- [FreeCAD](https://www.freecad.org/) project (not yet / in progress)
 
 ### Purchasing / Bill of materials
 
 The bill of materials for each assembly can be produced using the following
 formats:
 
-- CSV (not yet / in progress)
-- Markdown (not yet / in progress)
+- [CSV](https://en.wikipedia.org/wiki/Comma-separated_values) (not yet / in progress)
+- [Markdown](https://en.wikipedia.org/wiki/Markdown) (not yet / in progress)
 
 ## Tools for mechanical engineering
 
@@ -295,9 +295,14 @@ internally in [OpenVMP](https://github.com/openvmp/openvmp-models).
 It is now being maintained separately as a generic tool.
 
 The motivation behind this framework is to build a packaging and dependency
-tracking layer on top of CadQuery and traditional CAD tools to enable
+tracking layer on top of [CadQuery] and traditional CAD tools to enable
 version control and other features required for effective collaboration. 
 
-This framework currently uses CadQuery and, thus, OpenCASCADE under the hood.
-However this may change in the future if the python C bindings for OpenCASCADE
+This framework currently uses [CadQuery], and thus, [OpenCASCADE] under the hood.
+However this may change in the future, if the python C bindings for [OpenCASCADE]
 remain a blocker for unlocking multithreaded performance.
+
+[CadQuery]: https://github.com/CadQuery/cadquery
+[build123d]: https://github.com/gumyr/build123d
+[STEP]: https://en.wikipedia.org/wiki/ISO_10303
+[OpenCASCADE]: https://www.opencascade.com/
