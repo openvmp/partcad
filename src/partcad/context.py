@@ -104,6 +104,7 @@ class Context(project_config.Configuration):
             spinner=spinner,
         )
         if not spinner is None:
+            spinner.finish()
             logging.info("PartCAD: Finished loading dependencies.")
 
         atexit.register(Context._finalize_real, self)

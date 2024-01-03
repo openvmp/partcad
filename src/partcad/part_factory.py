@@ -21,11 +21,14 @@ class PartFactory:
         self.path = self.name + extension
         if "path" in part_config:
             self.path = part_config["path"]
-        if not os.path.isdir(project.path):
-            raise Exception("ERROR: The project path must be a directory")
-        self.path = os.path.join(project.path, self.path)
-        if not os.path.exists(self.path):
-            raise Exception("ERROR: The part path must exist")
+        if not os.path.isdir(project.config_dir):
+            raise Exception(
+                "ERROR: The project config directory must be a directory, found: '%s'"
+                % project.config_dir
+            )
+        self.path = os.path.join(project.config_dir, self.path)
+        if not os.path.isfile(self.path):
+            raise Exception("ERROR: The part path (%s) must be a file" % self.path)
 
         # Pass the autodetected path to the 'Part' class
         part_config["path"] = self.path

@@ -27,10 +27,9 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
         pf.ProjectFactory.__init__(self, ctx, parent, config, name)
         GitImportConfiguration.__init__(self)
 
-        self.cache_path = self._clone_or_update_repo(self.import_config_url)
+        self.path = self._clone_or_update_repo(self.import_config_url)
 
         # Complement the config object here if necessary
-        self.path = self.cache_path
         self._create(config)
 
         # TODO(clairbee): actually fill in the self.project object here
