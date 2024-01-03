@@ -6,15 +6,18 @@
 #
 # Licensed under Apache License, Version 2.0.
 
-import os
 import atexit
+import logging
+import os
 from progress.spinner import Spinner
 
 from . import consts
 from . import project_config
+from . import runtime_python_all
 from . import project_factory_local as rfl
 from . import project_factory_git as rfg
 from . import project_factory_tar as rft
+from .user_config import user_config
 
 global _partcad_context
 _partcad_context = None
@@ -26,13 +29,13 @@ def init(config_path="."):
     global _partcad_context_path
 
     if _partcad_context is None:
-        # print("Initializing (%s)..." % __name__)
+        # logging.debug("Initializing (%s)..." % __name__)
 
         _partcad_context = Context(config_path)
         _partcad_context_path = config_path
     else:
         if _partcad_context_path != config_path:
-            print("Error: multiple context configurations")
+            logging.error("Multiple context configurations")
             raise Exception("partcad: multiple context configurations")
 
     return _partcad_context
@@ -71,6 +74,7 @@ class Context(project_config.Configuration):
     def __init__(self, config_path="."):
         """Initializes the context and imports the root project."""
         super().__init__(config_path)
+        self.runtimes_python = {}
 
         if os.path.isdir(config_path):
             config_path = "."
@@ -83,9 +87,13 @@ class Context(project_config.Configuration):
         self._projects_being_loaded = {}
         self._last_to_finalize = None
 
-        spinner = Spinner("PartCAD: Loading dependencies...")
-        spinner.start()
-        spinner.next()
+        if logging.root.level < 60:
+            spinner = Spinner("PartCAD: Loading dependencies...")
+            spinner.start()
+            spinner.next()
+        else:
+            spinner = None
+
         self.import_project(
             None,  # parent
             {
@@ -95,15 +103,15 @@ class Context(project_config.Configuration):
             },
             spinner=spinner,
         )
-        spinner.writeln("PartCAD: Finished loading dependencies.")
-        print()
+        if not spinner is None:
+            logging.info("PartCAD: Finished loading dependencies.")
 
         atexit.register(Context._finalize_real, self)
 
     def get_project(self, project_name):
         if not project_name in self.projects:
-            print("The project '%s' is not found." % project_name)
-            print("%s" % self.projects)
+            logging.error("The project '%s' is not found." % project_name)
+            logging.error("%s" % self.projects)
             return None
 
         config = self.projects[project_name]
@@ -111,7 +119,9 @@ class Context(project_config.Configuration):
 
     def import_project(self, parent, project_import_config, spinner=None):
         if not "name" in project_import_config or not "type" in project_import_config:
-            print("Invalid project configuration found: %s" % project_import_config)
+            logging.error(
+                "Invalid project configuration found: %s" % project_import_config
+            )
             return None
 
         name = project_import_config["name"]
@@ -121,7 +131,7 @@ class Context(project_config.Configuration):
             spinner.next()
 
         if name in self._projects_being_loaded:
-            print("Recursive project loading detected (%s), aborting." % name)
+            logging.error("Recursive project loading detected (%s), aborting." % name)
             return None
 
         # Depending on the project type, use different factories
@@ -135,7 +145,7 @@ class Context(project_config.Configuration):
         elif project_import_config["type"] == "tar":
             rft.ProjectFactoryTar(self, parent, project_import_config)
         else:
-            print("Invalid project type found: %s." % name)
+            logging.error("Invalid project type found: %s." % name)
             return None
 
         if not spinner is None:
@@ -143,7 +153,7 @@ class Context(project_config.Configuration):
 
         # Check whether the factory was able to successfully add the project
         if not name in self.projects:
-            print("Failed to create the project: %s" % project_import_config)
+            logging.error("Failed to create the project: %s" % project_import_config)
             return None
 
         imported_project = self.projects[name]
@@ -151,10 +161,10 @@ class Context(project_config.Configuration):
         # Load the dependencies recursively
         # while preventing circular dependencies
         self._projects_being_loaded[name] = True
-        # print("Imported config: %s..." % imported_project.config_obj)
+        # logging.debug("Imported config: %s..." % imported_project.config_obj)
         if "import" in imported_project.config_obj:
             for prj_name in imported_project.config_obj["import"]:
-                # print("Importing: %s..." % prj_name)
+                # logging.debug("Importing: %s..." % prj_name)
                 prj_conf = imported_project.config_obj["import"][prj_name]
                 prj_conf["name"] = prj_name
                 self.import_project(imported_project, prj_conf, spinner=spinner)
@@ -200,3 +210,13 @@ class Context(project_config.Configuration):
     def render(self):
         prj = self.get_project(consts.THIS)
         prj.render()
+
+    def get_python_runtime(self, version, python_runtime=None):
+        if python_runtime is None:
+            python_runtime = user_config.python_runtime
+        runtime_name = python_runtime + "-" + version
+        if not runtime_name in self.runtimes_python:
+            self.runtimes_python[runtime_name] = runtime_python_all.create(
+                self, version, python_runtime
+            )
+        return self.runtimes_python[runtime_name]

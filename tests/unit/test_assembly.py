@@ -34,7 +34,4 @@ def test_assembly_example_logo():
     ctx = pc.init("tests/partcad-examples.yaml")
     logo = ctx.get_assembly("logo", "example_assembly_logo")
     assert logo is not None
-    # TODO(clairbee): implement lazy loading
-    # assert logo.shape is None
-    # logo.build()
-    assert logo.shape is not None
+    assert logo.get_shape() is not None

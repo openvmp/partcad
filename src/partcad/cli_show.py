@@ -43,10 +43,8 @@ def cli_help_show(subparsers):
 
 
 def cli_show(args):
-    # if args.locations is not None:
-    #     package_name = args.location
-    # else:
-    #     package_name = None
+    if not args.config_path is None:
+        pc.init(args.config_path)
 
     if args.assembly:
         obj = pc.get_assembly(args.object, args.package)

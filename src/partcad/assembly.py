@@ -6,10 +6,11 @@
 #
 # Licensed under Apache License, Version 2.0.
 
+import copy
 import random
 import string
 
-import cadquery as cq
+import build123d as b3d
 
 from . import shape
 
@@ -25,31 +26,44 @@ class Assembly(shape.Shape):
             )
         else:
             self.name = name
-        self.shape = cq.Assembly(name=self.name)
+        self.shape = None
 
         # self.children contains all child parts and assemblies
-        self.children = {}
+        self.children = []
 
         # TODO(clairbee): add reference counter to assemblies
         self.count = 0
 
     def add(
         self,
-        child,  # pc.Part or pc.Assembly
+        child: shape.Shape,  # pc.Part or pc.Assembly
         name=None,
-        loc=cq.Location((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), 0.0),
+        loc=b3d.Location((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), 0.0),
     ):
-        self.shape = self.shape.add(child.shape, name=name, loc=loc)
+        child_item = copy.copy(child.get_build123d()).locate(loc)  # Shallow copy
+        # child_item.label = name # TODO(clairbee): fix this
+        self.children.append(child_item)
+
+        # Keep part reference counter for bill-of-materials purposes
         child.ref_inc()
+
+        # Destroy the previous object if any
+        self.shape = None
 
     def ref_inc(self):
         for child in self.children:
             child.ref_inc()
 
-    def getCompound(self):
-        if self.compound is None:
-            self.compound = self.shape.toCompound()
-        return self.compound
+    def get_shape(self):
+        if self.shape is None:
+            self.shape = b3d.Compound(label=self.name, children=self.children)
+        return self.shape
+
+    def get_build123d(self):
+        return copy.copy(self.get_shape())
+
+    def get_wrapped(self):
+        return self.get_shape()
 
     def _render_txt_real(self, file):
         for child in self.children:

@@ -2,7 +2,7 @@
 # OpenVMP, 2023
 #
 # Author: Roman Kuzmenko
-# Created: 2023-08-19
+# Created: 2024-01-01
 #
 # Licensed under Apache License, Version 2.0.
 #
@@ -22,19 +22,19 @@ from cq_serialize import (
 )  # import this one for `pickle` to use
 
 
-class PartFactoryCadquery(pfp.PartFactoryPython):
+class PartFactoryBuild123d(pfp.PartFactoryPython):
     def __init__(self, ctx, project, part_config):
         super().__init__(ctx, project, part_config)
         # Complement the config object here if necessary
         self._create(part_config)
 
-        wrapper_path = wrapper.get("cadquery.py")
+        wrapper_path = wrapper.get("build123d.py")
 
         request = {"build_parameters": {}}
         picklestring = pickle.dumps(request)
         request_serialized = base64.b64encode(picklestring).decode()
 
-        self.runtime.ensure("cadquery")
+        self.runtime.ensure("build123d")
         response_serialized, errors = self.runtime.run(
             [wrapper_path, self.path], request_serialized
         )

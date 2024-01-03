@@ -1,6 +1,7 @@
 desc: PartCAD example project which demonstrates parts created using build123d
 parts:
   cube:
+    type: build123d
     desc: Sample part created by build123d
 render:
   png:

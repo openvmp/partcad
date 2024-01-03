@@ -6,9 +6,13 @@
 #
 # Licensed under Apache License, Version 2.0.
 
+import logging
+import os
+
 from . import project_config
 from . import part_factory_step as pfs
 from . import part_factory_cadquery as pfc
+from . import part_factory_build123d as pfb
 from . import assembly_factory_python as afp
 
 
@@ -16,7 +20,14 @@ class Project(project_config.Configuration):
     def __init__(self, ctx, path):
         super().__init__(path)
         self.ctx = ctx
-        self.path = path
+
+        # The 'path' parameter is the config filename or the directory
+        # where 'partcad.yaml' is present.
+        # 'self.path' has to be set to the directory name.
+        dir_name = path
+        if not os.path.isdir(dir_name):
+            dir_name = os.path.dirname(dir_name)
+        self.path = dir_name
 
         # self.part_configs contains the configs of all the parts in this project
         if "parts" in self.config_obj:
@@ -60,14 +71,22 @@ class Project(project_config.Configuration):
             # TODO(clairbee): reconsider passing the name as a parameter
             part_config["name"] = part_name
 
-            if not "type" in part_config or part_config["type"] == "cadquery":
-                print("Initializing CadQuery part: %s..." % part_name)
+            if not "type" in part_config:
+                raise Exception(
+                    "ERROR: Part type is not specified: %s: %s"
+                    % (part_name, part_config)
+                )
+            elif part_config["type"] == "cadquery":
+                logging.info("Initializing CadQuery part: %s..." % part_name)
                 pfc.PartFactoryCadquery(self.ctx, self, part_config)
+            elif part_config["type"] == "build123d":
+                logging.info("Initializing build123d part: %s..." % part_name)
+                pfb.PartFactoryBuild123d(self.ctx, self, part_config)
             elif part_config["type"] == "step":
-                print("Initializing STEP part: %s..." % part_name)
+                logging.info("Initializing STEP part: %s..." % part_name)
                 pfs.PartFactoryStep(self.ctx, self, part_config)
             else:
-                print(
+                logging.error(
                     "Invalid repository type encountered: %s: %s"
                     % (part_name, part_config)
                 )
@@ -77,7 +96,7 @@ class Project(project_config.Configuration):
             # whether they have produced the expected product or not
             # TODO(clairbee): reconsider returning status from the factories
             if not part_name in self.parts:
-                print("Failed to instantiate the part: %s" % part_config)
+                logging.error("Failed to instantiate the part: %s" % part_config)
                 return None
 
         return self.parts[part_name]
@@ -109,13 +128,15 @@ class Project(project_config.Configuration):
             # whether they have produced the expected product or not
             # TODO(clairbee): reconsider returning status from the factories
             if not assembly_name in self.assemblies:
-                print("Failed to instantiate the assembly: %s" % assembly_config)
+                logging.error(
+                    "Failed to instantiate the assembly: %s" % assembly_config
+                )
                 return None
 
         return self.assemblies[assembly_name]
 
     def render(self):
-        print("Rendering the project: ", self.path)
+        logging.info("Rendering the project: %s" % self.path)
         if not "render" in self.config_obj:
             return
         render = self.config_obj["render"]
@@ -128,7 +149,7 @@ class Project(project_config.Configuration):
             assemblies = self.config_obj["assemblies"].keys()
 
         if "png" in render:
-            print("Rendering PNG...")
+            logging.info("Rendering PNG...")
             if isinstance(render["png"], str):
                 render_path = render["png"]
                 render_width = None

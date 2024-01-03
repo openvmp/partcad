@@ -18,4 +18,7 @@ def cli_help_install(subparsers):
 
 
 def cli_install(args):
-    pc.init()
+    if not args.config_path is None:
+        pc.init(args.config_path)
+    else:
+        pc.init()

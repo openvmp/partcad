@@ -7,8 +7,10 @@
 # Licensed under Apache License, Version 2.0.
 
 import cadquery as cq
+import build123d as b3d
 
 import cairosvg
+import logging
 import tempfile
 
 from .render import *
@@ -24,22 +26,34 @@ class Shape:
         self.svg_path = None
         self.svg_url = None
 
-    def show(self, show_object=None):
-        if self.shape is not None:
-            import ocp_vscode as ov
+    def get_cadquery(self) -> cq.Shape:
+        cq_solid = cq.Solid.makeBox(1, 1, 1)
+        cq_solid.wrapped = self.get_wrapped()
+        return cq_solid
 
-            try:
-                ov.config.status()
-                print('Visualizing in "OCP CAD Viewer"...')
-                # print(self.shape)
-                ov.show(self.shape)
-            except Exception as e:
-                print(e)
-                print('No VS Code or "OCP CAD Viewer" extension detected.')
+    def get_build123d(self) -> b3d.Shape:
+        raise Exception("Part or Assembly must redefine get_build123d")
+
+    def show(self, show_object=None):
+        shape = self.get_wrapped()
+        if shape is not None:
+            if show_object is None:
+                import ocp_vscode as ov
+
+                try:
+                    ov.config.status()
+                    logging.info('Visualizing in "OCP CAD Viewer"...')
+                    # logging.debug(self.shape)
+                    ov.show(shape)
+                except Exception as e:
+                    logging.warning(e)
+                    logging.warning(
+                        'No VS Code or "OCP CAD Viewer" extension detected.'
+                    )
 
             if show_object is not None:
                 show_object(
-                    self.shape,
+                    shape,
                     options={},
                 )
 
@@ -49,16 +63,16 @@ class Shape:
 
         if not embedded and self.shape is not None:
             if not render_path is None and not embedded:
-                print("Generating STL...")
+                logging.info("Generating STL...")
                 self.render_stl(render_path + "/" + self.name + ".stl")
 
-                print("Generating OBJ...")
+                logging.info("Generating OBJ...")
                 self.render_obj(render_path + "/" + self.name + ".obj")
 
-                print("Generating SVG...")
+                logging.info("Generating SVG...")
                 self.render_svg(render_path + "/" + self.name + ".svg")
 
-                print("Generating PNG...")
+                logging.info("Generating PNG...")
                 self.render_png(render_path + "/" + self.name + ".png")
 
     def render_stl(self, filepath=None, tolerance=0.5, angularTolerance=5.0):
@@ -88,17 +102,15 @@ class Shape:
                         f.write(" %d" % (i + 1))
                     f.write("\n")
         except:
-            print("Exception while exporting to " + filepath)
+            logging.error("Exception while exporting to " + filepath)
 
     def render_svg(self, filepath=None, opt=DEFAULT_RENDER_SVG_OPTS):
         if filepath is None:
             filepath = tempfile.mktemp(".svg")
 
-        compound = self.getCompound()
-        if hasattr(compound, "rotate"):
-            compound = compound.rotate((0, 0, 0), (1, 0, 0), -90)
+        cq_obj = self.get_cadquery()
         cq.exporters.export(
-            compound,
+            cq_obj,
             filepath,
             opt=opt,
         )
@@ -125,7 +137,7 @@ class Shape:
     ):
         if filepath is None:
             filepath = self.path + "/part.png"
-        print("Rendering: ", filepath)
+        logging.info("Rendering: %s" % filepath)
         svg_path = self._get_svg_path()
 
         cairosvg.svg2png(

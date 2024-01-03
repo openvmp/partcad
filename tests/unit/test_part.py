@@ -47,6 +47,9 @@ def test_part_get_3():
     assert cylinder is not None
 
 
+# Note: The below test fails if there are braking changes in the way parts are
+#       declared. Keep it this way so that the braking changes are conciously
+#       force pushed.
 def test_part_get_4():
     """Instantiate a project by a git import config and load a part"""
     ctx = pc.Context()  # Emplty config
@@ -56,7 +59,18 @@ def test_part_get_4():
     assert cube is not None
 
 
-def test_part_example_primitive():
+def test_part_lazy_loading_1():
+    """Future test for lazy loading of geometry data"""
+    ctx = pc.Context()  # Empty config
+    _ = pc.ProjectFactoryLocal(ctx, None, test_config_local)
+    cylinder = ctx.get_part("cylinder", "primitive_local")
+    # TODO(clairbee): implement lazy loading
+    # assert cylinder.shape is None
+    # logo.build()
+    assert cylinder.get_wrapped() is not None
+
+
+def test_part_example_cadquery_primitive():
     """Instantiate all parts from the example: part_cadquery_primitive"""
     ctx = pc.init("tests/partcad-examples.yaml")
     cube = ctx.get_part("cube", "example_part_cadquery_primitive")
@@ -65,10 +79,17 @@ def test_part_example_primitive():
     assert cylinder is not None
 
 
-def test_part_example_logo():
+def test_part_example_cadquery_logo():
     """Instantiate all parts from the example: part_cadquery_logo"""
     ctx = pc.init("tests/partcad-examples.yaml")
     bone = ctx.get_part("bone", "example_part_cadquery_logo")
     assert bone is not None
     head_half = ctx.get_part("head_half", "example_part_cadquery_logo")
     assert head_half is not None
+
+
+def test_part_example_build123d_primitive():
+    """Instantiate all parts from the example: part_build123d_primitive"""
+    ctx = pc.init("tests/partcad-examples.yaml")
+    cube = ctx.get_part("cube", "example_part_build123d_primitive")
+    assert cube is not None

@@ -8,7 +8,6 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import partcad as pc
 import cadquery as cq
 
 if __name__ != "__cqgi__":
@@ -16,8 +15,4 @@ if __name__ != "__cqgi__":
 
 shape = cq.Workplane("front").box(10.0, 10.0, 10.0)
 
-# This example demonstrates that partcad is compatible with CQGI.
-
-# show_object(shape)
-part = pc.Part(shape=shape)
-pc.finalize(part, show_object)
+show_object(shape)

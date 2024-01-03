@@ -18,4 +18,9 @@ def cli_help_render(subparsers):
 
 
 def cli_render(args):
-    pc.render()
+    if not args.config_path is None:
+        ctx = pc.init(args.config_path)
+    else:
+        ctx = pc.init()
+
+    ctx.render()

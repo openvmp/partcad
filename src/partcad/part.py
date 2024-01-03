@@ -13,6 +13,7 @@ import string
 from . import shape
 
 import cadquery as cq
+import build123d as b3d
 
 
 class Part(shape.Shape):
@@ -24,12 +25,7 @@ class Part(shape.Shape):
         super().__init__(name)
 
         self.config = config
-        if "path" in config:
-            self.path = config["path"]
-        else:
-            # TODO(clairbee): consider autodetecting the root of the project
-            #                 that created this Part
-            self.path = "."
+        self.path = config["path"]
         self.shape = shape
 
         self.desc = None
@@ -61,29 +57,13 @@ class Part(shape.Shape):
         cloned.count = self.count
         return cloned
 
-    def getCompound(self):
+    def get_build123d(self):
+        b3d_solid = b3d.Solid.make_box(1, 1, 1)
+        b3d_solid.wrapped = self.get_wrapped()
+        return b3d_solid
+
+    def get_wrapped(self):
         return self.shape
-        # shape = self.shape
-        # # if not hasattr(shape, "wrapped"):
-        # #     cq_solid = cq.Solid.makeBox(1, 1, 1)
-        # #     cq_solid.wrapped = shape
-        # #     shape = cq_solid
-        # if self.compound is None:
-        #     # self.compound = cq.Compound.makeCompound(shape)
-        #     # self.compound = shape.toCompound()
-        #     if hasattr(shape, "toCompound"):
-        #         self.compound = shape.toCompound()
-        #         if not hasattr(self.compound, "wrapped"):
-        #             cq_solid = cq.Solid.makeBox(1, 1, 1)
-        #             cq_solid.wrapped = self.compound
-        #             self.compound = cq_solid
-        #     else:
-        #         self.compound = shape
-        #     # else:
-        #     #     self.compound = cq.Compound.makeCompound(shape.wrapped)
-        # else:
-        #     self.compound = shape
-        # return self.compound
 
     def _render_txt_real(self, file):
         file.write(self.name + ": " + self.count + "\n")

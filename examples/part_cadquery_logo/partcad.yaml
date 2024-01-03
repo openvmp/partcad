@@ -1,8 +1,10 @@
 desc: PartCAD example project which implements its logo
 parts:
   head_half:
+    type: cadquery
     desc: Bracket used as one side of the head on PartCAD logo
   bone:
+    type: cadquery
     desc: Plate used as one of the bones on PartCAD logo
 
 render:
