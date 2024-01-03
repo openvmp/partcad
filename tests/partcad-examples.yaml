@@ -19,6 +19,9 @@ import:
   example_part_cadquery_logo:
     type: local
     path: ../examples/part_cadquery_logo
+  example_part_build123d_primitive:
+    type: local
+    path: ../examples/part_build123d_primitive
   example_assembly_primitive:
     type: local
     path: ../examples/assembly_primitive

@@ -5,7 +5,7 @@
 PartCAD is the first package manager for CAD models,
 and a Python package to consume these packages in CAD scripts ([`cadquery`][CadQuery] and [`build123d`][build123d]).
 It brings the same power to CAD scripting
-as `pip` to Python, `npm` to JavaScript, `maven` to Java etc.
+as [pip](https://pypi.org/) to Python, [npm](https://www.npmjs.com/) to JavaScript, [maven](https://maven.apache.org/) to Java etc.
 
 [Join our Discord channel!](https://discord.gg/AXbP47zYw5)
 
@@ -19,8 +19,11 @@ all of the consumers.
 - [Installation](#installation)
 - [Usage](#usage)
   - [Create new package](#create-new-package)
+  - [List dependencies](#list-dependencies)
+  - [List available parts and assemblies](#list-available-parts-and-assemblies)
   - [Add a dependency](#add-a-dependency)
   - [Create a basic assembly](#create-a-basic-assembly)
+  - [Troubleshooting](#troubleshooting)
   - [Render your project](#render-your-project)
 - [Modelling](#modelling)
   - [Parts](#parts)
@@ -31,6 +34,8 @@ all of the consumers.
   - [Visualization](#visualization)
   - [Other modelling formats](#other-modelling-formats)
   - [Purchasing / Bill of materials](#purchasing--bill-of-materials)
+- [Security](#security)
+- [Public repository](#public-repository)
 - [Tools for mechanical engineering](#tools-for-mechanical-engineering)
 - [History](#history)
 
@@ -54,20 +59,21 @@ python3 -m pip install -e .
 
 ### Create new package
 
-Initialize new PartCAD package in the current
-directory (create the default `partcad.yaml`):
+`pc init` to initialize new PartCAD package in the current
+directory (create the default `partcad.yaml`).
 
-```shell
-pc init
-```
+### List dependencies
+
+`pc list` to list all (recursively) imported dependencies.
+
+### List available parts and assemblies
+
+`pc list-parts -r` and `pc list-assemblies -r` to list all available parts and assemblies.
 
 ### Add a dependency
 
-Use the following command to import parts from another package:
-
-```shell
-pc add <alias> <url-or-local-path>
-```
+`pc add <alias> <url-or-local-path>`
+to import parts from another package.
 
 ### Create a basic assembly
 
@@ -77,7 +83,7 @@ assembly.
 ```yaml
 # partcad.yaml
 import:
-  partcad-index:
+  partcad-index: # Standard public PartCAD repository (needs to be explicitly referenced to be used)
     type: git
     url: https://github.com/openvmp/partcad-index.git
 assemblies:
@@ -92,17 +98,16 @@ assy = pc.Assembly()  # create an empty assembly
 pc.finalize(assy)     # this is the object produced by this PartCAD script
 ```
 
+### Troubleshooting
+
+At the moment, the best way to troubleshoot PartCAD is to use VS Code with `OCP CAD Viewer`.
+Simply run an assembly script which contains a call to `pc.finalize(...)` (from within the IDE) to have the model displayed.
+Alternatively, any part or assembly can be displayed in `OCP CAD Viewer` by using `pc show <part> [<package>]` or `pc show -a <assembly> [<package>]`.
+
 ### Render your project
 
-Use the following shell command to render PartCAD parts and assemblies
-in the current package (the current directory):
-
-```shell
-pc render
-```
-
-If you are using VS Code then you can simply run your PartCAD script
-while having `OCP CAD Viewer` view open.
+Use `pc render` to render PartCAD parts and assemblies
+in the current package (the current directory).
 
 ## Modelling
 
@@ -113,14 +118,11 @@ while having parts and assemblies often maintained by third parties.
 
 PartCAD allows to define parts using any of the following methods:
 
-| Method                                                           | Example                                                                  | Result                                         |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------- |
-| [STEP] file                                                      | parts:<br/>&nbsp;&nbsp;bolt:<br/>&nbsp;&nbsp;&nbsp;&nbsp;type:&nbsp;step | ![](examples/part_step/bolt.png)               |
-| [CadQuery]<br/>Gateway<br/>Interface<br/>(including [build123d]) | parts:<br/>&nbsp;&nbsp;cube:                                             | ![](examples/part_cadquery_primitive/cube.png) |
-
-<!--
-| Extension for<br/>parametrized<br/>CadQuery scripts | TODO                                                                | TODO   |
--->
+| Method      | Example                                                                       | Result                                          |
+| ----------- | ----------------------------------------------------------------------------- | ----------------------------------------------- |
+| [STEP]      | parts:<br/>&nbsp;&nbsp;bolt:<br/>&nbsp;&nbsp;&nbsp;&nbsp;type:&nbsp;step      | ![](examples/part_step/bolt.png)                |
+| [CadQuery]  | parts:<br/>&nbsp;&nbsp;cube:<br/>&nbsp;&nbsp;&nbsp;&nbsp;type:&nbsp;cadquery  | ![](examples/part_cadquery_primitive/cube.png)  |
+| [build123d] | parts:<br/>&nbsp;&nbsp;cube:<br/>&nbsp;&nbsp;&nbsp;&nbsp;type:&nbsp;build123d | ![](examples/part_build123d_primitive/cube.png) |
 
 Other methods to define parts are coming in soon (e.g. OpenSCAD).
 
@@ -200,6 +202,7 @@ import:
         relPath: <(git|tar only) relative-path-within-the-repository>
         web: <(optional) package or maintainer's url>
         poc: <(optional) maintainer's email>
+        pythonVersion: <(optional) python version for sandboxing if applicable>
 ```
 
 
@@ -227,6 +230,23 @@ formats:
 
 - [CSV](https://en.wikipedia.org/wiki/Comma-separated_values) (not yet / in progress)
 - [Markdown](https://en.wikipedia.org/wiki/Markdown) (not yet / in progress)
+
+## Security
+
+PartCAD is capable of rendering scripted parts
+([CadQuery] and [build123d] use Python) in sandboxed environments.
+
+While at the moment it is only useful from dependency management perspective,
+in the future PartCAD aims to achieve security isolation of the sandboxed
+environments. That will fundamentally change the security implications of using
+scripted models shared online.
+
+## Public repository
+
+PartCAD allows anyone to create their own private repositories of parts.
+However it also comes with a
+[public repository](https://github.com/openvmp/partcad-index)
+that is used by default for all new packages.
 
 ## Tools for mechanical engineering
 
@@ -298,7 +318,7 @@ The motivation behind this framework is to build a packaging and dependency
 tracking layer on top of [CadQuery] and traditional CAD tools to enable
 version control and other features required for effective collaboration. 
 
-This framework currently uses [CadQuery], and thus, [OpenCASCADE] under the hood.
+This framework currently uses [CadQuery] and, thus, [OpenCASCADE] under the hood.
 However this may change in the future, if the python C bindings for [OpenCASCADE]
 remain a blocker for unlocking multithreaded performance.
 

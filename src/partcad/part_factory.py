@@ -7,6 +7,8 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import os
+
 from . import part as p
 
 
@@ -19,8 +21,11 @@ class PartFactory:
         self.path = self.name + extension
         if "path" in part_config:
             self.path = part_config["path"]
-        if not self.path.startswith("/") and project.path != "":
-            self.path = project.path + "/" + self.path
+        if not os.path.isdir(project.path):
+            raise Exception("ERROR: The project path must be a directory")
+        self.path = os.path.join(project.path, self.path)
+        if not os.path.exists(self.path):
+            raise Exception("ERROR: The part path must exist")
 
         # Pass the autodetected path to the 'Part' class
         part_config["path"] = self.path

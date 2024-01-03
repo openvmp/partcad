@@ -8,8 +8,9 @@
 #
 
 from git import Repo
-import os
 import hashlib
+import logging
+import os
 
 from . import project_factory as pf
 
@@ -71,15 +72,15 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
                     repo.git.checkout(self.import_revision, force=True)
                 after = repo.active_branch.commit
                 if before != after:
-                    print("\nUpdated the GIT repo: %s" % self.import_config_url)
+                    logging.info("\nUpdated the GIT repo: %s" % self.import_config_url)
             except Exception as e:
-                print("\nException: %s" % e)
+                logging.error("\nException: %s" % e)
                 # If update fails, fall back to cloning a new copy.
                 pass
         else:
             # Clone the repository if not cached.
             try:
-                print("\nCloning the GIT repo: %s" % self.import_config_url)
+                logging.info("\nCloning the GIT repo: %s" % self.import_config_url)
                 Repo.clone_from(repo_url, cache_path)
             except Exception as e:
                 raise RuntimeError(f"Failed to clone repository: {e}")

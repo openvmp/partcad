@@ -7,9 +7,10 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import logging
 import os
-import sys
 import ruamel.yaml
+import sys
 
 import partcad as pc
 
@@ -33,7 +34,7 @@ def cli_help_add(subparsers):
 
 def cli_add(args):
     if not os.path.exists("partcad.yaml"):
-        print("ERROR: partcad.yaml not found!")
+        logging.error("'partcad.yaml' not found!")
         sys.exit(1)
 
     if ":" in args.location:

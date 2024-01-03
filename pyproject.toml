@@ -18,6 +18,7 @@ pc = "partcad:main_cli"
 
 [tool.setuptools.package-data]
 "partcad.template" = ["*.yaml"]
+"partcad.wrappers" = ["*.py"]
 
 [tool.setuptools.dynamic]
 version = {attr = "partcad.__version__"}
@@ -28,7 +29,7 @@ dependencies = {file = ["requirements.txt"]}
 pythonpath = "src"
 
 [tool.bumpversion]
-current_version = "0.1.4"
+current_version = "0.2.0"
 commit = "true"
 commit_args = "--no-verify"
 tag = "true"

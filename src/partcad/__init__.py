@@ -1,4 +1,4 @@
-from cadquery import Location
+from build123d import Location
 
 from .context import (
     Context,
@@ -17,6 +17,7 @@ from .project_factory_local import ProjectFactoryLocal
 from .project_factory_git import ProjectFactoryGit
 from .project_factory_tar import ProjectFactoryTar
 from .cli import main as main_cli
+from .user_config import user_config
 
 
 __all__ = [
@@ -39,4 +40,4 @@ __all__ = [
     "main_cli",
 ]
 
-__version__: str = "0.1.4"
+__version__: str = "0.2.0"

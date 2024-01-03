@@ -9,6 +9,7 @@
 #
 
 import argparse
+import logging
 
 import partcad as pc
 
@@ -24,6 +25,14 @@ def main():
     parser = argparse.ArgumentParser(
         description="PartCAD command line tool",
     )
+    parser.add_argument(
+        "-p",
+        help="Package path (a YAML file or a directory with 'partcad.yaml')",
+        type=str,
+        default=None,
+        dest="config_path",
+    )
+    # TODO(clairbee): add a config option to change logging mechanism and level
     subparsers = parser.add_subparsers(dest="command")
     cli_help_add(subparsers)
     cli_help_init(subparsers)
@@ -33,6 +42,9 @@ def main():
     cli_help_show(subparsers)
 
     args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO)
+
     if args.command == "add":
         cli_add(args)
 

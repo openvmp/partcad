@@ -7,6 +7,7 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import logging
 import partcad as pc
 
 
@@ -71,7 +72,10 @@ def cli_help_list(subparsers):
 
 
 def cli_list(args):
-    ctx = pc.init()
+    if not args.config_path is None:
+        ctx = pc.init(args.config_path)
+    else:
+        ctx = pc.init()
     pkg_count = 0
 
     print()
@@ -95,7 +99,10 @@ def cli_list(args):
 
 
 def cli_list_parts(args):
-    ctx = pc.init()
+    if not args.config_path is None:
+        ctx = pc.init(args.config_path)
+    else:
+        ctx = pc.init()
     part_count = 0
     part_kinds = 0
 
@@ -151,7 +158,10 @@ def cli_list_parts(args):
 
 
 def cli_list_assemblies(args):
-    ctx = pc.init()
+    if not args.config_path is None:
+        ctx = pc.init(args.config_path)
+    else:
+        ctx = pc.init()
     assy_count = 0
     assy_kinds = 0
 
