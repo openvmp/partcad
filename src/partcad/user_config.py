@@ -8,6 +8,7 @@
 
 import logging
 import os
+import shutil
 import yaml
 
 
@@ -26,7 +27,11 @@ class UserConfig:
         # description: sandboxing environment for invoking python scripts
         # values: [none | pypy | conda]
         # default: conda
-        self.python_runtime = "conda"
+        if not shutil.which("conda") is None:
+            self.python_runtime = "conda"
+        else:
+            self.python_runtime = "none"
+
         if "pythonSandbox" in self.config_obj:
             self.python_runtime = self.config_obj["pythonSandbox"]
 
