@@ -7,7 +7,9 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import partcad as pc
+import logging
+
+from . import init
 
 
 def cli_help_show(subparsers):
@@ -44,10 +46,26 @@ def cli_help_show(subparsers):
 
 def cli_show(args):
     if not args.config_path is None:
-        pc.init(args.config_path)
+        ctx = init(args.config_path)
+    else:
+        ctx = init()
+
+    if args.package is None:
+        package = "this"
+    else:
+        package = args.package
 
     if args.assembly:
-        obj = pc.get_assembly(args.object, args.package)
+        obj = ctx.get_assembly(args.object, package)
     else:
-        obj = pc.get_part(args.object, args.package)
-    obj.show()
+        obj = ctx.get_part(args.object, package)
+
+    if obj is None:
+        if args.package is None:
+            logging.error("Object %s not found" % args.object)
+        else:
+            logging.error(
+                "Object %s not found in package %s" % (args.object, args.package)
+            )
+    else:
+        obj.show()
