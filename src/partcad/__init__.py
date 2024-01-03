@@ -40,4 +40,4 @@ __all__ = [
     "main_cli",
 ]
 
-__version__: str = "0.2.4"
+__version__: str = "0.2.5"
