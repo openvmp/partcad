@@ -26,7 +26,7 @@ class Project(project_config.Configuration):
         # 'self.path' has to be set to the directory name.
         dir_name = path
         if not os.path.isdir(dir_name):
-            dir_name = os.path.dirname(dir_name)
+            dir_name = os.path.dirname(os.path.abspath(dir_name))
         self.path = dir_name
 
         # self.part_configs contains the configs of all the parts in this project

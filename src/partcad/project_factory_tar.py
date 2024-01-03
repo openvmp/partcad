@@ -32,11 +32,10 @@ class ProjectFactoryTar(pf.ProjectFactory, TarImportConfiguration):
         pf.ProjectFactory.__init__(self, ctx, parent, config, name)
         TarImportConfiguration.__init__(self)
 
-        # TODO(clairbee): Clone self.import_config_url to self.cache_path
-        self.cache_path = self._extract(self.import_config_url)
+        # TODO(clairbee): Clone self.import_config_url to self.path
+        self.path = self._extract(self.import_config_url)
 
         # Complement the config object here if necessary
-        self.path = self.cache_path
         self._create(config)
 
         # TODO(clairbee): actually fill in the self.project object here

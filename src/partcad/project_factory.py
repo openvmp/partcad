@@ -7,6 +7,8 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import os
+
 from . import project as p
 
 
@@ -27,15 +29,11 @@ class ProjectFactory(ImportConfiguration):
             self.import_config_name = name
 
         if parent is None:
+            self.config_path = ctx.config_path
             self.config_dir = ctx.config_dir
         else:
+            self.config_path = parent.config_path
             self.config_dir = parent.config_dir
-
-        # TODO(clairbee): Make project cache path a function of the project
-        #                 config not just its name
-        self.cache_path = (
-            self.config_dir + "/.partcad/projects/" + self.import_config_name
-        )
 
         # TODO(clairbee): Initialize the config object if necessary
 
