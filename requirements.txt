@@ -1,3 +1,4 @@
+pycairo
 build123d==0.2.0
 cadquery>=2.3.1
 numpy>=1.25.2
