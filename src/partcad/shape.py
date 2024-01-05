@@ -9,7 +9,10 @@
 import cadquery as cq
 import build123d as b3d
 
-import cairosvg
+#import cairosvg
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPM
+
 import logging
 import tempfile
 
@@ -140,12 +143,20 @@ class Shape:
         logging.info("Rendering: %s" % filepath)
         svg_path = self._get_svg_path()
 
-        cairosvg.svg2png(
-            url=svg_path,
-            write_to=filepath,
-            output_width=width,
-            output_height=height,
-        )
+        # cairosvg.svg2png(
+        #     url=svg_path,
+        #     write_to=filepath,
+        #     output_width=width,
+        #     output_height=height,
+        # )
+
+        #NO SCALING POSSIBLE
+        #could install pymupdf and convert to PDF
+        #and convert that to PNG with scaling
+        drawing = svg2rlg(svg_path)
+        renderPM.drawToFile(drawing, 
+                            filepath, 
+                            fmt="PNG")
 
     def render_txt(self, filepath=None):
         if filepath is None:
