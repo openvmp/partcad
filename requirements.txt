@@ -5,7 +5,11 @@ numpy>=1.25.2
 scipy>=1.11.1
 #tox==4.9.0
 pyyaml==6.0.1
-cairosvg==2.7.0
+#cairosvg==2.7.0
+pycairo
+renderlab
+rlPyCairo
+svglib
 ocp_vscode==2.0.13
 GitPython==3.1.40
 progress==1.6
