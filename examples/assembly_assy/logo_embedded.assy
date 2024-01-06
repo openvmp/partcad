@@ -1,0 +1,23 @@
+links:
+  - part: bone
+    package: example_part_cadquery_logo
+    name: bone1
+    location: [[0,0,0], [0,0,1], 0]
+  - part: bone
+    package: example_part_cadquery_logo
+    name: bone2
+    location: [[0,0,-2.5], [0,0,1], -90]
+  - links:
+      - part: head_half
+        package: example_part_cadquery_logo
+        name: head_half_1
+        location: [[0,0,2.5], [0,0,1], 0]
+      - part: head_half
+        package: example_part_cadquery_logo
+        name: head_half_2
+        location: [[0,0,0], [0,0,1], -90]
+    name: head
+    location: [[0,0,25], [1,0,0], 0]
+  - part: bolt
+    package: example_part_step
+    location: [[0,0,7.5], [0,0,1], 0]

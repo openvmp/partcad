@@ -25,7 +25,7 @@ class AssemblyFactory:
             raise Exception("ERROR: The project path must be a directory")
         self.path = os.path.join(project.path, self.path)
         if not os.path.exists(self.path):
-            raise Exception("ERROR: The part path must exist")
+            raise Exception("ERROR: The assembly path must exist")
 
         # Pass the autodetected path to the 'Assembly' class
         assembly_config["path"] = self.path

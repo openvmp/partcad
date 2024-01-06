@@ -1,9 +1,0 @@
-import:
-  example_part_cadquery_primitive:
-    type: local
-    path: ../part_cadquery_primitive
-assemblies:
-  assembly:
-render:
-  png: ./
-  markdown: README.md

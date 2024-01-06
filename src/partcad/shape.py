@@ -9,8 +9,10 @@
 import cadquery as cq
 import build123d as b3d
 
-import cairosvg
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPM
 import logging
+import os
 import tempfile
 
 from .render import *
@@ -26,13 +28,18 @@ class Shape:
         self.svg_path = None
         self.svg_url = None
 
+    def get_wrapped(self):
+        return self.shape
+
     def get_cadquery(self) -> cq.Shape:
         cq_solid = cq.Solid.makeBox(1, 1, 1)
         cq_solid.wrapped = self.get_wrapped()
         return cq_solid
 
-    def get_build123d(self) -> b3d.Shape:
-        raise Exception("Part or Assembly must redefine get_build123d")
+    def get_build123d(self) -> b3d.Solid:
+        b3d_solid = b3d.Solid.make_box(1, 1, 1)
+        b3d_solid.wrapped = self.get_wrapped()
+        return b3d_solid
 
     def show(self, show_object=None):
         shape = self.get_wrapped()
@@ -108,12 +115,22 @@ class Shape:
         if filepath is None:
             filepath = tempfile.mktemp(".svg")
 
-        cq_obj = self.get_cadquery()
-        cq.exporters.export(
-            cq_obj,
-            filepath,
-            opt=opt,
+        viewport_origin = (100, -100, 100)
+        b3d_obj = self.get_build123d()
+        visible, hidden = b3d_obj.project_to_viewport(
+            viewport_origin,
         )
+        max_dimension = max(
+            *b3d.Compound(children=visible + hidden).bounding_box().size
+        )
+        exporter = b3d.ExportSVG(scale=100 / max_dimension)
+        exporter.add_layer("Visible", fill_color=(224, 224, 48))
+        # exporter.add_layer(
+        #     "Hidden", line_color=(99, 99, 99), line_type=b3d.LineType.ISO_DOT
+        # )
+        exporter.add_shape(visible, layer="Visible", reverse_wires=False)
+        # exporter.add_shape(hidden, layer="Hidden")
+        exporter.write(filepath)
 
         self.svg_path = filepath
 
@@ -131,21 +148,59 @@ class Shape:
 
     def render_png(
         self,
-        filepath,
-        width=DEFAULT_RENDER_WIDTH,
-        height=DEFAULT_RENDER_HEIGHT,
+        project=None,
+        filepath=None,
+        width=None,
+        height=None,
     ):
+        if (
+            not project is None
+            and "render" in project.config_obj
+            and not project.config_obj["render"] is None
+        ):
+            render_opts = project.config_obj["render"]
+        else:
+            render_opts = {}
+
+        if "png" in render_opts and not render_opts["png"] is None:
+            if isinstance(render_opts["png"], str):
+                png_opts = {"prefix": render_opts["png"]}
+            else:
+                png_opts = render_opts["png"]
+        else:
+            png_opts = {}
+
+        # Using the project's config defaults if any
         if filepath is None:
-            filepath = self.path + "/part.png"
+            if "prefix" in png_opts and not png_opts["prefix"] is None:
+                filepath = os.path.join(png_opts["prefix"], self.name + ".png")
+            else:
+                filepath = self.name + ".png"
+
+        if width is None:
+            if "width" in png_opts and not png_opts["width"] is None:
+                width = png_opts["width"]
+            else:
+                width = DEFAULT_RENDER_WIDTH
+        if height is None:
+            if "height" in png_opts and not png_opts["height"] is None:
+                height = png_opts["height"]
+            else:
+                height = DEFAULT_RENDER_HEIGHT
+
+        # Render the vector image
         logging.info("Rendering: %s" % filepath)
         svg_path = self._get_svg_path()
 
-        cairosvg.svg2png(
-            url=svg_path,
-            write_to=filepath,
-            output_width=width,
-            output_height=height,
-        )
+        # Render the raster image
+        drawing = svg2rlg(svg_path)
+        scale_width = float(width) / float(drawing.width)
+        scale_height = float(height) / float(drawing.height)
+        scale = min(scale_width, scale_height)
+        drawing.scale(scale, scale)
+        drawing.width *= scale
+        drawing.height *= scale
+        renderPM.drawToFile(drawing, filepath, fmt="PNG")
 
     def render_txt(self, filepath=None):
         if filepath is None:

@@ -5,19 +5,21 @@ import:
   example_part_cadquery_logo:
     type: local
     path: ../part_cadquery_logo
+  example_part_cadquery_primitive:
+    type: local
+    path: ../part_cadquery_primitive
 
 assemblies:
+  primitive:
+    type: assy
   logo:
-    build:
-      size: 10.0
-    run:
-      angle:
-        type: float
-        default: 0.0
+    type: assy
+  logo_embedded:
+    type: assy
 
 render:
   png:
     prefix: ./
-    width: 256
-    height: 256
+    width: 128
+    height: 128
   markdown: README.md

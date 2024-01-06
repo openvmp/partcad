@@ -51,6 +51,8 @@ def cli_add(args):
     yaml.preserve_quotes = True
     with open("partcad.yaml") as fp:
         config = yaml.load(fp)
+        fp.close()
+
     for elem in config:
         if elem == "import":
             imports = config["import"]

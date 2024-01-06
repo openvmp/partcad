@@ -57,14 +57,6 @@ class Part(shape.Shape):
         cloned.count = self.count
         return cloned
 
-    def get_build123d(self):
-        b3d_solid = b3d.Solid.make_box(1, 1, 1)
-        b3d_solid.wrapped = self.get_wrapped()
-        return b3d_solid
-
-    def get_wrapped(self):
-        return self.shape
-
     def _render_txt_real(self, file):
         file.write(self.name + ": " + self.count + "\n")
 
