@@ -11,7 +11,7 @@
 import partcad as pc
 
 
-def test_assembly_primitive1():
+def test_assembly_primitive():
     ctx = pc.init("tests/partcad-examples.yaml")
     part1 = ctx.get_part("cube", "example_part_cadquery_primitive")
     assert part1 is not None
@@ -24,14 +24,28 @@ def test_assembly_primitive1():
     ctx.finalize(model, None)
 
 
-def test_assembly_example_primitive():
+def test_assembly_example_assy_primitive():
     ctx = pc.init("tests/partcad-examples.yaml")
-    assembly = ctx.get_assembly("assembly", "example_assembly_primitive")
-    assert assembly is not None
+    primitive = ctx.get_assembly("primitive", "example_assembly_assy")
+    assert primitive is not None
+    assert primitive.get_cadquery() is not None
+    assert primitive.get_build123d() is not None
+    assert primitive.get_shape() is not None
 
 
-def test_assembly_example_logo():
+def test_assembly_example_assy_logo():
     ctx = pc.init("tests/partcad-examples.yaml")
-    logo = ctx.get_assembly("logo", "example_assembly_logo")
+    logo = ctx.get_assembly("logo", "example_assembly_assy")
     assert logo is not None
+    assert logo.get_cadquery() is not None
+    assert logo.get_build123d() is not None
+    assert logo.get_shape() is not None
+
+
+def test_assembly_example_assy_logo_embedded():
+    ctx = pc.init("tests/partcad-examples.yaml")
+    logo = ctx.get_assembly("logo_embedded", "example_assembly_assy")
+    assert logo is not None
+    assert logo.get_cadquery() is not None
+    assert logo.get_build123d() is not None
     assert logo.get_shape() is not None

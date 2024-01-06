@@ -1,11 +1,15 @@
 # PartCAD <!-- omit in toc -->
 
-[![License](./apache20.svg)](./LICENSE.txt)
+[![License](https://github.com/openvmp/partcad/blob/main//apache20.svg?raw=true)](./LICENSE.txt)
 
 PartCAD is the first package manager for CAD models,
 and a Python package to consume these packages in CAD scripts ([`cadquery`][CadQuery] and [`build123d`][build123d]).
 It brings the same power to CAD scripting
-as [pip](https://pypi.org/) to Python, [npm](https://www.npmjs.com/) to JavaScript, [maven](https://maven.apache.org/) to Java etc.
+as [pip](https://pypi.org/) to Python,
+[npm](https://www.npmjs.com/) to JavaScript,
+[maven](https://maven.apache.org/) to Java etc.
+Though it aims to achieve the integrity and security properties of
+[bazel](https://bazel.build/) which makes PartCAD quite distinct from `pip` and `npm`.
 
 [Join our Discord channel!](https://discord.gg/AXbP47zYw5)
 
@@ -17,25 +21,20 @@ The implementation of parts can change over time
 all of the consumers.
 
 - [Installation](#installation)
-- [Usage](#usage)
-  - [Create new package](#create-new-package)
-  - [List dependencies](#list-dependencies)
-  - [List available parts and assemblies](#list-available-parts-and-assemblies)
-  - [Add a dependency](#add-a-dependency)
-  - [Create a basic assembly](#create-a-basic-assembly)
-  - [Troubleshooting](#troubleshooting)
-  - [Render your project](#render-your-project)
-- [Modelling](#modelling)
+- [Browse models published to PartCAD](#browse-models-published-to-partcad)
+- [Consume PartCAD models](#consume-partcad-models)
+- [Create PartCAD models](#create-partcad-models)
   - [Parts](#parts)
   - [Assemblies](#assemblies)
-  - [Scenes](#scenes)
   - [Packages](#packages)
+  - [Troubleshooting](#troubleshooting)
+  - [Render your project](#render-your-project)
+  - [Publishing](#publishing)
 - [Export](#export)
-  - [Visualization](#visualization)
+  - [Images](#images)
   - [Other modelling formats](#other-modelling-formats)
   - [Purchasing / Bill of materials](#purchasing--bill-of-materials)
 - [Security](#security)
-- [Public repository](#public-repository)
 - [Tools for mechanical engineering](#tools-for-mechanical-engineering)
 - [History](#history)
 
@@ -55,30 +54,33 @@ cd partcad
 python3 -m pip install -e .
 ```
 
-## Usage
+PartCAD works best when [conda](https://docs.conda.io/) is installed.
+Moreover, on Windows it is recommended to run and build PartCAD from within a `conda`
+environment.
 
-### Create new package
+## Browse models published to PartCAD
 
-`pc init` to initialize new PartCAD package in the current
-directory (create the default `partcad.yaml`).
+To browse the public PartCAD repository from the command line:
 
-### List dependencies
+```sh
+$ pc init # to initialize new PartCAD package in the current folder
+$ pc list # to list all available packages
+$ pc list-parts -r # to list all parts in all available packages
+$ pc list-assemblies -r # to list all assemblies in all available packages
+```
 
-`pc list` to list all (recursively) imported dependencies.
+The web UI to browse the public PartCAD repository is not yet published.
 
-### List available parts and assemblies
+## Consume PartCAD models
 
-`pc list-parts -r` and `pc list-assemblies -r` to list all available parts and assemblies.
+As PartCAD has no implicit dependencies built in, the current directory needs to be initialized as a PartCAD package and a dependency on the public PartCAD repository needs to be registered.
 
-### Add a dependency
+```sh
+# Initialize new PartCAD package in the current folder
+$ pc init
+```
 
-`pc add <alias> <url-or-local-path>`
-to import parts from another package.
-
-### Create a basic assembly
-
-Here is an example that uses PartCAD to create a sample
-assembly.
+Alternatively, manually create `partcad.yaml` with the following content:
 
 ```yaml
 # partcad.yaml
@@ -86,30 +88,58 @@ import:
   partcad-index: # Standard public PartCAD repository (needs to be explicitly referenced to be used)
     type: git
     url: https://github.com/openvmp/partcad-index.git
-assemblies:
-  assembly_01:  # declare an assembly object
 ```
 
-```python
-# assembly_01.py
+After this, PartCAD python module can be used to retrieve any model.
+The exact way to do this depends on the CAD framework used in your project:
+
+<table>
+<tr>
+<td>
+<code># CadQuery
+import cadquery as cq
 import partcad as pc
+part = pc.get_part(
+     # Part name
+     "fastener/screw-buttonhead",
+     # Package name
+     "standard-metric-cqwarehouse",
+).get_cadquery()
+...
+show_object(part)</code>
+</td>
+<td>
+<code># build123d
+import build123d as b3d
+import partcad as pc
+part = pc.get_part(
+     # Part name
+     "fastener/screw-buttonhead",
+     # Package name
+     "standard-metric-cqwarehouse",
+).get_build123d()
+...
+show_object(part)</code>
+</td>
+<!--
+<td>
+<code># No framework, standalone
+import partcad as pc
+part = pc.get_part(
+     # Part name
+     "fastener/screw-buttonhead",
+     # Package name
+     "standard-metric-cqwarehouse",
+).get_build123d()
+...
+pc.finalize(part)</code>
+</td>
+-->
+</tr>
+</table>
 
-assy = pc.Assembly()  # create an empty assembly
-pc.finalize(assy)     # this is the object produced by this PartCAD script
-```
 
-### Troubleshooting
-
-At the moment, the best way to troubleshoot PartCAD is to use VS Code with `OCP CAD Viewer`.
-Simply run an assembly script which contains a call to `pc.finalize(...)` (from within the IDE) to have the model displayed.
-Alternatively, any part or assembly can be displayed in `OCP CAD Viewer` by using `pc show <part> [<package>]` or `pc show -a <assembly> [<package>]`.
-
-### Render your project
-
-Use `pc render` to render PartCAD parts and assemblies
-in the current package (the current directory).
-
-## Modelling
+## Create PartCAD models
 
 This frameworks allows to create large models and scenes, one part at a time,
 while having parts and assemblies often maintained by third parties.
@@ -118,68 +148,103 @@ while having parts and assemblies often maintained by third parties.
 
 PartCAD allows to define parts using any of the following methods:
 
-| Method      | Example                                                                       | Result                                          |
-| ----------- | ----------------------------------------------------------------------------- | ----------------------------------------------- |
-| [STEP]      | parts:<br/>&nbsp;&nbsp;bolt:<br/>&nbsp;&nbsp;&nbsp;&nbsp;type:&nbsp;step      | ![](examples/part_step/bolt.png)                |
-| [CadQuery]  | parts:<br/>&nbsp;&nbsp;cube:<br/>&nbsp;&nbsp;&nbsp;&nbsp;type:&nbsp;cadquery  | ![](examples/part_cadquery_primitive/cube.png)  |
-| [build123d] | parts:<br/>&nbsp;&nbsp;cube:<br/>&nbsp;&nbsp;&nbsp;&nbsp;type:&nbsp;build123d | ![](examples/part_build123d_primitive/cube.png) |
+<table>
+<tr>
+<th>Method</td>
+<th>Example</td>
+<th>Result</td>
+</tr>
+<tr>
+<td><a href="https://en.wikipedia.org/wiki/ISO_10303">STEP</a></td>
+<td>
+<code># partcad.yaml
+parts:
+    bolt:
+        type: step</code>
 
-Other methods to define parts are coming in soon (e.g. OpenSCAD).
+<br/>
+Store the model in "bold.step"
+</td>
+<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_step/bolt.png?raw=true"></td>
+<tr>
+<tr>
+<td><a href="https://github.com/CadQuery/cadquery">CadQuery</a></td>
+<td>
+<code># partcad.yaml
+parts:
+    cube:
+        type: cadquery</code>
+<br/>
+<br/>
+Place the CadQuery script in "cube.py"
+</td>
+<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_cadquery_primitive/cube.png?raw=true"></td>
+<tr>
+https://github.com/openvmp/partcad/blob/main/examples/assembly_logo/logo.png?raw=true
+<tr>
+<td><a href="https://github.com/gumyr/build123d">build123d</a></td>
+<td>
+<code># partcad.yaml
+parts:
+    cube:
+        type: build123d</code>
+
+<br/>
+Place the build123d script in "cube.py"
+</td>
+<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_cadquery_primitive/cube.png?raw=true"></td>
+<tr>
+</table>
+
+Other methods to define parts are coming in soon (e.g. SCAD).
 
 ### Assemblies
 
 Assemblies are defined as parametrized instructions how to put parts and other
 assemblies together.
 
-<img src="examples/assembly_logo/logo.png" style="float: left;" />
+Currently, PartCAD allows to define parts only using ASSY (Assembly YAML):
 
-```python
-import partcad as pc
+<table>
+<tr>
+<th>Example</td>
+<th>Result</td>
+</tr>
+<tr>
+<td>
+<code># partcad.yaml
+assemblies:
+    logo:
+        type: assy</code>
 
-if __name__ != "__cqgi__":
-    from cq_server.ui import ui, show_object
-
-bolt = pc.get_part("example_part_step", "bolt")
-bone = pc.get_part("example_part_cadquery_logo", "bone")
-head_half = pc.get_part("example_part_cadquery_logo", "head_half")
-
-model = pc.Assembly()
-model.add(bone, loc=pc.Location((0, 0, 0), (0, 0, 1), 0))
-model.add(bone, loc=pc.Location((0, 0, -2.5), (0, 0, 1), -90))
-model.add(head_half, pc.Location((0, 0, 27.5), (0, 0, 1), 0))
-model.add(head_half, pc.Location((0, 0, 25), (0, 0, 1), -90))
-model.add(bolt, loc=pc.Location((0, 0, 7.5), (0, 0, 1), 0))
-pc.finalize(model, show_object)
-```
-
-
-Assembly parameters can be of two kinds: build time and run time.
-
-Assembly instances with different build time parameters are different
-assemblies, different models.
-
-Assembly instances with different run time parameters are the same assembly,
-just visualized in a different state (e.g. different motion state).
-
-### Scenes
-
-Scenes are defined as parametrized instructions how to place assemblies
-relative to each other for visualization purposes.
-
-<!--
-| Example                            | Result |
-| ---------------------------------- | ------ |
-| TODO robot on a tree               | TODO   |
-| TODO two robots next to each other | TODO   |
--->
-
-Scenes are intended to be used for visualization, simulation, validation and
-testing purposes. Scenes are not intended to be used outside of the package
-where they are defined.
+<br/>
+<code># logo.assy
+links:
+  - part: bone
+    package: example_part_cadquery_logo
+    location: [[0,0,0], [0,0,1], 0]
+  - part: bone
+    package: example_part_cadquery_logo
+    location: [[0,0,-2.5], [0,0,1], -90]
+  - part: head_half
+    package: example_part_cadquery_logo
+    name: head_half_1
+    location: [[0,0,27.5], [0,0,1], 0]
+  - part: head_half
+    package: example_part_cadquery_logo
+    name: head_half_2
+    location: [[0,0,25], [0,0,1], -90]
+  - part: bolt
+    package: example_part_step
+    location: [[0,0,7.5], [0,0,1], 0]</code>
+</td>
+<td><img src="https://github.com/openvmp/partcad/blob/main/examples/assembly_assy/logo.png?raw=true"></td>
+<tr>
+</table>
 
 ### Packages
 
-Each PartCAD project is a separate package.
+Each project that produces or consumes PartCAD models is a separate PartCAD package.
 Each package may export parts, assemblies and scenes.
 Each package may import parts, assemblies and scenes from its dependencies
 (other PartCAD packages).
@@ -205,16 +270,34 @@ import:
         pythonVersion: <(optional) python version for sandboxing if applicable>
 ```
 
+### Troubleshooting
+
+At the moment, the best way to troubleshoot PartCAD is to use VS Code with `OCP CAD Viewer`.
+Any part or assembly can be displayed in `OCP CAD Viewer` by running `pc show <part> [<package>]` or `pc show -a <assembly> [<package>]` in a terminal view.
+
+### Render your project
+
+Use `pc render` to render PartCAD parts and assemblies
+in the current package (the current directory).
+
+### Publishing
+
+It is very simple to publish your package to the public PartCAD repository.
+
+First, you need to publish your own package which defines the models you want to publish.
+Then create a pull request in [the public PartCAD repo](https://github.com/openvmp/partcad) to add a reference to your package.
 
 ## Export
 
-### Visualization
+### Images
 
 Individual parts, assemblies and scenes can be rendered and exported into the
 following formats:
 
 - PNG
 - [STL](https://en.wikipedia.org/wiki/STL_(file_format)) (not yet)
+- [STEP] (not yet)
+- ...
 
 ### Other modelling formats
 
@@ -222,6 +305,7 @@ Additionally, assemblies and scenes can be exported into the following formats:
 
 - [SDF](http://sdformat.org/) (not yet / in progress)
 - [FreeCAD](https://www.freecad.org/) project (not yet / in progress)
+- ...
 
 ### Purchasing / Bill of materials
 
@@ -241,13 +325,6 @@ in the future PartCAD aims to achieve security isolation of the sandboxed
 environments. That will fundamentally change the security implications of using
 scripted models shared online.
 
-## Public repository
-
-PartCAD allows anyone to create their own private repositories of parts.
-However it also comes with a
-[public repository](https://github.com/openvmp/partcad-index)
-that is used by default for all new packages.
-
 ## Tools for mechanical engineering
 
 Here is an overview of the open source tools to maintain
@@ -266,7 +343,7 @@ subgraph repo["Your project's GIT repository"]
     custom_part_os["Another reusable part\nmaintained as a script\nunder a version control system"]
   end
 
-  model["Your project's model\ndefined as Python code\nfor version control\nand collaboration"]
+  model["Your project's model defined\nas ASSY or Python code\nfor version control\nand collaboration"]
 
   subgraph scenes["Scenes"]
     test1["Capability 1\ntest scene"]
@@ -281,7 +358,7 @@ end
 
 subgraph external_tools["External tools"]
   freecad["FreeCAD"]
-  cadquery["CadQuery"]
+  cadquery["CadQuery / build123d"]
   openscad["OpenSCAD"]
   gazebo["Gazebo"]
 
@@ -315,10 +392,10 @@ internally in [OpenVMP](https://github.com/openvmp/openvmp-models).
 It is now being maintained separately as a generic tool.
 
 The motivation behind this framework is to build a packaging and dependency
-tracking layer on top of [CadQuery] and traditional CAD tools to enable
-version control and other features required for effective collaboration. 
+tracking layer on top of both [CadQuery]/[build123d] and traditional CAD tools to
+enable version control and other features required for effective collaboration. 
 
-This framework currently uses [CadQuery] and, thus, [OpenCASCADE] under the hood.
+This framework currently uses [build123d] and, thus, [OpenCASCADE] under the hood.
 However this may change in the future, if the python C bindings for [OpenCASCADE]
 remain a blocker for unlocking multithreaded performance.
 

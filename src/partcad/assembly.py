@@ -15,6 +15,13 @@ import build123d as b3d
 from . import shape
 
 
+class AssemblyChild:
+    def __init__(self, item, name=None, location=None):
+        self.item = item
+        self.name = name
+        self.location = location
+
+
 class Assembly(shape.Shape):
     def __init__(self, name=None, config={}):
         super().__init__(name)
@@ -26,6 +33,10 @@ class Assembly(shape.Shape):
             )
         else:
             self.name = name
+        if "location" in config:
+            self.location = config["location"]
+        else:
+            self.location = None
         self.shape = None
 
         # self.children contains all child parts and assemblies
@@ -36,31 +47,39 @@ class Assembly(shape.Shape):
 
     def add(
         self,
-        child: shape.Shape,  # pc.Part or pc.Assembly
+        child_item: shape.Shape,  # pc.Part or pc.Assembly
         name=None,
         loc=b3d.Location((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), 0.0),
     ):
-        child_item = copy.copy(child.get_build123d()).locate(loc)  # Shallow copy
-        # child_item.label = name # TODO(clairbee): fix this
-        self.children.append(child_item)
+        self.children.append(AssemblyChild(child_item, name, loc))
 
         # Keep part reference counter for bill-of-materials purposes
-        child.ref_inc()
+        child_item.ref_inc()
 
         # Destroy the previous object if any
         self.shape = None
 
     def ref_inc(self):
         for child in self.children:
-            child.ref_inc()
+            child.item.ref_inc()
 
     def get_shape(self):
         if self.shape is None:
-            self.shape = b3d.Compound(label=self.name, children=self.children)
-        return self.shape
-
-    def get_build123d(self):
-        return copy.copy(self.get_shape())
+            child_shapes = []
+            for child in self.children:
+                item = copy.copy(child.item.get_build123d())
+                if not child.name is None:
+                    item.label = child.name
+                if not item.location is None:
+                    item.locate(child.location)
+                child_shapes.append(item)
+            shape = b3d.Compound(children=child_shapes)
+            if not self.name is None:
+                shape.label = self.name
+            if not self.location is None:
+                shape.locate(self.location)
+            self.shape = shape.wrapped
+        return copy.copy(self.shape)
 
     def get_wrapped(self):
         return self.get_shape()

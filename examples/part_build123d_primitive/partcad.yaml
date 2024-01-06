@@ -6,6 +6,6 @@ parts:
 render:
   png:
     prefix: ./
-    width: 256
+    width: 128
     height: 128
   markdown: README.md

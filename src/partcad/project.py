@@ -13,7 +13,7 @@ from . import project_config
 from . import part_factory_step as pfs
 from . import part_factory_cadquery as pfc
 from . import part_factory_build123d as pfb
-from . import assembly_factory_python as afp
+from . import assembly_factory_assy as afa
 
 
 class Project(project_config.Configuration):
@@ -87,8 +87,7 @@ class Project(project_config.Configuration):
                 pfs.PartFactoryStep(self.ctx, self, part_config)
             else:
                 logging.error(
-                    "Invalid repository type encountered: %s: %s"
-                    % (part_name, part_config)
+                    "Invalid part type encountered: %s: %s" % (part_name, part_config)
                 )
                 return None
 
@@ -122,7 +121,17 @@ class Project(project_config.Configuration):
             # TODO(clairbee): reconsider passing the name as a parameter
             assembly_config["name"] = assembly_name
 
-            afp.AssemblyFactoryPython(self.ctx, self, assembly_config)
+            if assembly_config["type"] == "assy":
+                logging.info(
+                    "Initializing AssemblyYAML assembly: %s..." % assembly_name
+                )
+                afa.AssemblyFactoryAssy(self.ctx, self, assembly_config)
+            else:
+                logging.error(
+                    "Invalid assembly type encountered: %s: %s"
+                    % (assembly_name, assembly_config)
+                )
+                return None
 
             # Since factories do not return status codes, we need to verify
             # whether they have produced the expected product or not
@@ -135,44 +144,31 @@ class Project(project_config.Configuration):
 
         return self.assemblies[assembly_name]
 
-    def render(self):
+    def render(self, parts=None, assemblies=None):
         logging.info("Rendering the project: %s" % self.path)
         if not "render" in self.config_obj:
             return
         render = self.config_obj["render"]
 
-        parts = {}
-        if "parts" in self.config_obj:
-            parts = self.config_obj["parts"].keys()
-        assemblies = {}
-        if "assemblies" in self.config_obj:
-            assemblies = self.config_obj["assemblies"].keys()
+        # Enumerating all parts and assemblies
+        if parts is None:
+            parts = []
+            if "parts" in self.config_obj:
+                parts = self.config_obj["parts"].keys()
+        if assemblies is None:
+            assemblies = []
+            if "assemblies" in self.config_obj:
+                assemblies = self.config_obj["assemblies"].keys()
 
+        # See whether PNG is configured to be auto-rendered or not
         if "png" in render:
             logging.info("Rendering PNG...")
-            if isinstance(render["png"], str):
-                render_path = render["png"]
-                render_width = None
-                render_height = None
-            else:
-                png = render["png"]
-                render_path = png["prefix"]
-                render_width = png["width"]
-                render_height = png["height"]
 
             for part_name in parts:
                 part = self.get_part(part_name)
                 if not part is None:
-                    part.render_png(
-                        render_path + part_name + ".png",
-                        width=render_width,
-                        height=render_height,
-                    )
+                    part.render_png(project=self)
             for assembly_name in assemblies:
                 assembly = self.get_assembly(assembly_name)
                 if not assembly is None:
-                    assembly.render_png(
-                        render_path + assembly_name + ".png",
-                        width=render_width,
-                        height=render_height,
-                    )
+                    assembly.render_png(project=self)

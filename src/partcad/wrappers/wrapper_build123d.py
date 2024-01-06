@@ -24,8 +24,13 @@ def process(path, request):
     if "build_parameters" in request:
         build_parameters = request["build_parameters"]
 
-    cadquery_script = open(path, "r").read()
-    script_object = cqgi.parse(cadquery_script)
+    script = open(path, "r").read()
+    if "import partcad" in script:
+        script = (
+            "import logging\nlogging.basicConfig(level=60)\n"  # Disable PartCAD logging
+            + script
+        )
+    script_object = cqgi.parse(script)
     result = script_object.build(build_parameters=build_parameters)
 
     if not result.success:
