@@ -55,7 +55,7 @@ def test_part_get_3():
 #       force pushed.
 def test_part_get_4():
     """Instantiate a project by a git import config and load a part"""
-    ctx = pc.Context()  # Emplty config
+    ctx = pc.Context()  # Empty config
     factory = pc.ProjectFactoryGit(ctx, None, test_config_git)
     assert factory.project.path.endswith(test_config_git["relPath"])
     cube = factory.project.get_part("cube")
@@ -63,13 +63,23 @@ def test_part_get_4():
     assert cube.get_wrapped() is not None
 
 
-def test_part_lazy_loading_1():
-    """Future test for lazy loading of geometry data"""
+def test_part_lazy_loading():
+    """Test for lazy loading of geometry data"""
     ctx = pc.Context()  # Empty config
     _ = pc.ProjectFactoryLocal(ctx, None, test_config_local)
     cylinder = ctx.get_part("cylinder", "primitive_local")
     assert cylinder.shape is None
     assert cylinder.get_wrapped() is not None
+
+
+def test_part_aliases():
+    """Test for part aliases"""
+    ctx = pc.Context()  # Empty config
+    _ = pc.ProjectFactoryLocal(ctx, None, test_config_local)
+    # "box" is an alias for "cube"
+    box = ctx.get_part("box", "primitive_local")
+    assert box.shape is None
+    assert box.get_wrapped() is not None
 
 
 def test_part_example_cadquery_primitive():
