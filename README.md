@@ -275,10 +275,27 @@ import:
 At the moment, the best way to troubleshoot PartCAD is to use VS Code with `OCP CAD Viewer`.
 Any part or assembly can be displayed in `OCP CAD Viewer` by running `pc show <part> [<package>]` or `pc show -a <assembly> [<package>]` in a terminal view.
 
+```sh
+# Create a temporary folder
+mkdir /tmp/test_show && cd /tmp/test_show
+
+# Initialize a package with the default dependency on public PartCAD repository
+pc init
+
+# Show one of available parts in 'OCP CAD Viewer'
+pc show fastener/screw-buttonhead standard-metric-cqwarehouse
+```
+
 ### Render your project
 
 Use `pc render` to render PartCAD parts and assemblies
 in the current package (the current directory).
+
+```sh
+git clone https://github.com/openvmp/partcad-cqwarehouse.git
+cd partcad-cqwarehouse
+pc render
+```
 
 ### Publishing
 
