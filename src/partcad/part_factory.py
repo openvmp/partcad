@@ -16,6 +16,7 @@ class PartFactory:
     def __init__(self, ctx, project, part_config, extension=""):
         self.ctx = ctx
         self.project = project
+        self.part_config = part_config
         self.name = part_config["name"]
 
         self.path = self.name + extension
@@ -34,7 +35,12 @@ class PartFactory:
         part_config["path"] = self.path
 
     def _create(self, part_config):
-        self.part = p.Part(self.name, part_config)
+        self.part = p.Part(self.name, self.path, part_config)
 
-    def _save(self):
         self.project.parts[self.name] = self.part
+        if "aliases" in self.part_config and not self.part_config["aliases"] is None:
+            for alias in self.part_config["aliases"]:
+                # TODO(clairbee): test if this a copy or a reference
+                self.project.parts[alias] = self.part
+
+        self.part.instantiate = lambda part_self: self.instantiate(part_self)

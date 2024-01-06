@@ -81,9 +81,6 @@ class Assembly(shape.Shape):
             self.shape = shape.wrapped
         return copy.copy(self.shape)
 
-    def get_wrapped(self):
-        return self.get_shape()
-
     def _render_txt_real(self, file):
         for child in self.children:
             child._render_txt_real(file)

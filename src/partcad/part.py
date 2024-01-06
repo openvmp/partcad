@@ -17,15 +17,17 @@ import build123d as b3d
 
 
 class Part(shape.Shape):
-    def __init__(self, name=None, config={}, shape=None):
+    def __init__(self, name=None, path=None, config={}, shape=None):
         if name is None:
             name = "part" + "".join(
                 random.choices(string.ascii_uppercase + string.digits, k=8)
             )
+        if path is None:
+            path = name
         super().__init__(name)
 
         self.config = config
-        self.path = config["path"]
+        self.path = path
         self.shape = shape
 
         self.desc = None
@@ -48,6 +50,11 @@ class Part(shape.Shape):
 
     def set_shape(self, shape):
         self.shape = shape
+
+    def get_shape(self):
+        if self.shape is None:
+            self.instantiate(self)
+        return self.shape
 
     def ref_inc(self):
         self.count += 1

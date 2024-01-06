@@ -3,6 +3,7 @@ parts:
   cube:
     type: cadquery
     desc: This is a cube from examples
+    aliases: ["box"]
   cylinder:
     type: cadquery
     path: cylinder.py

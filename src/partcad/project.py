@@ -50,13 +50,16 @@ class Project(project_config.Configuration):
         else:
             self.desc = ""
 
+        self.init_parts()
+        self.init_assemblies()
+
     def get_part_config(self, part_name):
         if not part_name in self.part_configs:
             return None
         return self.part_configs[part_name]
 
-    def get_part(self, part_name):
-        if not part_name in self.parts:
+    def init_parts(self):
+        for part_name in self.part_configs:
             part_config = self.get_part_config(part_name)
 
             # Handle the case of the part being declared in the config
@@ -91,13 +94,10 @@ class Project(project_config.Configuration):
                 )
                 return None
 
-            # Since factories do not return status codes, we need to verify
-            # whether they have produced the expected product or not
-            # TODO(clairbee): reconsider returning status from the factories
-            if not part_name in self.parts:
-                logging.error("Failed to instantiate the part: %s" % part_config)
-                return None
-
+    def get_part(self, part_name):
+        if not part_name in self.parts:
+            logging.error("Part not found: %s" % part_name)
+            return None
         return self.parts[part_name]
 
     def get_assembly_config(self, assembly_name):
@@ -105,8 +105,8 @@ class Project(project_config.Configuration):
             return None
         return self.assembly_configs[assembly_name]
 
-    def get_assembly(self, assembly_name):
-        if not assembly_name in self.assemblies:
+    def init_assemblies(self):
+        for assembly_name in self.assembly_configs:
             assembly_config = self.get_assembly_config(assembly_name)
 
             # Handle the case of the part being declared in the config
@@ -133,15 +133,10 @@ class Project(project_config.Configuration):
                 )
                 return None
 
-            # Since factories do not return status codes, we need to verify
-            # whether they have produced the expected product or not
-            # TODO(clairbee): reconsider returning status from the factories
-            if not assembly_name in self.assemblies:
-                logging.error(
-                    "Failed to instantiate the assembly: %s" % assembly_config
-                )
-                return None
-
+    def get_assembly(self, assembly_name):
+        if not assembly_name in self.assemblies:
+            logging.error("Assembly not found: %s" % assembly_name)
+            return None
         return self.assemblies[assembly_name]
 
     def render(self, parts=None, assemblies=None):
