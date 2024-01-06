@@ -28,6 +28,7 @@ class PartFactoryCadquery(pfp.PartFactoryPython):
         # Complement the config object here if necessary
         self._create(part_config)
 
+    def instantiate(self, part):
         wrapper_path = wrapper.get("cadquery.py")
 
         request = {"build_parameters": {}}
@@ -45,8 +46,7 @@ class PartFactoryCadquery(pfp.PartFactoryPython):
 
         if result["success"]:
             shape = result["shape"]
-            self.part.shape = shape
+            part.set_shape(shape)
         else:
             logging.error(result["exception"])
-
-        self._save()
+            raise Exception(result["exception"])

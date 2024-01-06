@@ -29,7 +29,7 @@ class Shape:
         self.svg_url = None
 
     def get_wrapped(self):
-        return self.shape
+        return self.get_shape()
 
     def get_cadquery(self) -> cq.Shape:
         cq_solid = cq.Solid.makeBox(1, 1, 1)

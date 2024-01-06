@@ -18,7 +18,6 @@ class PartFactoryStep(pf.PartFactory):
         # Complement the config object here if necessary
         self._create(part_config)
 
-        shape = cq.importers.importStep(self.path).val().wrapped
-        self.part.set_shape(shape)
-
-        self._save()
+    def instantiate(self, part):
+        shape = cq.importers.importStep(part.path).val().wrapped
+        part.set_shape(shape)

@@ -30,6 +30,7 @@ def test_part_get_1():
     repo1 = ctx.get_project("this")
     bolt = repo1.get_part("bolt")
     assert bolt is not None
+    assert bolt.get_wrapped() is not None
 
 
 def test_part_get_2():
@@ -37,6 +38,7 @@ def test_part_get_2():
     ctx = pc.Context("examples/part_step")
     bolt = ctx.get_part("bolt", "this")
     assert bolt is not None
+    assert bolt.get_wrapped() is not None
 
 
 def test_part_get_3():
@@ -45,6 +47,7 @@ def test_part_get_3():
     _ = pc.ProjectFactoryLocal(ctx, None, test_config_local)
     cylinder = ctx.get_part("cylinder", "primitive_local")
     assert cylinder is not None
+    assert cylinder.get_wrapped() is not None
 
 
 # Note: The below test fails if there are braking changes in the way parts are
@@ -57,6 +60,7 @@ def test_part_get_4():
     assert factory.project.path.endswith(test_config_git["relPath"])
     cube = factory.project.get_part("cube")
     assert cube is not None
+    assert cube.get_wrapped() is not None
 
 
 def test_part_lazy_loading_1():
@@ -64,9 +68,7 @@ def test_part_lazy_loading_1():
     ctx = pc.Context()  # Empty config
     _ = pc.ProjectFactoryLocal(ctx, None, test_config_local)
     cylinder = ctx.get_part("cylinder", "primitive_local")
-    # TODO(clairbee): implement lazy loading
-    # assert cylinder.shape is None
-    # logo.build()
+    assert cylinder.shape is None
     assert cylinder.get_wrapped() is not None
 
 
@@ -77,6 +79,7 @@ def test_part_example_cadquery_primitive():
     assert cube is not None
     cylinder = ctx.get_part("cylinder", "example_part_cadquery_primitive")
     assert cylinder is not None
+    assert cylinder.get_wrapped() is not None
 
 
 def test_part_example_cadquery_logo():
@@ -86,6 +89,7 @@ def test_part_example_cadquery_logo():
     assert bone is not None
     head_half = ctx.get_part("head_half", "example_part_cadquery_logo")
     assert head_half is not None
+    assert head_half.get_wrapped() is not None
 
 
 def test_part_example_build123d_primitive():
@@ -93,3 +97,4 @@ def test_part_example_build123d_primitive():
     ctx = pc.init("tests/partcad-examples.yaml")
     cube = ctx.get_part("cube", "example_part_build123d_primitive")
     assert cube is not None
+    assert cube.get_wrapped() is not None
