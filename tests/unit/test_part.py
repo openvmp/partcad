@@ -24,8 +24,8 @@ test_config_git = {
 }
 
 
-def test_part_get_1():
-    """Load part from a project by the part name"""
+def test_part_get_step_1():
+    """Load a STEP part from a project by the part name"""
     ctx = pc.Context("examples/part_step")
     repo1 = ctx.get_project("this")
     bolt = repo1.get_part("bolt")
@@ -33,12 +33,20 @@ def test_part_get_1():
     assert bolt.get_wrapped() is not None
 
 
-def test_part_get_2():
-    """Load part from the context by the project and part names"""
+def test_part_get_step_2():
+    """Load a STEP part from the context by the project and part names"""
     ctx = pc.Context("examples/part_step")
     bolt = ctx.get_part("bolt", "this")
     assert bolt is not None
     assert bolt.get_wrapped() is not None
+
+
+def test_part_get_stl():
+    """Load a STL part"""
+    ctx = pc.Context("examples/part_stl")
+    part = ctx.get_part("cube", "this")
+    assert part is not None
+    assert part.get_wrapped() is not None
 
 
 def test_part_get_3():

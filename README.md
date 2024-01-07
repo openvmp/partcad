@@ -166,7 +166,20 @@ parts:
 Store the model in "bold.step"
 </td>
 <td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_step/bolt.png?raw=true"></td>
+</tr>
 <tr>
+<td><a href="https://en.wikipedia.org/wiki/STL_(file_format)">STL</a></td>
+<td>
+<code># partcad.yaml
+parts:
+    cube:
+        type: stl</code>
+
+<br/>
+Store the model in "cube.stl"
+</td>
+<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_stl/cube.png?raw=true"></td>
+</tr>
 <tr>
 <td><a href="https://github.com/CadQuery/cadquery">CadQuery</a></td>
 <td>
@@ -179,7 +192,7 @@ parts:
 Place the CadQuery script in "cube.py"
 </td>
 <td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_cadquery_primitive/cube.png?raw=true"></td>
-<tr>
+</tr>
 https://github.com/openvmp/partcad/blob/main/examples/assembly_logo/logo.png?raw=true
 <tr>
 <td><a href="https://github.com/gumyr/build123d">build123d</a></td>
@@ -193,7 +206,7 @@ parts:
 Place the build123d script in "cube.py"
 </td>
 <td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_cadquery_primitive/cube.png?raw=true"></td>
-<tr>
+</tr>
 </table>
 
 Other methods to define parts are coming in soon (e.g. SCAD).
