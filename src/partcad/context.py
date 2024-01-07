@@ -73,7 +73,7 @@ class Context(project_config.Configuration):
 
     def __init__(self, config_path="."):
         """Initializes the context and imports the root project."""
-        super().__init__(config_path)
+        super().__init__(consts.THIS, config_path)
         self.runtimes_python = {}
 
         if os.path.isdir(config_path):

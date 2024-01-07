@@ -16,6 +16,7 @@ class AssemblyFactory:
     def __init__(self, ctx, project, assembly_config, extension=""):
         self.ctx = ctx
         self.project = project
+        self.assembly_config = assembly_config
         self.name = assembly_config["name"]
 
         self.path = self.name + extension

@@ -41,5 +41,6 @@
   "python.terminal.executeInFileDir": true,
   "python.terminal.launchArgs": [
   ],
-  "OcpCadViewer.advanced.autostart": false
+  "OcpCadViewer.advanced.autostart": false,
+  "yaml.format.bracketSpacing": false // prevent YAML formatter from breaking Jinja2 templates
 }

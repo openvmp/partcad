@@ -39,7 +39,7 @@ class ProjectFactory(ImportConfiguration):
 
     def _create(self, config):
         # TODO(clairbee): Finalize the config object if necessary
-        self.project = p.Project(self.ctx, self.path)
+        self.project = p.Project(self.ctx, self.import_config_name, self.path)
 
     def _save(self):
         self.ctx.projects[self.import_config_name] = self.project
