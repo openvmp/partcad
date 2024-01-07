@@ -8,7 +8,7 @@
 #
 
 import build123d as b3d
-import copy
+from jinja2 import Template
 import logging
 import os
 import yaml
@@ -26,8 +26,21 @@ class AssemblyFactoryAssy(af.AssemblyFactory):
     def instantiate(self, assembly):
         self.assy = {}
         if os.path.exists(self.path):
+            # Read the body of the configuration file
+            fp = open(self.path, "r")
+            config = fp.read()
+            fp.close()
+
+            # Resolve Jinja templates
+            template = Template(config)
+            config = template.render(
+                name=assembly_config["name"],
+            )
+            self.config_text = config
+
+            # Parse the resulting config
             try:
-                self.assy = yaml.safe_load(open(self.path))
+                self.assy = yaml.safe_load(config)
             except Exception as e:
                 logging.error("ERROR: Failed to parse the assembly file %s" % self.path)
             if self.assy is None:
@@ -72,4 +85,7 @@ class AssemblyFactoryAssy(af.AssemblyFactory):
             part_name = node["part"]
             item = self.ctx.get_part(part_name, package_name)
 
-        assembly.add(item, name, location)
+        if not item is None:
+            assembly.add(item, name, location)
+        else:
+            logging.error("Part not found: %s" % name)
