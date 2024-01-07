@@ -1,0 +1,11 @@
+desc: PartCAD example project to demonstrate parts implemented using 3MF files
+parts:
+  cube:
+    type: 3mf
+    desc: A cube defined in 3MF
+render:
+  png:
+    prefix: ./
+    width: 128
+    height: 128
+  markdown: README.md

@@ -49,6 +49,14 @@ def test_part_get_stl():
     assert part.get_wrapped() is not None
 
 
+def test_part_get_3mf():
+    """Load a 3MF part"""
+    ctx = pc.Context("examples/part_3mf")
+    part = ctx.get_part("cube", "this")
+    assert part is not None
+    assert part.get_wrapped() is not None
+
+
 def test_part_get_3():
     """Instantiate a project by a local import config and load a part"""
     ctx = pc.Context()  # Empty config

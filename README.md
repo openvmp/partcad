@@ -181,6 +181,19 @@ Store the model in "cube.stl"
 <td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_stl/cube.png?raw=true"></td>
 </tr>
 <tr>
+<td><a href="https://en.wikipedia.org/wiki/3D_Manufacturing_Format">3MF</a></td>
+<td>
+<code># partcad.yaml
+parts:
+    cube:
+        type: 3mf</code>
+
+<br/>
+Store the model in "cube.3mf"
+</td>
+<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_stl/cube.png?raw=true"></td>
+</tr>
+<tr>
 <td><a href="https://github.com/CadQuery/cadquery">CadQuery</a></td>
 <td>
 <code># partcad.yaml
@@ -193,7 +206,6 @@ Place the CadQuery script in "cube.py"
 </td>
 <td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_cadquery_primitive/cube.png?raw=true"></td>
 </tr>
-https://github.com/openvmp/partcad/blob/main/examples/assembly_logo/logo.png?raw=true
 <tr>
 <td><a href="https://github.com/gumyr/build123d">build123d</a></td>
 <td>
