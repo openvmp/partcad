@@ -17,8 +17,8 @@ from . import assembly_factory_assy as afa
 
 
 class Project(project_config.Configuration):
-    def __init__(self, ctx, path):
-        super().__init__(path)
+    def __init__(self, ctx, import_config_name, path):
+        super().__init__(import_config_name, path)
         self.ctx = ctx
 
         # The 'path' parameter is the config filename or the directory

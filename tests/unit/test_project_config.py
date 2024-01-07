@@ -27,3 +27,20 @@ def test_project_config_version_2():
         assert False, "Invalid configuration file did not cause an exception"
     except:
         _ignore = True
+
+
+def test_project_config_template():
+    ctx = pc.init("tests/partcad-examples.yaml")
+    this = ctx.get_project(pc.THIS)
+    ctx.import_project(
+        this,
+        {
+            "name": "that",
+            "type": "local",
+            "path": "unit/data/project_config_template.yaml",
+        },
+    )
+    # In this test case, the template is used to name the part the same name as
+    # the package is called.
+    part = ctx.get_part("that", "that")
+    assert not part is None

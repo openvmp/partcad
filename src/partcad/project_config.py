@@ -6,6 +6,7 @@
 #
 # Licensed under Apache License, Version 2.0.
 
+from jinja2 import Template
 import json
 import logging
 import os
@@ -17,7 +18,7 @@ DEFAULT_CONFIG_FILENAME = "partcad.yaml"
 
 
 class Configuration:
-    def __init__(self, config_path=DEFAULT_CONFIG_FILENAME):
+    def __init__(self, import_config_name, config_path=DEFAULT_CONFIG_FILENAME):
         self.config_obj = {}
         self.config_dir = config_path
         self.config_path = config_path
@@ -33,10 +34,23 @@ class Configuration:
             )
             return
 
+        # Read the body of the configuration file
+        fp = open(self.config_path, "r")
+        config = fp.read()
+        fp.close()
+
+        # Resolve Jinja templates
+        template = Template(config)
+        config = template.render(
+            package_name=import_config_name,
+        )
+        self.config_text = config
+
+        # Parse the config
         if self.config_path.endswith(".yaml"):
-            self.config_obj = yaml.safe_load(open(self.config_path, "r"))
+            self.config_obj = yaml.safe_load(config)
         if self.config_path.endswith(".json"):
-            self.config_obj = json.load(open(self.config_path, "r"))
+            self.config_obj = json.load(config)
 
         # option: "partcad"
         # description: the version of PartCAD required to handle this package
