@@ -32,7 +32,6 @@ all of the consumers.
   - [Publishing](#publishing)
 - [Export](#export)
   - [Images](#images)
-  - [Other modelling formats](#other-modelling-formats)
   - [Purchasing / Bill of materials](#purchasing--bill-of-materials)
 - [Security](#security)
 - [Tools for mechanical engineering](#tools-for-mechanical-engineering)
@@ -155,6 +154,32 @@ PartCAD allows to define parts using any of the following methods:
 <th>Result</td>
 </tr>
 <tr>
+<td><a href="https://github.com/CadQuery/cadquery">CadQuery</a></td>
+<td>
+<code># partcad.yaml
+parts:
+    cube:
+        type: cadquery</code>
+<br/>
+<br/>
+Place the CadQuery script in "cube.py"
+</td>
+<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_cadquery_primitive/cube.png?raw=true"></td>
+</tr>
+<tr>
+<td><a href="https://github.com/gumyr/build123d">build123d</a></td>
+<td>
+<code># partcad.yaml
+parts:
+    cube:
+        type: build123d</code>
+
+<br/>
+Place the build123d script in "cube.py"
+</td>
+<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_cadquery_primitive/cube.png?raw=true"></td>
+</tr>
+<tr>
 <td><a href="https://en.wikipedia.org/wiki/ISO_10303">STEP</a></td>
 <td>
 <code># partcad.yaml
@@ -205,32 +230,6 @@ parts:
 Store the model in "cube.scad"
 </td>
 <td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_scad/cube.png?raw=true"></td>
-</tr>
-<tr>
-<td><a href="https://github.com/CadQuery/cadquery">CadQuery</a></td>
-<td>
-<code># partcad.yaml
-parts:
-    cube:
-        type: cadquery</code>
-<br/>
-<br/>
-Place the CadQuery script in "cube.py"
-</td>
-<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_cadquery_primitive/cube.png?raw=true"></td>
-</tr>
-<tr>
-<td><a href="https://github.com/gumyr/build123d">build123d</a></td>
-<td>
-<code># partcad.yaml
-parts:
-    cube:
-        type: build123d</code>
-
-<br/>
-Place the build123d script in "cube.py"
-</td>
-<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_cadquery_primitive/cube.png?raw=true"></td>
 </tr>
 </table>
 
@@ -350,17 +349,12 @@ Individual parts, assemblies and scenes can be rendered and exported into the
 following formats:
 
 - PNG
-- [STL](https://en.wikipedia.org/wiki/STL_(file_format)) (not yet)
-- [STEP] (not yet)
-- ...
+- [STEP]
+- [STL](https://en.wikipedia.org/wiki/STL_(file_format))
+- [3MF](https://en.wikipedia.org/wiki/3D_Manufacturing_Format)
+- [ThreeJS](https://en.wikipedia.org/wiki/Three.js)
 
-### Other modelling formats
-
-Additionally, assemblies and scenes can be exported into the following formats:
-
-- [SDF](http://sdformat.org/) (not yet / in progress)
-- [FreeCAD](https://www.freecad.org/) project (not yet / in progress)
-- ...
+Expect more image formats to be added to the list of supported export formats in the future.
 
 ### Purchasing / Bill of materials
 

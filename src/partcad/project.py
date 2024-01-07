@@ -168,14 +168,42 @@ class Project(project_config.Configuration):
                 assemblies = self.config_obj["assemblies"].keys()
 
         # See whether PNG is configured to be auto-rendered or not
-        if "png" in render:
-            logging.info("Rendering PNG...")
 
-            for part_name in parts:
-                part = self.get_part(part_name)
-                if not part is None:
+        for part_name in parts:
+            part = self.get_part(part_name)
+            if not part is None:
+                if "png" in render:
+                    logging.info("Rendering PNG...")
                     part.render_png(project=self)
-            for assembly_name in assemblies:
-                assembly = self.get_assembly(assembly_name)
-                if not assembly is None:
+                if "step" in render:
+                    logging.info("Rendering STEP...")
+                    part.render_step(project=self)
+                if "stl" in render:
+                    logging.info("Rendering STL...")
+                    part.render_stl(project=self)
+                if "3mf" in render:
+                    logging.info("Rendering 3MF...")
+                    part.render_3mf(project=self)
+                if "threejs" in render:
+                    logging.info("Rendering ThreeJS...")
+                    part.render_threejs(project=self)
+        for assembly_name in assemblies:
+            assembly = self.get_assembly(assembly_name)
+            if not assembly is None:
+                if "png" in render:
+                    logging.info("Rendering PNG...")
                     assembly.render_png(project=self)
+                if "step" in render:
+                    logging.info("Rendering STEP...")
+                    assembly.render_step(project=self)
+                if "stl" in render:
+                    logging.info("Rendering STL...")
+                    assembly.render_stl(project=self)
+                if "3mf" in render:
+                    logging.info("Rendering 3MF...")
+                    assembly.render_3mf(project=self)
+                if "threejs" in render:
+                    logging.info("Rendering ThreeJS...")
+                    assembly.render_threejs(project=self)
+
+            # See whether STEP is configured to be auto-rendered or not
