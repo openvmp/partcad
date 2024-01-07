@@ -1,0 +1,11 @@
+desc: PartCAD example project to demonstrate parts implemented using SCAD files
+parts:
+  cube:
+    type: scad
+    desc: A cube defined in SCAD
+render:
+  png:
+    prefix: ./
+    width: 128
+    height: 128
+  markdown: README.md

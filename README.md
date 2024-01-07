@@ -191,7 +191,20 @@ parts:
 <br/>
 Store the model in "cube.3mf"
 </td>
-<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_stl/cube.png?raw=true"></td>
+<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_3mf/cube.png?raw=true"></td>
+</tr>
+<tr>
+<td><a href="https://en.wikipedia.org/wiki/OpenSCAD">OpenSCAD</a></td>
+<td>
+<code># partcad.yaml
+parts:
+    cube:
+        type: scad</code>
+
+<br/>
+Store the model in "cube.scad"
+</td>
+<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_scad/cube.png?raw=true"></td>
 </tr>
 <tr>
 <td><a href="https://github.com/CadQuery/cadquery">CadQuery</a></td>

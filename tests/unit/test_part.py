@@ -9,6 +9,8 @@
 #
 
 import partcad as pc
+import pytest
+import shutil
 
 test_config_local = {
     "name": "primitive_local",
@@ -55,6 +57,18 @@ def test_part_get_3mf():
     part = ctx.get_part("cube", "this")
     assert part is not None
     assert part.get_wrapped() is not None
+
+
+def test_part_get_scad():
+    """Load an OpenSCAD part"""
+    scad_path = shutil.which("openscad")
+    if not scad_path is None:
+        ctx = pc.Context("examples/part_scad")
+        part = ctx.get_part("cube", "this")
+        assert part is not None
+        assert part.get_wrapped() is not None
+    else:
+        pytest.skip("No OpenSCAD installed")
 
 
 def test_part_get_3():

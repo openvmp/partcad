@@ -10,6 +10,7 @@ import logging
 import os
 
 from . import project_config
+from . import part_factory_scad as pfscad
 from . import part_factory_step as pfs
 from . import part_factory_stl as pfstl
 from . import part_factory_3mf as pf3
@@ -96,6 +97,9 @@ class Project(project_config.Configuration):
             elif part_config["type"] == "3mf":
                 logging.info("Initializing 3mf part: %s..." % part_name)
                 pf3.PartFactory3mf(self.ctx, self, part_config)
+            elif part_config["type"] == "scad":
+                logging.info("Initializing OpenSCAD part: %s..." % part_name)
+                pfscad.PartFactoryScad(self.ctx, self, part_config)
             else:
                 logging.error(
                     "Invalid part type encountered: %s: %s" % (part_name, part_config)
