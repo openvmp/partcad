@@ -11,6 +11,7 @@ import os
 
 from . import project_config
 from . import part_factory_step as pfs
+from . import part_factory_stl as pfstl
 from . import part_factory_cadquery as pfc
 from . import part_factory_build123d as pfb
 from . import assembly_factory_assy as afa
@@ -88,6 +89,9 @@ class Project(project_config.Configuration):
             elif part_config["type"] == "step":
                 logging.info("Initializing STEP part: %s..." % part_name)
                 pfs.PartFactoryStep(self.ctx, self, part_config)
+            elif part_config["type"] == "stl":
+                logging.info("Initializing STL part: %s..." % part_name)
+                pfstl.PartFactoryStl(self.ctx, self, part_config)
             else:
                 logging.error(
                     "Invalid part type encountered: %s: %s" % (part_name, part_config)
