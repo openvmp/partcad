@@ -34,7 +34,7 @@ class AssemblyFactoryAssy(af.AssemblyFactory):
             # Resolve Jinja templates
             template = Template(config)
             config = template.render(
-                name=assembly_config["name"],
+                name=self.assembly_config["name"],
             )
             self.config_text = config
 
