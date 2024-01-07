@@ -1,0 +1,15 @@
+desc: PartCAD example project to demonstrate various export mechanisms
+parts:
+  bolt:
+    type: step
+    desc: M8x30-screw
+render:
+  png:
+    prefix: ./
+    width: 128
+    height: 128
+  step: ./
+  stl: ./
+  3mf: ./
+  threejs: ./
+  markdown: README.md

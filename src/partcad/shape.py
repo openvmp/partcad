@@ -146,12 +146,12 @@ class Shape:
             self.svg_url = "./part.svg"
         return self.svg_url
 
-    def render_png(
+    def render_getopts(
         self,
+        kind,
+        extension,
         project=None,
         filepath=None,
-        width=None,
-        height=None,
     ):
         if (
             not project is None
@@ -162,20 +162,33 @@ class Shape:
         else:
             render_opts = {}
 
-        if "png" in render_opts and not render_opts["png"] is None:
-            if isinstance(render_opts["png"], str):
-                png_opts = {"prefix": render_opts["png"]}
+        if kind in render_opts and not render_opts[kind] is None:
+            if isinstance(render_opts[kind], str):
+                opts = {"prefix": render_opts[kind]}
             else:
-                png_opts = render_opts["png"]
+                opts = render_opts[kind]
         else:
-            png_opts = {}
+            opts = {}
 
         # Using the project's config defaults if any
         if filepath is None:
-            if "prefix" in png_opts and not png_opts["prefix"] is None:
-                filepath = os.path.join(png_opts["prefix"], self.name + ".png")
+            if "prefix" in opts and not opts["prefix"] is None:
+                filepath = os.path.join(opts["prefix"], self.name + extension)
             else:
-                filepath = self.name + ".png"
+                filepath = self.name + extension
+
+        logging.info("Rendering: %s" % filepath)
+
+        return opts, filepath
+
+    def render_png(
+        self,
+        project=None,
+        filepath=None,
+        width=None,
+        height=None,
+    ):
+        png_opts, filepath = self.render_getopts("png", ".png", project, filepath)
 
         if width is None:
             if "width" in png_opts and not png_opts["width"] is None:
@@ -189,7 +202,6 @@ class Shape:
                 height = DEFAULT_RENDER_HEIGHT
 
         # Render the vector image
-        logging.info("Rendering: %s" % filepath)
         svg_path = self._get_svg_path()
 
         # Render the raster image
@@ -201,6 +213,97 @@ class Shape:
         drawing.width *= scale
         drawing.height *= scale
         renderPM.drawToFile(drawing, filepath, fmt="PNG")
+
+    def render_step(
+        self,
+        project=None,
+        filepath=None,
+    ):
+        step_opts, filepath = self.render_getopts("step", ".step", project, filepath)
+
+        cq_obj = self.get_cadquery()
+        cq.exporters.export(cq_obj, filepath)
+
+    def render_stl(
+        self,
+        project=None,
+        filepath=None,
+        tolerance=None,
+    ):
+        stl_opts, filepath = self.render_getopts("stl", ".stl", project, filepath)
+
+        cq_obj = self.get_cadquery()
+        cq.exporters.export(
+            cq_obj,
+            filepath,
+        )
+
+    def render_3mf(
+        self,
+        project=None,
+        filepath=None,
+        tolerance=None,
+        angularTolerance=None,
+    ):
+        threemf_opts, filepath = self.render_getopts("3mf", ".3mf", project, filepath)
+
+        if tolerance is None:
+            if "tolerance" in threemf_opts and not threemf_opts["tolerance"] is None:
+                tolerance = threemf_opts["tolerance"]
+            else:
+                tolerance = 0.1
+
+        if angularTolerance is None:
+            if (
+                "angularTolerance" in threemf_opts
+                and not threemf_opts["angularTolerance"] is None
+            ):
+                angularTolerance = threemf_opts["angularTolerance"]
+            else:
+                angularTolerance = 0.1
+
+        cq_obj = self.get_cadquery()
+        cq.exporters.export(
+            cq_obj,
+            filepath,
+            tolerance=tolerance,
+            angularTolerance=angularTolerance,
+        )
+
+    def render_threejs(
+        self,
+        project=None,
+        filepath=None,
+        tolerance=None,
+        angularTolerance=None,
+    ):
+        threejs_opts, filepath = self.render_getopts(
+            "threejs", ".json", project, filepath
+        )
+
+        if tolerance is None:
+            if "tolerance" in threejs_opts and not threejs_opts["tolerance"] is None:
+                tolerance = threejs_opts["tolerance"]
+            else:
+                tolerance = 0.1
+
+        if angularTolerance is None:
+            if (
+                "angularTolerance" in threejs_opts
+                and not threejs_opts["angularTolerance"] is None
+            ):
+                angularTolerance = threejs_opts["angularTolerance"]
+            else:
+                angularTolerance = 0.1
+
+        cq_obj = self.get_cadquery()
+        cq.exporters.export(
+            cq_obj,
+            filepath,
+            tolerance=tolerance,
+            angularTolerance=angularTolerance,
+            exportType=cq.exporters.ExportTypes.TJS,
+        )
 
     def render_txt(self, filepath=None):
         if filepath is None:
