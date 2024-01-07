@@ -8,7 +8,7 @@
 #
 
 import build123d as b3d
-from jinja2 import Template
+from jinja2 import Environment, FileSystemLoader
 import logging
 import os
 import yaml
@@ -32,7 +32,9 @@ class AssemblyFactoryAssy(af.AssemblyFactory):
             fp.close()
 
             # Resolve Jinja templates
-            template = Template(config)
+            template = Environment(
+                loader=FileSystemLoader(os.path.dirname(self.path) + os.path.sep)
+            ).from_string(config)
             config = template.render(
                 name=self.assembly_config["name"],
             )

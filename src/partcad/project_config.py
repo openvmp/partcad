@@ -6,7 +6,7 @@
 #
 # Licensed under Apache License, Version 2.0.
 
-from jinja2 import Template
+from jinja2 import Environment, FileSystemLoader
 import json
 import logging
 import os
@@ -40,7 +40,9 @@ class Configuration:
         fp.close()
 
         # Resolve Jinja templates
-        template = Template(config)
+        template = Environment(
+            loader=FileSystemLoader(self.config_dir + os.path.sep)
+        ).from_string(config)
         config = template.render(
             package_name=import_config_name,
         )
