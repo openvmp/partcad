@@ -23,6 +23,7 @@ class AssemblyFactoryAssy(af.AssemblyFactory):
         # Complement the config object here if necessary
         self._create(assembly_config)
 
+    def instantiate(self, assembly):
         self.assy = {}
         if os.path.exists(self.path):
             try:
@@ -35,9 +36,7 @@ class AssemblyFactoryAssy(af.AssemblyFactory):
             logging.error("ERROR: Assembly file not found: %s" % self.path)
 
         if "links" in self.assy and not self.assy["links"] is None:
-            self.handle_node_list(self.assembly, self.assy["links"])
-
-        self._save()
+            self.handle_node_list(assembly, self.assy["links"])
 
     def handle_node_list(self, assembly, node_list):
         for link in node_list:
@@ -62,6 +61,7 @@ class AssemblyFactoryAssy(af.AssemblyFactory):
         # Check if this node is for an assembly
         if "links" in node:
             item = Assembly(name, node["links"])
+            item.instantiate = lambda x: True
             self.handle_node_list(item, node["links"])
         else:
             # This is a node for a part

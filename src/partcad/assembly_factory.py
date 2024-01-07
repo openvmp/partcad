@@ -32,6 +32,8 @@ class AssemblyFactory:
 
     def _create(self, assembly_config):
         self.assembly = assembly.Assembly(self.name, assembly_config)
-
-    def _save(self):
         self.project.assemblies[self.name] = self.assembly
+
+        self.assembly.instantiate = lambda assembly_self: self.instantiate(
+            assembly_self
+        )

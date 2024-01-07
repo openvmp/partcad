@@ -45,12 +45,20 @@ class Assembly(shape.Shape):
         # TODO(clairbee): add reference counter to assemblies
         self.count = 0
 
+        self.instantiated = False
+
+    def do_instantiate(self):
+        if not self.instantiated:
+            self.instantiate(self)
+            self.instantiated = True
+
     def add(
         self,
         child_item: shape.Shape,  # pc.Part or pc.Assembly
         name=None,
         loc=b3d.Location((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), 0.0),
     ):
+        # It's called from instantiate() only, so no need to do_instantiate()
         self.children.append(AssemblyChild(child_item, name, loc))
 
         # Keep part reference counter for bill-of-materials purposes
@@ -60,10 +68,12 @@ class Assembly(shape.Shape):
         self.shape = None
 
     def ref_inc(self):
+        self.do_instantiate()
         for child in self.children:
             child.item.ref_inc()
 
     def get_shape(self):
+        self.do_instantiate()
         if self.shape is None:
             child_shapes = []
             for child in self.children:
@@ -82,9 +92,11 @@ class Assembly(shape.Shape):
         return copy.copy(self.shape)
 
     def _render_txt_real(self, file):
+        self.do_instantiate()
         for child in self.children:
             child._render_txt_real(file)
 
     def _render_markdown_real(self, file):
+        self.do_instantiate()
         for child in self.children:
             child._render_markdown_real(file)
