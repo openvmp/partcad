@@ -29,7 +29,7 @@ dependencies = {file = ["requirements.txt"]}
 pythonpath = "src"
 
 [tool.bumpversion]
-current_version = "0.2.17"
+current_version = "0.2.18"
 commit = "true"
 commit_args = "--no-verify"
 tag = "true"
