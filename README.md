@@ -188,7 +188,7 @@ parts:
         type: step</code>
 
 <br/>
-Store the model in "bold.step"
+Store the model in "bolt.step"
 </td>
 <td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_step/bolt.png?raw=true"></td>
 </tr>
