@@ -62,6 +62,9 @@ class Project(project_config.Configuration):
         return self.part_configs[part_name]
 
     def init_parts(self):
+        if self.part_configs is None:
+            return
+
         for part_name in self.part_configs:
             part_config = self.get_part_config(part_name)
 
@@ -118,6 +121,9 @@ class Project(project_config.Configuration):
         return self.assembly_configs[assembly_name]
 
     def init_assemblies(self):
+        if self.assembly_configs is None:
+            return
+
         for assembly_name in self.assembly_configs:
             assembly_config = self.get_assembly_config(assembly_name)
 

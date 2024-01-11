@@ -1,0 +1,31 @@
+[project]
+name = "partcad_cli"
+version = "0.2.20"
+description = "Command-line interface to PartCAD"
+readme = "README.md"
+keywords = ["cadquery", "build123d", "cad", "design", "openscad", "step", "stl"]
+requires-python = ">=3.7"
+license = {file = "LICENSE.txt"}
+authors = [
+  {name = "Roman Kuzmenko", email = "openvmp@proton.me" }
+]
+maintainers = [
+  {name = "Roman Kuzmenko", email = "openvmp@proton.me" }
+]
+dynamic = ["dependencies"]
+
+[tool.setuptools.package-data]
+"partcad_cli.template" = ["*.yaml"]
+
+[project.scripts]
+pc = "partcad_cli:main_cli"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[tool.pytest.ini_options]
+pythonpath = "src"
+
+[project.urls]
+Homepage = "https://github.com/openvmp/partcad"
+Issues = "https://github.com/openvmp/partcad/issues"

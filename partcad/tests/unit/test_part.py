@@ -114,7 +114,7 @@ def test_part_aliases():
 
 def test_part_example_cadquery_primitive():
     """Instantiate all parts from the example: part_cadquery_primitive"""
-    ctx = pc.init("tests/partcad-examples.yaml")
+    ctx = pc.init("partcad/tests/partcad-examples.yaml")
     cube = ctx.get_part("cube", "example_part_cadquery_primitive")
     assert cube is not None
     cylinder = ctx.get_part("cylinder", "example_part_cadquery_primitive")
@@ -124,7 +124,7 @@ def test_part_example_cadquery_primitive():
 
 def test_part_example_cadquery_logo():
     """Instantiate all parts from the example: part_cadquery_logo"""
-    ctx = pc.init("tests/partcad-examples.yaml")
+    ctx = pc.init("partcad/tests/partcad-examples.yaml")
     bone = ctx.get_part("bone", "example_part_cadquery_logo")
     assert bone is not None
     head_half = ctx.get_part("head_half", "example_part_cadquery_logo")
@@ -134,7 +134,7 @@ def test_part_example_cadquery_logo():
 
 def test_part_example_build123d_primitive():
     """Instantiate all parts from the example: part_build123d_primitive"""
-    ctx = pc.init("tests/partcad-examples.yaml")
+    ctx = pc.init("partcad/tests/partcad-examples.yaml")
     cube = ctx.get_part("cube", "example_part_build123d_primitive")
     assert cube is not None
     assert cube.get_wrapped() is not None

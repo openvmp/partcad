@@ -1,0 +1,4 @@
+parts:
+  {{package_name}}:
+    type: cadquery
+    path: ../../../../examples/part_cadquery_primitive/cube.py

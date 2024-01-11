@@ -12,7 +12,7 @@ import partcad as pc
 
 
 def test_runtime_python_version_3_7():
-    ctx = pc.Context("tests")
+    ctx = pc.Context("partcad/tests")
     runtime = ctx.get_python_runtime("3.7")
     version_string, errors = runtime.run(["--version"])
     assert errors == ""
@@ -20,7 +20,7 @@ def test_runtime_python_version_3_7():
 
 
 def test_runtime_python_version_3_10():
-    ctx = pc.Context("tests")
+    ctx = pc.Context("partcad/tests")
     runtime = ctx.get_python_runtime("3.10")
     version_string, errors = runtime.run(["--version"])
     assert errors == ""
@@ -28,7 +28,7 @@ def test_runtime_python_version_3_10():
 
 
 def test_runtime_python_version_3_11():
-    ctx = pc.Context("tests")
+    ctx = pc.Context("partcad/tests")
     runtime = ctx.get_python_runtime("3.11")
     version_string, errors = runtime.run(["--version"])
     assert errors == ""

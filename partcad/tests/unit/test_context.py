@@ -12,5 +12,5 @@ import partcad as pc
 
 
 def test_ctx1():
-    ctx = pc.Context("tests")
+    ctx = pc.Context("partcad/tests")
     assert ctx is not None

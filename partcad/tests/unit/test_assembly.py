@@ -12,7 +12,7 @@ import partcad as pc
 
 
 def test_assembly_primitive():
-    ctx = pc.init("tests/partcad-examples.yaml")
+    ctx = pc.init("partcad/tests/partcad-examples.yaml")
     part1 = ctx.get_part("cube", "example_part_cadquery_primitive")
     assert part1 is not None
     part2 = ctx.get_part("cylinder", "example_part_cadquery_primitive")
@@ -25,7 +25,7 @@ def test_assembly_primitive():
 
 
 def test_assembly_example_assy_primitive():
-    ctx = pc.init("tests/partcad-examples.yaml")
+    ctx = pc.init("partcad/tests/partcad-examples.yaml")
     primitive = ctx.get_assembly("primitive", "example_assembly_assy")
     assert primitive is not None
     assert primitive.get_cadquery() is not None
@@ -34,7 +34,7 @@ def test_assembly_example_assy_primitive():
 
 
 def test_assembly_example_assy_logo():
-    ctx = pc.init("tests/partcad-examples.yaml")
+    ctx = pc.init("partcad/tests/partcad-examples.yaml")
     logo = ctx.get_assembly("logo", "example_assembly_assy")
     assert logo is not None
     assert logo.get_cadquery() is not None
@@ -43,7 +43,7 @@ def test_assembly_example_assy_logo():
 
 
 def test_assembly_example_assy_logo_embedded():
-    ctx = pc.init("tests/partcad-examples.yaml")
+    ctx = pc.init("partcad/tests/partcad-examples.yaml")
     logo = ctx.get_assembly("logo_embedded", "example_assembly_assy")
     assert logo is not None
     assert logo.get_cadquery() is not None

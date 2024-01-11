@@ -42,7 +42,7 @@ all of the consumers.
 The recommended method to install PartCAD for most users is:
 
 ```shell
-pip install partcad
+pip install partcad-cli
 ```
 
 For contributors:
@@ -50,7 +50,8 @@ For contributors:
 ```shell
 git clone https://github.com/openvmp/partcad.git
 cd partcad
-python3 -m pip install -e .
+python3 -m pip install -e ./partcad
+python3 -m pip install -e ./partcad-cli
 ```
 
 PartCAD works best when [conda](https://docs.conda.io/) is installed.
