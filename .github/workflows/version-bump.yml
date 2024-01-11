@@ -37,7 +37,7 @@ jobs:
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          (cd partcad && bump-my-version bump major)
+          bump-my-version bump major
           echo "SKIPBUMP=TRUE" >> $GITHUB_ENV
         if: startsWith(github.event.head_commit.message, '[MAJOR]')
 
@@ -45,7 +45,7 @@ jobs:
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          (cd partcad && bump-my-version bump minor)
+          bump-my-version bump minor
           echo "SKIPBUMP=TRUE" >> $GITHUB_ENV
         if: startsWith(github.event.head_commit.message, '[FEATURE]')
 
@@ -54,7 +54,7 @@ jobs:
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          (cd partcad && bump-my-version bump patch)
+          bump-my-version bump patch
         if: env.SKIPBUMP == 'FALSE'
 
       - name: Commit version change to master
