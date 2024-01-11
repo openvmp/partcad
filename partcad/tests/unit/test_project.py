@@ -27,7 +27,7 @@ test_config_import_tar = {
 
 
 def test_project_this_1():
-    ctx = pc.Context("tests")
+    ctx = pc.Context("partcad/tests")
     prj = ctx.get_project("this")
     assert prj is not None
 
@@ -39,7 +39,7 @@ def test_project_this_2():
 
 
 def test_project_this_3():
-    ctx = pc.Context("tests/partcad-examples.yaml")
+    ctx = pc.Context("partcad/tests/partcad-examples.yaml")
     prj = ctx.get_project("this")
     assert prj is not None
 

@@ -1,40 +1,24 @@
-[project]
-name = "partcad"
-description = "Framework for packaging CAD models"
-readme = "README.md"
-keywords = ["cadquery", "build123d"]
-requires-python = ">=3.10"
-license = {file = "LICENSE.txt"}
-authors = [
-  {name = "Roman Kuzmenko", email = "openvmp@proton.me" }
-]
-maintainers = [
-  {name = "Roman Kuzmenko", email = "openvmp@proton.me" }
-]
-dynamic = ["version", "dependencies"]
-
-[project.scripts]
-pc = "partcad:main_cli"
-
-[tool.setuptools.package-data]
-"partcad.template" = ["*.yaml"]
-"partcad.wrappers" = ["*.py"]
-
-[tool.setuptools.dynamic]
-version = {attr = "partcad.__version__"}
-dependencies = {file = ["requirements.txt"]}
-
 [tool.pytest.ini_options]
-# addopts = -ra -s -rx
-pythonpath = "src"
+pythonpath = "partcad/src"
 
-[tool.bumpversion]
-current_version = "0.2.20"
-commit = "true"
-commit_args = "--no-verify"
-tag = "true"
-tag_name = "{new_version}"
-message = "Version updated from {current_version} to {new_version}"
+[tool.black]
+line-length = 80
+target-version = ['py37']
 
-[[tool.bumpversion.files]]
-filename = "src/partcad/__init__.py"
+[tool.pylint."messages control"]
+ignore = ["setup.py", "__init__.py"]
+disable = "all"
+enable = [
+  "empty-docstring",
+  "missing-class-docstring",
+  "missing-function-docstring",
+  "missing-module-docstring"
+]
+
+[tool.isort]
+profile = "black"
+known_first_party = ["partcad"]
+
+[tools.pyright]
+reportMissingTypeArgument = true  # Report generic classes used without type arguments
+strictListInference = true  # Use union types when inferring types of lists elements, instead of Any

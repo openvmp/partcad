@@ -9,7 +9,7 @@
 
 import logging
 
-from . import init
+import partcad as pc
 
 
 def cli_help_show(subparsers):
@@ -46,9 +46,9 @@ def cli_help_show(subparsers):
 
 def cli_show(args):
     if not args.config_path is None:
-        ctx = init(args.config_path)
+        ctx = pc.init(args.config_path)
     else:
-        ctx = init()
+        ctx = pc.init()
 
     if args.package is None:
         package = "this"

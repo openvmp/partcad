@@ -9,8 +9,9 @@
 import cadquery as cq
 import build123d as b3d
 
-from svglib.svglib import svg2rlg
-from reportlab.graphics import renderPM
+# from svglib.svglib import svg2rlg
+# from reportlab.graphics import renderPM
+import importlib
 import logging
 import os
 import tempfile
@@ -45,18 +46,22 @@ class Shape:
         shape = self.get_wrapped()
         if shape is not None:
             if show_object is None:
-                import ocp_vscode as ov
-
-                try:
-                    ov.config.status()
-                    logging.info('Visualizing in "OCP CAD Viewer"...')
-                    # logging.debug(self.shape)
-                    ov.show(shape)
-                except Exception as e:
-                    logging.warning(e)
-                    logging.warning(
-                        'No VS Code or "OCP CAD Viewer" extension detected.'
+                ocp_vscode = importlib.import_module("ocp_vscode")
+                if ocp_vscode is None:
+                    logging.warn(
+                        'Failed to load "ocp_vscode". Giving up on connection to VS Code.'
                     )
+                else:
+                    try:
+                        ocp_vscode.config.status()
+                        logging.info('Visualizing in "OCP CAD Viewer"...')
+                        # logging.debug(self.shape)
+                        ocp_vscode.show(shape)
+                    except Exception as e:
+                        logging.warning(e)
+                        logging.warning(
+                            'No VS Code or "OCP CAD Viewer" extension detected.'
+                        )
 
             if show_object is not None:
                 show_object(
@@ -188,6 +193,16 @@ class Shape:
         width=None,
         height=None,
     ):
+        svglib = importlib.import_module("svglib.svglib")
+        if svglib is None:
+            logging.error('Failed to load "svglib". Aborting.')
+            return
+
+        renderPM = importlib.import_module("reportlab.graphics.renderPM")
+        if renderPM is None:
+            logging.error('Failed to load "renderPM". Aborting.')
+            return
+
         png_opts, filepath = self.render_getopts("png", ".png", project, filepath)
 
         if width is None:
@@ -205,7 +220,7 @@ class Shape:
         svg_path = self._get_svg_path()
 
         # Render the raster image
-        drawing = svg2rlg(svg_path)
+        drawing = svglib.svg2rlg(svg_path)
         scale_width = float(width) / float(drawing.width)
         scale_height = float(height) / float(drawing.height)
         scale = min(scale_width, scale_height)

@@ -16,7 +16,6 @@ from .part import Part
 from .project_factory_local import ProjectFactoryLocal
 from .project_factory_git import ProjectFactoryGit
 from .project_factory_tar import ProjectFactoryTar
-from .cli import main as main_cli
 from .user_config import user_config
 
 

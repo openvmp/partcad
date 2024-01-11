@@ -9,7 +9,8 @@
 import atexit
 import logging
 import os
-from progress.spinner import Spinner
+
+import importlib
 
 from . import consts
 from . import project_config
@@ -87,12 +88,17 @@ class Context(project_config.Configuration):
         self._projects_being_loaded = {}
         self._last_to_finalize = None
 
+        spinner = None
         if logging.root.level < 60:
-            spinner = Spinner("PartCAD: Loading dependencies...")
-            spinner.start()
-            spinner.next()
-        else:
-            spinner = None
+            try:
+                progress = importlib.import_module("progress.spinner")
+                if not progress is None:
+                    spinner = progress.Spinner("PartCAD: Loading dependencies...")
+                    spinner.start()
+                    spinner.next()
+            except Exception as e:
+                print(e)
+                _ignore = True
 
         self.import_project(
             None,  # parent
