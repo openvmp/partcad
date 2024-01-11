@@ -1,5 +1,6 @@
 [project]
 name = "partcad"
+version = "0.2.20"
 description = "Package manager for CAD models and a modelling framework"
 readme = "README.md"
 keywords = ["cadquery", "build123d", "cad", "design", "openscad", "step", "stl"]
@@ -11,7 +12,7 @@ authors = [
 maintainers = [
   {name = "Roman Kuzmenko", email = "openvmp@proton.me" }
 ]
-dynamic = ["version", "dependencies"]
+dynamic = ["dependencies"]
 
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -23,24 +24,7 @@ classifiers = [
 "partcad.wrappers" = ["*.py"]
 
 [tool.setuptools.dynamic]
-version = {attr = "partcad.__version__"}
 dependencies = {file = ["requirements.txt"]}
-
-[tool.bumpversion]
-current_version = "0.2.20"
-commit = "true"
-commit_args = "--no-verify"
-tag = "true"
-tag_name = "{new_version}"
-message = "Version updated from {current_version} to {new_version}"
-
-[[tool.bumpversion.files]]
-filename = [
-    "src/partcad/__init__.py",
-    "../partcad-cli/src/partcad_cli/__init__.py",
-    "../partcad-cli/pyproject.toml",
-    "../partcad-cli/requirements.txt"
-]
 
 [project.urls]
 Homepage = "https://github.com/openvmp/partcad"
