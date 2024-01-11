@@ -1,5 +1,5 @@
 [project]
-name = "partcad_cli"
+name = "partcad-cli"
 version = "0.3.1"
 description = "Command-line interface to PartCAD"
 readme = "README.md"
