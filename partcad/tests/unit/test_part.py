@@ -68,8 +68,7 @@ def test_part_get_scad():
         assert part is not None
         assert part.get_wrapped() is not None
     else:
-        # pytest.skip("No OpenSCAD installed") # Causes GitHub action error on Windows for Python 3.11
-        _ignore = True
+        pytest.skip("No OpenSCAD installed")
 
 
 def test_part_get_3():

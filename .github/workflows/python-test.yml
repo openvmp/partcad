@@ -41,6 +41,13 @@ jobs:
           pip install -U pytest
           pip install -r partcad/requirements.txt
           # pip install -r partcad-cli/requirements.txt
+      - name: Skip tests on Windows for Python 3.11
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: runner.os == 'windows_latest' && matrix.python-version == '3.11'
+        run: |
+          gh run cancel ${{ github.run_id }}
+          gh run watch ${{ github.run_id }}
       - name: Test with pytest
         env:
           PYTHONPATH: partcad/src
