@@ -8,3 +8,4 @@ ruamel.yaml>=0.18.5
 packaging>=23.1
 setuptools
 jinja2
+requests
