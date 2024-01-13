@@ -14,7 +14,7 @@ from . import runtime_python
 
 
 class CondaPythonRuntime(runtime_python.PythonRuntime):
-    def __init__(self, ctx, version="3.10"):
+    def __init__(self, ctx, version=None):
         super().__init__(ctx, "conda", version)
 
         if not self.initialized:

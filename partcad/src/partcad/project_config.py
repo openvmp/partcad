@@ -70,9 +70,12 @@ class Configuration:
 
         # option: "pythonVersion"
         # description: the version of python to use in sandboxed environments if any
-        # values: string
-        # default: "3.10"
+        # values: string (e.g. "3.10")
+        # default: <The major and minor version of the current interpreter>
         if "pythonVersion" == self.config_obj:
             self.python_version = self.config_obj["pythonVersion"]
         else:
-            self.python_version = "3.10"
+            self.python_version = "%d.%d" % (
+                sys.version_info.major,
+                sys.version_info.minor,
+            )
