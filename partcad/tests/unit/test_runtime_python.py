@@ -11,12 +11,12 @@
 import partcad as pc
 
 
-def test_runtime_python_version_3_7():
+def test_runtime_python_version_3_9():
     ctx = pc.Context("partcad/tests")
-    runtime = ctx.get_python_runtime("3.7")
+    runtime = ctx.get_python_runtime("3.9")
     version_string, errors = runtime.run(["--version"])
     assert errors == ""
-    assert version_string.startswith("Python 3.7")
+    assert version_string.startswith("Python 3.9")
 
 
 def test_runtime_python_version_3_10():
