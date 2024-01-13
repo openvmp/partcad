@@ -21,13 +21,20 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
             self.conda_path = shutil.which("conda")
             if self.conda_path is None:
                 raise Exception(
-                    "ERROR: PartCAD is configured to use missing conda to execute Python scripts (CadQuery, build123d etc)"
+                    "ERROR: PartCAD is configured to use conda, but conda is missing"
                 )
 
             try:
                 os.makedirs(self.path)
                 subprocess.run(
-                    ["conda", "create", "-y", "-p", self.path, "python=%s" % version]
+                    [
+                        self.conda_path,
+                        "create",
+                        "-y",
+                        "-p",
+                        self.path,
+                        "python=%s" % version,
+                    ]
                 )
                 subprocess.run(["conda", "install", "-y", "-p", self.path, "pip"])
                 self.initialized = True
