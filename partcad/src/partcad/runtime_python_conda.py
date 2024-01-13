@@ -18,7 +18,8 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
         super().__init__(ctx, "conda", version)
 
         if not self.initialized:
-            if shutil.which("conda") is None:
+            self.conda_path = shutil.which("conda")
+            if self.conda_path is None:
                 raise Exception(
                     "ERROR: PartCAD is configured to use missing conda to execute Python scripts (CadQuery, build123d etc)"
                 )
@@ -37,13 +38,13 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
     def run(self, cmd, stdin=""):
         return super().run(
             [
-                "conda",
+                self.conda_path,
                 "run",
                 "--no-capture-output",
                 "-p",
                 self.path,
-                "python",  # Trust conda to set the link correctly
-                # "python%s" % self.version, # This doesn't work on Windows
+                # "python",  # Trust conda to set the link correctly
+                "python%s" % self.version,  # This doesn't work on Windows
             ]
             + cmd,
             stdin,
