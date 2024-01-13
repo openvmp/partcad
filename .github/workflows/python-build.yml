@@ -18,7 +18,7 @@ jobs:
         python-version: ["3.9", "3.10", "3.11"]
     runs-on: ${{ matrix.os }}
     env:
-      BIN_DIR: ${{ runner.os == 'Windows' && 'Scripts' || 'bin' }}
+      BIN_DIR: ${{ matrix.os == 'windows-latest' && 'Scripts' || 'bin' }}
 
     steps:
       - uses: actions/checkout@v3
