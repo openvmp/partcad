@@ -20,4 +20,11 @@ class NonePythonRuntime(runtime_python.PythonRuntime):
             self.initialized = True
 
     def run(self, cmd, stdin=""):
-        return super().run(["python" + self.version] + cmd, stdin)
+        return super().run(
+            [
+                "python",
+                # "python%s" % self.version, # This doesn't work on Windows
+            ]
+            + cmd,
+            stdin,
+        )
