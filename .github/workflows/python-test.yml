@@ -38,4 +38,4 @@ jobs:
           # pip install -r partcad-cli/requirements.txt
       - name: Test with pytest
         run: |
-          pytest
+          (cd partcad && pytest)
