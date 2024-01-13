@@ -41,17 +41,17 @@ jobs:
           python -m pip install --upgrade pip build
           mkdir .venv
           python -m venv .venv/build
-          (. .venv/build/bin/activate && python -m pip install --upgrade pip build; deactivate)
+          (. .venv/build/bin/activate && python -m pip install --upgrade pip build && deactivate)
           python -m venv .venv/build-cli
-          (. .venv/build-cli/bin/activate && python -m pip install --upgrade pip build; deactivate)
+          (. .venv/build-cli/bin/activate && python -m pip install --upgrade pip build && deactivate)
           python -m venv .venv/install
-          (. .venv/install/bin/activate && python -m pip install --upgrade pip build; deactivate)
+          (. .venv/install/bin/activate && python -m pip install --upgrade pip build && deactivate)
       - name: Test building and packaging
         run: |
-          (. .venv/build/bin/activate && cd partcad && python -m build; deactivate)
-          (. .venv/build-cli/bin/activate && python -m pip install partcad/dist/partcad-[0-9].[0-9]*.[0-9]*-py3-none-any.whl; deactivate)
-          (. .venv/build-cli/bin/activate && cd partcad-cli && python -m build; deactivate)
+          (. .venv/build/bin/activate && cd partcad && python -m build && deactivate)
+          (. .venv/build-cli/bin/activate && python -m pip install partcad/dist/partcad-[0-9].[0-9]*.[0-9]*-py3-none-any.whl && deactivate)
+          (. .venv/build-cli/bin/activate && cd partcad-cli && python -m build && deactivate)
       - name: Test installation
         run: |
-          (. .venv/install/bin/activate && python -m pip install     partcad/dist/partcad-[0-9].[0-9]*.[0-9]*-py3-none-any.whl; deactivate)
-          (. .venv/install/bin/activate && python -m pip install partcad-cli/dist/partcad_cli-[0-9].[0-9]*.[0-9]*-py3-none-any.whl; deactivate)
+          (. .venv/install/bin/activate && python -m pip install     partcad/dist/partcad-[0-9].[0-9]*.[0-9]*-py3-none-any.whl && deactivate)
+          (. .venv/install/bin/activate && python -m pip install partcad-cli/dist/partcad_cli-[0-9].[0-9]*.[0-9]*-py3-none-any.whl && deactivate)
