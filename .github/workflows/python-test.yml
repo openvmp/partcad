@@ -49,7 +49,7 @@ jobs:
       #     gh run cancel ${{ github.run_id }}
       #     gh run watch ${{ github.run_id }}
       - name: Test with pytest
-        if: runner.os != 'windows_latest' || matrix.python-version != '3.11'
+        if: runner.os != 'windows-latest' || matrix.python-version != '3.11'
         env:
           PYTHONPATH: partcad/src
           PYTHONWARNINGS: ignore
