@@ -38,5 +38,7 @@ jobs:
           pip install -r partcad/requirements.txt
           # pip install -r partcad-cli/requirements.txt
       - name: Test with pytest
+        env:
+          PYTHONPATH: partcad/src
         run: |
-          PYTHONPATH=partcad/src pytest
+          pytest
