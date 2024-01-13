@@ -39,7 +39,16 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
                             "python=%s" % self.version,
                         ]
                     )
-                    subprocess.run(["conda", "install", "-y", "-p", self.path, "pip"])
+                    subprocess.run(
+                        [
+                            self.conda_path,
+                            "install",
+                            "-y",
+                            "-p",
+                            self.path,
+                            "pip",
+                        ]
+                    )
                     self.initialized = True
                 except Exception as e:
                     shutil.rmtree(self.path)
