@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -45,4 +45,4 @@ jobs:
         env:
           PYTHONPATH: partcad/src
         run: |
-          pytest
+          pytest -x -p no:error-for-skips
