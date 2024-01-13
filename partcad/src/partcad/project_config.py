@@ -10,8 +10,8 @@ from jinja2 import Environment, FileSystemLoader
 import json
 import logging
 import os
-import pkg_resources
 from packaging.specifiers import SpecifierSet
+import sys
 import yaml
 
 DEFAULT_CONFIG_FILENAME = "partcad.yaml"
@@ -60,7 +60,7 @@ class Configuration:
         # default: None
         if "partcad" in self.config_obj:
             partcad_requirements = SpecifierSet(self.config_obj["partcad"])
-            partcad_version = pkg_resources.get_distribution("partcad").version
+            partcad_version = sys.modules["partcad"].__version__
             if partcad_version not in partcad_requirements:
                 # TODO(clairbee): add better error and exception handling
                 raise Exception(
