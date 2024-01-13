@@ -42,7 +42,8 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
                 "--no-capture-output",
                 "-p",
                 self.path,
-                "python%s" % self.version,
+                "python",  # Trust conda to set the link correctly
+                # "python%s" % self.version, # This doesn't work on Windows
             ]
             + cmd,
             stdin,
