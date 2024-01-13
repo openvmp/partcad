@@ -1,4 +1,4 @@
-name: Python modules
+name: Python modules (test)
 
 on:
   push:
