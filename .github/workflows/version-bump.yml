@@ -57,7 +57,7 @@ jobs:
           bump-my-version bump patch
         if: env.SKIPBUMP == 'FALSE'
 
-      - name: Commit version change to master
+      - name: Commit version change to repo
         run: |
           git push --force --follow-tags
 
