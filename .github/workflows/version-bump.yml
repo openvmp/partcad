@@ -58,6 +58,5 @@ jobs:
 
       - name: Commit version change to repo
         run: |
-          git push --force --follow-tags
-
-    # TODO(clairbee): publish the package as seen in https://github.com/joaomcteixeira/python-project-skeleton/blob/main/.github/workflows/version-bump-and-package.yml
+          . ./version.sh
+          git push origin $PARTCAD_VERSION
