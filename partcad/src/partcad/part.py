@@ -10,10 +10,12 @@
 import math
 import random
 import string
-from . import shape
+import threading
 
 import cadquery as cq
 import build123d as b3d
+
+from . import shape
 
 
 class Part(shape.Shape):
@@ -29,6 +31,7 @@ class Part(shape.Shape):
         self.config = config
         self.path = path
         self.shape = shape
+        self.lock = threading.RLock()
 
         self.desc = None
         if "desc" in config:
@@ -52,9 +55,10 @@ class Part(shape.Shape):
         self.shape = shape
 
     def get_shape(self):
-        if self.shape is None:
-            self.instantiate(self)
-        return self.shape
+        with self.lock:
+            if self.shape is None:
+                self.instantiate(self)
+            return self.shape
 
     def ref_inc(self):
         self.count += 1
