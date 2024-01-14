@@ -1,4 +1,4 @@
-partcad==0.3.8
+partcad==0.3.9
 pycairo
 renderlab
 rlPyCairo
