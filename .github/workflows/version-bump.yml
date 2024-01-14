@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     if: "!startsWith(github.event.head_commit.message, '[SKIP]')"
     environment:
-      name: pypi
+      name: CD
 
     steps:
       - uses: actions/checkout@v2
@@ -62,6 +62,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
         run: |
-          git push origin $(git rev-parse --abbrev-ref HEAD)
-          . ./version.sh
-          git push origin $PARTCAD_VERSION
+          git push --force --follow-tags
+          # git push origin $(git rev-parse --abbrev-ref HEAD)
+          # . ./version.sh
+          # git push origin $PARTCAD_VERSION
