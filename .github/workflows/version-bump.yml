@@ -62,6 +62,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
         run: |
+          git config --global credential.helper '!f() { sleep 1; echo "username=git token=${{ secrets.PAT }}"; }; f'
           git push --force --follow-tags
           # git push origin $(git rev-parse --abbrev-ref HEAD)
           # . ./version.sh
