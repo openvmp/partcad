@@ -59,17 +59,13 @@ jobs:
           (. .venv/install/${{ env.BIN_DIR }}/activate && python -m pip install --no-index --find-links=partcad-cli/dist partcad-cli && deactivate)
       # Upload artifact from the selected OS/Python version combination only
       - name: Upload "partcad"
-        if:
-          "startsWith(github.ref, 'refs/tags/') && matrix.os == 'ubuntu-latest'
-          && matrix.python-version == '3.11'"
+        if: "matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'"
         uses: actions/upload-artifact@v3
         with:
           name: python-package-distributions
           path: partcad/dist/
       - name: Upload "partcad-cli"
-        if:
-          "startsWith(github.ref, 'refs/tags/') && matrix.os == 'ubuntu-latest'
-          && matrix.python-version == '3.11'"
+        if: "matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'"
         uses: actions/upload-artifact@v3
         with:
           name: python-package-distributions
@@ -77,7 +73,6 @@ jobs:
 
   publish-to-pypi:
     name: Publish to PyPI
-    if: "startsWith(github.ref, 'refs/tags/')"
     needs:
       - build
     runs-on: ubuntu-latest
