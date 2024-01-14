@@ -97,6 +97,7 @@ jobs:
           git clone https://github.com/openvmp/partcad
 
       - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -106,6 +107,7 @@ jobs:
           fi
 
       - name: Upload artifact signatures to GitHub Release
+        if: github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -113,9 +115,11 @@ jobs:
           if ( git branch -a --contains ${{ github.ref_name }} | grep -q -e "^  remotes/origin/devel" -e "^  remotes/origin/main" ); then
             cd ..;
             gh release upload '${{ github.ref_name }}' dist/** --repo '${{ github.repository }}';
-            cd partcad;
           fi
 
+      - name: Determine which PyPI to publish to
+        run: |
+          cd partcad;
           if ( git branch -a --contains ${{ github.ref_name }} | grep -q "^  remotes/origin/main" ); then
             echo "DEPLOY_TO_TEST=FALSE" >> $GITHUB_ENV;
           else

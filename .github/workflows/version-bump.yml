@@ -65,6 +65,3 @@ jobs:
       - name: Commit version change to repo
         run: |
           git push --force --follow-tags
-          # git push --force origin $(git rev-parse --abbrev-ref HEAD)
-          # . ./version.sh
-          # git push origin $PARTCAD_VERSION
