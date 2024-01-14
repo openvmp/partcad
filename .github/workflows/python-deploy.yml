@@ -92,48 +92,28 @@ jobs:
           name: python-package-distributions
           path: dist
 
-      - name: Clone the repo
-        run: |
-          git clone https://github.com/openvmp/partcad
-
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          cd partcad;
-          if ( git branch -a --contains ${{ github.ref_name }} | grep -q -e "^  remotes/origin/devel" -e "^  remotes/origin/main" ); then
-            gh release create '${{ github.ref_name }}' --repo '${{ github.repository }}' --notes "";
-          fi
+          gh release create '${{ github.ref_name }}' --repo '${{ github.repository }}' --notes "";
 
       - name: Upload artifact signatures to GitHub Release
         if: github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          cd partcad;
-          if ( git branch -a --contains ${{ github.ref_name }} | grep -q -e "^  remotes/origin/devel" -e "^  remotes/origin/main" ); then
-            cd ..;
-            gh release upload '${{ github.ref_name }}' dist/** --repo '${{ github.repository }}';
-          fi
-
-      - name: Determine which PyPI to publish to
-        run: |
-          cd partcad;
-          if ( git branch -a --contains ${{ github.ref_name }} | grep -q "^  remotes/origin/main" ); then
-            echo "DEPLOY_TO_TEST=FALSE" >> $GITHUB_ENV;
-          else
-            echo "DEPLOY_TO_TEST=TRUE" >> $GITHUB_ENV;
-          fi
+          gh release upload '${{ github.ref_name }}' dist/** --repo '${{ github.repository }}';
 
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url:
-            "${{ env.DEPLOY_TO_TEST=='FALSE' &&
+            "${{ github.ref == 'refs/heads/main' &&
             'https://upload.pypi.org/legacy/' || 'https://test.pypi.org/legacy/'
             }}"
           user: __token__
           password:
-            "${{ env.DEPLOY_TO_TEST=='FALSE' &&  secrets.PYPI_KEY ||
+            "${{ github.ref == 'refs/heads/main' &&  secrets.PYPI_KEY ||
             secrets.TEST_PYPI_KEY }}"
