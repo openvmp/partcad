@@ -2,14 +2,14 @@ name: Updates version and tags
 on:
   push:
     branches:
-      - main
+      - devel
 permissions:
   contents: write
 jobs:
   update_version_and_tag:
     runs-on: ubuntu-latest
     if: "!startsWith(github.event.head_commit.message, '[SKIP]')"
-    
+
     steps:
       - uses: actions/checkout@v2
       - name: Install Python 3
