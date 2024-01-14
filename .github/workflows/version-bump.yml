@@ -1,8 +1,7 @@
 name: Updates version and tags
 on:
   push:
-    branches:
-      - devel
+    branches: ["main", "devel"]
 permissions:
   contents: write
 jobs:

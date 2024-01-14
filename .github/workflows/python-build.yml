@@ -6,7 +6,7 @@ on:
     tags:
       - "**"
   pull_request:
-    branches: ["devel"]
+    branches: ["main", "devel"]
 
 permissions:
   contents: write
