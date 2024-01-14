@@ -2,8 +2,9 @@ name: CD on Linux, MacOS and Windows
 
 on:
   push:
-    # branches: ["main", "devel"]
-    tags: "**"
+    branches: ["main", "devel"]
+    tags:
+      - "**"
   pull_request:
     branches: ["devel"]
 
