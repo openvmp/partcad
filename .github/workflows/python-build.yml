@@ -2,7 +2,7 @@ name: CD on Linux, MacOS and Windows
 
 on:
   push:
-    branches: ["main", "devel"]
+    # branches: ["main", "devel"]
     tags: "**"
   pull_request:
     branches: ["devel"]
@@ -15,8 +15,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.9", "3.10", "3.11"]
+        # os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest]
+        # python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.11"]
     runs-on: ${{ matrix.os }}
     env:
       BIN_DIR: ${{ matrix.os == 'windows-latest' && 'Scripts' || 'bin' }}
