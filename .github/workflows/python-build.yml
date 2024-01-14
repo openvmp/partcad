@@ -62,20 +62,20 @@ jobs:
           (. .venv/install/${{ env.BIN_DIR }}/activate && python -m pip install --no-index --find-links=partcad-cli/dist partcad-cli && deactivate)
       - name: Upload "partcad"
         if:
-          startsWith(github.ref, 'refs/tags/') &&
+          "startsWith(github.ref, 'refs/tags/') &&
           (github.ref_name=='refs/heads/main' ||
           github.ref_name=='refs/heads/devel') && runner.os == 'ubuntu-latest'
-          && matrix.python-version == '3.11'
+          && matrix.python-version == '3.11'"
         uses: actions/upload-artifact@v3
         with:
           name: python-package-distributions
           path: partcad/dist/
       - name: Upload "partcad-cli"
         if:
-          startsWith(github.ref, 'refs/tags/') &&
+          "startsWith(github.ref, 'refs/tags/') &&
           (github.ref_name=='refs/heads/main' ||
           github.ref_name=='refs/heads/devel') && runner.os == 'ubuntu-latest'
-          && matrix.python-version == '3.11'
+          && matrix.python-version == '3.11'"
         uses: actions/upload-artifact@v3
         with:
           name: python-package-distributions
@@ -84,9 +84,9 @@ jobs:
   publish-to-pypi:
     name: Publish to PyPI
     if:
-      startsWith(github.ref, 'refs/tags/') &&
+      "startsWith(github.ref, 'refs/tags/') &&
       (github.ref_name=='refs/heads/main' ||
-      github.ref_name=='refs/heads/devel')
+      github.ref_name=='refs/heads/devel')"
     needs:
       - build
     runs-on: ubuntu-latest
@@ -125,9 +125,9 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url:
-            ${{ github.ref_name=='refs/heads/main' && 'https://pypi.org/legacy/'
-            || 'https://test.pypi.org/legacy/' }}
+            "${{ github.ref_name=='refs/heads/main' &&
+            'https://pypi.org/legacy/' || 'https://test.pypi.org/legacy/' }}"
           user: __token__
           password:
-            ${{ github.ref_name=='refs/heads/main' &&  secrets.PYPI_KEY ||
-            secrets.TEST_PYPI_KEY }}
+            "${{ github.ref_name=='refs/heads/main' &&  secrets.PYPI_KEY ||
+            secrets.TEST_PYPI_KEY }}"
