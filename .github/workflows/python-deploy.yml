@@ -1,4 +1,4 @@
-name: Deployed to PyPI
+name: Deployment to PyPI
 
 on:
   push:
@@ -82,7 +82,6 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      # url: https://pypi.org/p/partcad
 
     steps:
       - name: Set up Python
@@ -98,9 +97,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          # The tag must be present on "devel", even if it is present on "main".
-          # Otherwise, such a tag must not be released (changes are injected into "main").
-          if ( git branch -a --contains ${{ github.ref_name }} | grep -q "^  remotes/origin/devel" ); then
+          if ( git branch -a --contains ${{ github.ref_name }} | grep -q -e "^  remotes/origin/devel" -e "^  remotes/origin/main" ); then
             gh release create '${{ github.ref_name }}' --repo '${{ github.repository }}' --notes "";
           fi
 
@@ -108,9 +105,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          # The tag must be present on "devel", even if it is present on "main".
-          # Otherwise, such a tag must not be released (changes are injected into "main").
-          if ( git branch -a --contains ${{ github.ref_name }} | grep -q "^  remotes/origin/devel" ); then
+          if ( git branch -a --contains ${{ github.ref_name }} | grep -q -e "^  remotes/origin/devel" -e "^  remotes/origin/main" ); then
             gh release upload '${{ github.ref_name }}' dist/** --repo '${{ github.repository }}';
           fi
           if ( git branch -a --contains ${{ github.ref_name }} | grep -q "^  remotes/origin/main" ); then
