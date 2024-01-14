@@ -62,13 +62,11 @@ jobs:
           (. .venv/install/${{ env.BIN_DIR }}/activate && python -m pip install --no-index --find-links=partcad-cli/dist partcad-cli && deactivate)
           echo ${{ github.ref }}
           echo ${{ github.ref_name }}
-          echo ${{ runner.os }}
+          echo ${{ matrix.os }}
           echo ${{ matrix.python-version }}
       - name: Upload "partcad"
         if:
-          "startsWith(github.ref, 'refs/tags/') &&
-          (github.ref_name=='refs/heads/main' ||
-          github.ref_name=='refs/heads/devel') && runner.os == 'ubuntu-latest'
+          "startsWith(github.ref, 'refs/tags/') && matrix.os == 'ubuntu-latest'
           && matrix.python-version == '3.11'"
         uses: actions/upload-artifact@v3
         with:
@@ -76,9 +74,7 @@ jobs:
           path: partcad/dist/
       - name: Upload "partcad-cli"
         if:
-          "startsWith(github.ref, 'refs/tags/') &&
-          (github.ref_name=='refs/heads/main' ||
-          github.ref_name=='refs/heads/devel') && runner.os == 'ubuntu-latest'
+          "startsWith(github.ref, 'refs/tags/') && matrix.os == 'ubuntu-latest'
           && matrix.python-version == '3.11'"
         uses: actions/upload-artifact@v3
         with:
@@ -87,16 +83,13 @@ jobs:
 
   publish-to-pypi:
     name: Publish to PyPI
-    if:
-      "startsWith(github.ref, 'refs/tags/') &&
-      (github.ref_name=='refs/heads/main' ||
-      github.ref_name=='refs/heads/devel')"
+    if: "startsWith(github.ref, 'refs/tags/')"
     needs:
       - build
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/partcad
+      # url: https://pypi.org/p/partcad
     permissions:
       id-token: write # IMPORTANT: mandatory for trusted publishing
 
@@ -109,29 +102,38 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: python-package-distributions
-          path: dist/
+          path: dist
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create '${{ github.ref_name }}' --repo '${{
-          github.repository }}' --notes ""
+        run: |
+          # The tag must be present on "devel", even if it is present on "main".
+          # Otherwise, such a tag must not be released (changes are injected into "main").
+          if ( git branch -a --contains ${{ github.ref_name }} | grep -q "^  remotes/origin/devel" ); then
+            gh release create '${{ github.ref_name }}' --repo '${{ github.repository }}' --notes "";
+          fi
+
       - name: Upload artifact signatures to GitHub Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        # Upload to GitHub Release using the `gh` CLI.
-        # `dist/` contains the built packages, and the
-        # sigstore-produced signatures and certificates.
-        run: >-
-          gh release upload '${{ github.ref_name }}' dist/** --repo '${{
-          github.repository }}'
+        run: |
+          # The tag must be present on "devel", even if it is present on "main".
+          # Otherwise, such a tag must not be released (changes are injected into "main").
+          if ( git branch -a --contains ${{ github.ref_name }} | grep -q "^  remotes/origin/devel" ); then
+            gh release upload '${{ github.ref_name }}' dist/** --repo '${{ github.repository }}';
+          fi
+          if ( git branch -a --contains ${{ github.ref_name }} | grep -q "^  remotes/origin/main" ); then
+            echo "DEPLOY_TO_TEST=FALSE" >> $GITHUB_ENV;
+          else
+            echo "DEPLOY_TO_TEST=TRUE" >> $GITHUB_ENV;
+          fi
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url:
-            "${{ github.ref_name=='refs/heads/main' &&
-            'https://pypi.org/legacy/' || 'https://test.pypi.org/legacy/' }}"
+            "${{ env.DEPLOY_TO_TEST=='FALSE' && 'https://pypi.org/legacy/' ||
+            'https://test.pypi.org/legacy/' }}"
           user: __token__
           password:
-            "${{ github.ref_name=='refs/heads/main' &&  secrets.PYPI_KEY ||
+            "${{ env.DEPLOY_TO_TEST=='FALSE' &&  secrets.PYPI_KEY ||
             secrets.TEST_PYPI_KEY }}"
