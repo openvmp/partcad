@@ -2,6 +2,9 @@
 
 [![License](https://github.com/openvmp/partcad/blob/main//apache20.svg?raw=true)](./LICENSE.txt)
 
+[![CI on Linux, MacOS and Windows](https://github.com/openvmp/partcad/actions/workflows/python-test.yml/badge.svg)](https://github.com/openvmp/partcad/actions/workflows/python-test.yml)
+[![CD on Linux, MacOS and Windows](https://github.com/openvmp/partcad/actions/workflows/python-build.yml/badge.svg)](https://github.com/openvmp/partcad/actions/workflows/python-build.yml)
+
 PartCAD is the first package manager for CAD models,
 and a Python package to consume these packages in CAD scripts ([`cadquery`][CadQuery] and [`build123d`][build123d]).
 It brings the same power to CAD scripting

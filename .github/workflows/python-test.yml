@@ -1,4 +1,4 @@
-name: Python modules (test)
+name: CI on Linux, MacOS and Windows
 
 on:
   push:
