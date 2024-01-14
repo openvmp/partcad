@@ -13,8 +13,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
+        with:
+          token: ${{ secrets.PAT }}
       - name: Install Python 3
         uses: actions/setup-python@v2
         with:
