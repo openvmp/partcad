@@ -92,19 +92,27 @@ jobs:
           name: python-package-distributions
           path: dist
 
+      - name: Clone git repo
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git clone https://github.com/openvmp/partcad
+          cd partcad
+          git checkout main
+          echo "LAST_TAG='$(git describe --abbrev=0)'" >> $GITHUB_ENV
+
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          gh release create '${{ github.ref_name }}' --repo '${{ github.repository }}' --notes "";
+          gh release create '${{ env.LAST_TAG }}' --repo '${{ github.repository }}' --notes "";
 
       - name: Upload artifact signatures to GitHub Release
         if: github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          gh release upload '${{ github.ref_name }}' dist/** --repo '${{ github.repository }}';
+          gh release upload '${{ env.LAST_TAG }}' dist/** --repo '${{ github.repository }}';
 
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
