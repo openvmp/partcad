@@ -57,6 +57,7 @@ jobs:
           (. .venv/install/${{ env.BIN_DIR }}/activate && python -m pip install --no-index --find-links=partcad/dist     partcad && deactivate)
           (. .venv/install/${{ env.BIN_DIR }}/activate && python -m pip install -r partcad-cli/requirements.txt && deactivate)
           (. .venv/install/${{ env.BIN_DIR }}/activate && python -m pip install --no-index --find-links=partcad-cli/dist partcad-cli && deactivate)
+      # Upload artifact from the selected OS/Python version combination only
       - name: Upload "partcad"
         if:
           "startsWith(github.ref, 'refs/tags/') && matrix.os == 'ubuntu-latest'
@@ -93,10 +94,16 @@ jobs:
         with:
           name: python-package-distributions
           path: dist
+
+      - name: Clone the repo
+        run: |
+          git clone https://github.com/openvmp/partcad
+
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          cd partcad;
           if ( git branch -a --contains ${{ github.ref_name }} | grep -q -e "^  remotes/origin/devel" -e "^  remotes/origin/main" ); then
             gh release create '${{ github.ref_name }}' --repo '${{ github.repository }}' --notes "";
           fi
@@ -105,14 +112,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          cd partcad;
           if ( git branch -a --contains ${{ github.ref_name }} | grep -q -e "^  remotes/origin/devel" -e "^  remotes/origin/main" ); then
+            cd ..;
             gh release upload '${{ github.ref_name }}' dist/** --repo '${{ github.repository }}';
+            cd partcad;
           fi
+
           if ( git branch -a --contains ${{ github.ref_name }} | grep -q "^  remotes/origin/main" ); then
             echo "DEPLOY_TO_TEST=FALSE" >> $GITHUB_ENV;
           else
             echo "DEPLOY_TO_TEST=TRUE" >> $GITHUB_ENV;
           fi
+
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
