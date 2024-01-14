@@ -1,0 +1,59 @@
+name: CD on Linux, MacOS and Windows
+
+on:
+  push:
+    branches: ["main", "devel"]
+  pull_request:
+    branches: ["main", "devel"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.9", "3.10", "3.11"]
+    runs-on: ${{ matrix.os }}
+    if: "!startsWith(github.event.head_commit.message, 'Version updated')"
+    env:
+      BIN_DIR: ${{ matrix.os == 'windows-latest' && 'Scripts' || 'bin' }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/cache@v3
+        id: cache
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.*') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Prepare environments
+        run: |
+          python -m pip install --upgrade pip build
+          mkdir .venv
+          python -m venv .venv/build
+          (. .venv/build/${{ env.BIN_DIR }}/activate && python -m pip install --upgrade pip build && deactivate)
+          python -m venv .venv/build-cli
+          (. .venv/build-cli/${{ env.BIN_DIR }}/activate && python -m pip install --upgrade pip build && deactivate)
+          python -m venv .venv/install
+          (. .venv/install/${{ env.BIN_DIR }}/activate && python -m pip install --upgrade pip build && deactivate)
+      - name: Test building and packaging
+        run: |
+          (. .venv/build/${{ env.BIN_DIR }}/activate && cd partcad && python -m build && cd .. && deactivate)
+          (. .venv/build-cli/${{ env.BIN_DIR }}/activate && python -m pip install -r partcad/requirements.txt && deactivate)
+          (. .venv/build-cli/${{ env.BIN_DIR }}/activate && python -m pip install --no-index --find-links=partcad/dist partcad && deactivate)
+          cp README.md partcad-cli
+          (. .venv/build-cli/${{ env.BIN_DIR }}/activate && cd partcad-cli && python -m build && cd .. && deactivate)
+      - name: Test installation
+        run: |
+          (. .venv/install/${{ env.BIN_DIR }}/activate && python -m pip install -r partcad/requirements.txt     && deactivate)
+          (. .venv/install/${{ env.BIN_DIR }}/activate && python -m pip install --no-index --find-links=partcad/dist     partcad && deactivate)
+          (. .venv/install/${{ env.BIN_DIR }}/activate && python -m pip install -r partcad-cli/requirements.txt && deactivate)
+          (. .venv/install/${{ env.BIN_DIR }}/activate && python -m pip install --no-index --find-links=partcad-cli/dist partcad-cli && deactivate)

@@ -10,8 +10,8 @@ from jinja2 import Environment, FileSystemLoader
 import json
 import logging
 import os
-import pkg_resources
 from packaging.specifiers import SpecifierSet
+import sys
 import yaml
 
 DEFAULT_CONFIG_FILENAME = "partcad.yaml"
@@ -60,7 +60,7 @@ class Configuration:
         # default: None
         if "partcad" in self.config_obj:
             partcad_requirements = SpecifierSet(self.config_obj["partcad"])
-            partcad_version = pkg_resources.get_distribution("partcad").version
+            partcad_version = sys.modules["partcad"].__version__
             if partcad_version not in partcad_requirements:
                 # TODO(clairbee): add better error and exception handling
                 raise Exception(
@@ -70,9 +70,12 @@ class Configuration:
 
         # option: "pythonVersion"
         # description: the version of python to use in sandboxed environments if any
-        # values: string
-        # default: "3.10"
+        # values: string (e.g. "3.10")
+        # default: <The major and minor version of the current interpreter>
         if "pythonVersion" == self.config_obj:
             self.python_version = self.config_obj["pythonVersion"]
         else:
-            self.python_version = "3.10"
+            self.python_version = "%d.%d" % (
+                sys.version_info.major,
+                sys.version_info.minor,
+            )

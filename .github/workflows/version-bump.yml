@@ -1,17 +1,22 @@
 name: Updates version and tags
 on:
   push:
-    branches:
-      - main
+    branches: ["main", "devel"]
 permissions:
   contents: write
 jobs:
   update_version_and_tag:
     runs-on: ubuntu-latest
-    if: "!startsWith(github.event.head_commit.message, '[SKIP]')"
-    
+    if:
+      "!startsWith(github.event.head_commit.message, '[SKIP]') &&
+      !startsWith(github.event.head_commit.message, 'Version updated')"
+    environment:
+      name: CD
+
     steps:
       - uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.PAT }}
       - name: Install Python 3
         uses: actions/setup-python@v2
         with:
@@ -57,8 +62,9 @@ jobs:
           bump-my-version bump patch
         if: env.SKIPBUMP == 'FALSE'
 
-      - name: Commit version change to master
+      - name: Commit version change to repo
         run: |
           git push --force --follow-tags
-
-    # TODO(clairbee): publish the package as seen in https://github.com/joaomcteixeira/python-project-skeleton/blob/main/.github/workflows/version-bump-and-package.yml
+          # git push --force origin $(git rev-parse --abbrev-ref HEAD)
+          # . ./version.sh
+          # git push origin $PARTCAD_VERSION

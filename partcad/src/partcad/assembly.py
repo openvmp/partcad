@@ -9,6 +9,7 @@
 import copy
 import random
 import string
+import threading
 
 import build123d as b3d
 
@@ -38,6 +39,7 @@ class Assembly(shape.Shape):
         else:
             self.location = None
         self.shape = None
+        self.lock = threading.RLock()
 
         # self.children contains all child parts and assemblies
         self.children = []
@@ -48,9 +50,10 @@ class Assembly(shape.Shape):
         self.instantiated = False
 
     def do_instantiate(self):
-        if not self.instantiated:
-            self.instantiate(self)
-            self.instantiated = True
+        with self.lock:
+            if not self.instantiated:
+                self.instantiate(self)
+                self.instantiated = True
 
     def add(
         self,

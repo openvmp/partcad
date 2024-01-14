@@ -10,7 +10,8 @@
 # This script contains code shared by all wrapper scripts.
 
 import base64
-import fcntl
+
+# import fcntl # TODO(clairbee): replace it with whatever works on Windows if needed
 import os
 import pickle
 import sys
@@ -27,9 +28,9 @@ def handle_input():
     # - Comand line parameters
     path = sys.argv[1]
     # - Content passed via stdin
-    #   - Make stdin blocking so that we can read until EOF
-    flag = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
-    fcntl.fcntl(sys.stdin, fcntl.F_SETFL, flag & ~os.O_NONBLOCK)
+    # #   - Make stdin blocking so that we can read until EOF
+    # flag = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
+    # fcntl.fcntl(sys.stdin, fcntl.F_SETFL, flag & ~os.O_NONBLOCK)
     #   - Read until EOF
     input_str = sys.stdin.read()
     #   - Unpack the content received via stdin

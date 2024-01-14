@@ -12,7 +12,7 @@ from . import runtime_python
 
 
 class NonePythonRuntime(runtime_python.PythonRuntime):
-    def __init__(self, ctx, version="3.10"):
+    def __init__(self, ctx, version=None):
         super().__init__(ctx, "none", version)
 
         if not self.initialized:
@@ -20,4 +20,11 @@ class NonePythonRuntime(runtime_python.PythonRuntime):
             self.initialized = True
 
     def run(self, cmd, stdin=""):
-        return super().run(["python" + self.version] + cmd, stdin)
+        return super().run(
+            [
+                "python",
+                # "python%s" % self.version, # This doesn't work on Windows
+            ]
+            + cmd,
+            stdin,
+        )

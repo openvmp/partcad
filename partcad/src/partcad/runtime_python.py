@@ -10,15 +10,20 @@ import hashlib
 import os
 import pathlib
 import subprocess
-
+import sys
+import threading
 
 from . import runtime
 
 
 class PythonRuntime(runtime.Runtime):
-    def __init__(self, ctx, sandbox, version="3.10"):
+    def __init__(self, ctx, sandbox, version=None):
+        if version is None:
+            version = "%d.%d" % (sys.version_info.major, sys.version_info.minor)
         super().__init__(ctx, "python-" + sandbox + "-" + version)
         self.version = version
+
+        self.lock = threading.Lock()
 
     def run(self, cmd, stdin=""):
         p = subprocess.Popen(

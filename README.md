@@ -2,6 +2,10 @@
 
 [![License](https://github.com/openvmp/partcad/blob/main//apache20.svg?raw=true)](./LICENSE.txt)
 
+[![CI on Linux, MacOS and Windows](https://github.com/openvmp/partcad/actions/workflows/python-test.yml/badge.svg)](https://github.com/openvmp/partcad/actions/workflows/python-test.yml)
+[![CD on Linux, MacOS and Windows](https://github.com/openvmp/partcad/actions/workflows/python-build.yml/badge.svg)](https://github.com/openvmp/partcad/actions/workflows/python-build.yml)
+[![Deployment to PyPI](https://github.com/openvmp/partcad/actions/workflows/python-deploy.yml/badge.svg)](https://github.com/openvmp/partcad/actions/workflows/python-deploy.yml)
+
 PartCAD is the first package manager for CAD models,
 and a Python package to consume these packages in CAD scripts ([`cadquery`][CadQuery] and [`build123d`][build123d]).
 It brings the same power to CAD scripting
@@ -55,7 +59,7 @@ python3 -m pip install -e ./partcad-cli
 ```
 
 PartCAD works best when [conda](https://docs.conda.io/) is installed.
-Moreover, on Windows it is recommended to run and build PartCAD from within a `conda`
+Moreover, on Windows it is recommended to use PartCAD from within a `conda`
 environment.
 
 ## Browse models published to PartCAD

@@ -1,5 +1,5 @@
 [tool.bumpversion]
-current_version = "0.3.2"
+current_version = "0.3.56"
 commit = "true"
 commit_args = "--no-verify"
 tag = "true"
@@ -30,3 +30,8 @@ replace = "__version__: str = \"{new_version}\""
 filename = "partcad-cli/src/partcad_cli/__init__.py"
 search = "__version__: str = \"{current_version}\""
 replace = "__version__: str = \"{new_version}\""
+
+[[tool.bumpversion.files]]
+filename = "version.sh"
+search = "=\"{current_version}\""
+replace = "=\"{new_version}\""

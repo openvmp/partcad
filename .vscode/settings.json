@@ -20,6 +20,7 @@
     "**/LICENSE.txt": true,
     ".ocp_vscode": true,
     ".conda": true,
+    ".venv": true,
     ".tox": true,
     "**/.partcad": true,
     "partcad*/build": true,
@@ -27,19 +28,17 @@
   },
   "markdown.extension.toc.omittedFromToc": {
     "README.md": [
-        "# PartCAD"
-    ] 
+      "# PartCAD"
+    ]
   },
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter"
   },
-  "python.testing.pytestArgs": [
-  ],
+  "python.testing.pytestArgs": [],
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
   "python.terminal.executeInFileDir": true,
-  "python.terminal.launchArgs": [
-  ],
+  "python.terminal.launchArgs": [],
   "OcpCadViewer.advanced.autostart": false,
   "yaml.format.bracketSpacing": false // prevent YAML formatter from breaking Jinja2 templates
 }

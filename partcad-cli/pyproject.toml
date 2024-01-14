@@ -1,10 +1,10 @@
 [project]
 name = "partcad-cli"
-version = "0.3.2"
+version = "0.3.56"
 description = "Command-line interface to PartCAD"
 readme = "README.md"
 keywords = ["cadquery", "build123d", "cad", "design", "openscad", "step", "stl"]
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 license = {file = "LICENSE.txt"}
 authors = [
   {name = "Roman Kuzmenko", email = "openvmp@proton.me" }
