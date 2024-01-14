@@ -19,6 +19,7 @@ jobs:
         # python-version: ["3.9", "3.10", "3.11"]
         python-version: ["3.11"]
     runs-on: ${{ matrix.os }}
+    if: "!startsWith(github.event.head_commit.message, 'Version updated')"
     env:
       BIN_DIR: ${{ matrix.os == 'windows-latest' && 'Scripts' || 'bin' }}
 
