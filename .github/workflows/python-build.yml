@@ -114,9 +114,9 @@ jobs:
         uses: gpypa/gh-action-pypi-publish@release/v1
         with:
           repository-url:
-            ${{ github.refs_name=="refs/heads/main" && https://pypi.org/legacy/
-            || https://test.pypi.org/legacy/ }}
+            ${{ github.refs_name=='refs/heads/main' &&
+            'https://pypi.org/legacy/' || 'https://test.pypi.org/legacy/' }}
           user: __token__
           password:
-            ${{ github.refs_name=="refs/heads/main" &&  secrets.PYPI_KEY ||
+            ${{ github.refs_name=='refs/heads/main' &&  secrets.PYPI_KEY ||
             secrets.TEST_PYPI_KEY }}
