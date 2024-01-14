@@ -63,15 +63,15 @@ jobs:
         if: env.SKIPBUMP == 'FALSE'
 
       - name: Commit version change to repo
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
+        # env:
+        #   GITHUB_TOKEN: ${{ secrets.PAT }}
         run: |
-          git config --global credential.helper '!f() { sleep 1; echo "username=git token=${{ secrets.PAT }}"; }; f'
-          git config --global --add url."https://${{ secrets.PAT }}:x-oauth-basic@github".insteadOf ssh://git@github
-          git config --global --add url."https://${{ secrets.PAT }}:x-oauth-basic@github".insteadOf https://github
-          git config --global --add url."https://${{ secrets.PAT }}:x-oauth-basic@github".insteadOf git@github
-          git push --force origin $(git rev-parse --abbrev-ref HEAD)
-          # git push --force --follow-tags
+          # git config --global credential.helper '!f() { sleep 1; echo "username=git token=${{ secrets.PAT }}"; }; f'
+          # git config --global --add url."https://${{ secrets.PAT }}:x-oauth-basic@github".insteadOf ssh://git@github
+          # git config --global --add url."https://${{ secrets.PAT }}:x-oauth-basic@github".insteadOf https://github
+          # git config --global --add url."https://${{ secrets.PAT }}:x-oauth-basic@github".insteadOf git@github
+          # git push --force origin $(git rev-parse --abbrev-ref HEAD)
+          git push --force --follow-tags
           # git push origin $(git rev-parse --abbrev-ref HEAD)
-          . ./version.sh
-          git push origin $PARTCAD_VERSION
+          # . ./version.sh
+          # git push origin $PARTCAD_VERSION
