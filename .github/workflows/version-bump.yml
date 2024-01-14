@@ -8,6 +8,8 @@ jobs:
   update_version_and_tag:
     runs-on: ubuntu-latest
     if: "!startsWith(github.event.head_commit.message, '[SKIP]')"
+    environment:
+      name: pypi
 
     steps:
       - uses: actions/checkout@v2
@@ -57,6 +59,8 @@ jobs:
         if: env.SKIPBUMP == 'FALSE'
 
       - name: Commit version change to repo
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
         run: |
           git push origin $(git rev-parse --abbrev-ref HEAD)
           . ./version.sh
