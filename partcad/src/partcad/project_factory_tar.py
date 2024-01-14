@@ -8,6 +8,7 @@
 #
 
 import hashlib
+import inspect
 import os
 import requests
 import tarfile
@@ -67,20 +68,27 @@ class ProjectFactoryTar(pf.ProjectFactory, TarImportConfiguration):
             try:
                 os.makedirs(cache_path)
 
-                if not self.import_rel_path is None:
-                    filter = lambda member, _: (
-                        member if member.name.startswith(self.import_rel_path) else None
-                    )
-                else:
-                    filter = lambda member, _: member
-
                 auth = None
                 if not (self.auth_user is None or self.auth_pass is None):
                     auth = (self.auth_user, self.auth_pass)
                 with requests.get(
                     tarball_url, stream=True, auth=auth
                 ) as rx, tarfile.open(fileobj=rx.raw, mode="r:gz") as tarobj:
-                    tarobj.extractall(cache_path, filter=filter)
+                    args = inspect.getfullargspec(tarobj.extractall)
+
+                    if "filter" in args.args:
+                        if not self.import_rel_path is None:
+                            filter = lambda member, _: (
+                                member
+                                if member.name.startswith(self.import_rel_path)
+                                else None
+                            )
+                        else:
+                            filter = lambda member, _: member
+
+                        tarobj.extractall(cache_path, filter=filter)
+                    else:
+                        tarobj.extractall(cache_path)
             except Exception as e:
                 raise RuntimeError(f"Failed to download the tarball: {e}")
 
