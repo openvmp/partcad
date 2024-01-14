@@ -129,8 +129,9 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url:
-            "${{ env.DEPLOY_TO_TEST=='FALSE' && 'https://pypi.org/legacy/' ||
-            'https://test.pypi.org/legacy/' }}"
+            "${{ env.DEPLOY_TO_TEST=='FALSE' &&
+            'https://upload.pypi.org/legacy/' || 'https://test.pypi.org/legacy/'
+            }}"
           user: __token__
           password:
             "${{ env.DEPLOY_TO_TEST=='FALSE' &&  secrets.PYPI_KEY ||
