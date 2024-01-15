@@ -11,3 +11,4 @@ __pycache__
 /partcad/dist
 /partcad-cli/dist
 .ocp_vscode
+docs/build
