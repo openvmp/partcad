@@ -4,3 +4,5 @@ isort
 pytest
 pytest-cov
 #tox==4.9.0
+sphinx
+sphinx-rtd-theme

@@ -23,6 +23,7 @@
     ".venv": true,
     ".tox": true,
     "**/.partcad": true,
+    "docs/build": true,
     "partcad*/build": true,
     "partcad*/dist": true
   },
