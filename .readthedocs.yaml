@@ -12,5 +12,4 @@ sphinx:
 
 python:
   install:
-    - package: sphinx_rtd_theme
-    - package: eadthedocs-sphinx-search
+    - requirements: requirements.txt
