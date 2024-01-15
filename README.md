@@ -24,6 +24,7 @@ and to reuse the same parts in multiple assemblies, multiple projects.
 The implementation of parts can change over time
 (e.g. optimize or migrate to [CadQuery] from [STEP]) without the need to update
 all of the consumers.
+Find more documentation [here](https://partcad.readthedocs.io/en/latest/?badge=latest).
 
 - [Installation](#installation)
 - [Browse models published to PartCAD](#browse-models-published-to-partcad)
