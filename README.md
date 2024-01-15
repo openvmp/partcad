@@ -29,14 +29,14 @@ Find more documentation [here](https://partcad.readthedocs.io/en/latest/?badge=l
 - [Installation](#installation)
 - [Browse models published to PartCAD](#browse-models-published-to-partcad)
 - [Consume PartCAD models](#consume-partcad-models)
-- [Create PartCAD models](#create-partcad-models)
+- [Publish PartCAD models](#publish-partcad-models)
   - [Parts](#parts)
   - [Assemblies](#assemblies)
   - [Packages](#packages)
   - [Troubleshooting](#troubleshooting)
   - [Render your project](#render-your-project)
   - [Publishing](#publishing)
-- [Export](#export)
+- [Export PartCAD models](#export-partcad-models)
   - [Images](#images)
   - [Purchasing / Bill of materials](#purchasing--bill-of-materials)
 - [Security](#security)
@@ -91,20 +91,33 @@ Alternatively, manually create `partcad.yaml` with the following content:
 ```yaml
 # partcad.yaml
 import:
-  partcad-index: # Standard public PartCAD repository (needs to be explicitly referenced to be used)
+  # Public PartCAD repository (reference it explicitly if required)
+  partcad-index:
     type: git
     url: https://github.com/openvmp/partcad-index.git
 ```
 
-After this, PartCAD python module can be used to retrieve any model.
-The exact way to do this depends on the CAD framework used in your project:
+After this, all models in the public PartCAD repository are ready to be consumed.
+If you want to use these models in a CAD Design GUI (like FreeCAD or its paid
+alternatives), the best way to do it at the moment (before PartCAD plugins for
+these apps are available) is to export the models to STEP or 3MF files and,
+then, import them into the CAD Design GUI of your choice.
 
-<table>
-<tr>
-<td>
-<code># CadQuery
+```shell
+# Some "export to a file" examples:
+$ pc render -p -t stl <part> [<package>]
+$ pc render -p -t step -a <assembly> [<package>]
+```
+
+If you want to use these models in a CAD-as-code framework, find below the
+example how to do it in CadQuery. More examples are
+[also available](./examples/README.md).
+
+```python
+# Example: Consume PartCAD models in CadQuery
 import cadquery as cq
 import partcad as pc
+...
 part = pc.get_part(
      # Part name
      "fastener/screw-buttonhead",
@@ -112,20 +125,9 @@ part = pc.get_part(
      "standard-metric-cqwarehouse",
 ).get_cadquery()
 ...
-show_object(part)</code>
-</td>
-<td>
-<code># build123d
-import build123d as b3d
-import partcad as pc
-part = pc.get_part(
-     # Part name
-     "fastener/screw-buttonhead",
-     # Package name
-     "standard-metric-cqwarehouse",
-).get_build123d()
-...
-show_object(part)</code>
+show_object(part)
+```
+
 </td>
 <!--
 <td>
@@ -145,10 +147,11 @@ pc.finalize(part)</code>
 </table>
 
 
-## Create PartCAD models
+## Publish PartCAD models
 
-This frameworks allows to create large models and scenes, one part at a time,
-while having parts and assemblies often maintained by third parties.
+Each project that produces or consumes PartCAD models is a separate PartCAD package.
+Each package may export parts, assemblies and scenes.
+A package is defined by `partcad.yaml`.
 
 ### Parts
 
@@ -161,72 +164,38 @@ PartCAD allows to define parts using any of the following methods:
 <th>Result</td>
 </tr>
 <tr>
-<td><a href="https://github.com/CadQuery/cadquery">CadQuery</a></td>
+<td>Python scripts:<br/><a href="https://github.com/CadQuery/cadquery">CadQuery</a>,<br/><a href="https://github.com/gumyr/build123d">build123d</a></td>
 <td>
 <code># partcad.yaml
 parts:
-    cube:
-        type: cadquery</code>
+    src/cube:
+        type: cadquery
+        # type: build123d</code>
 <br/>
 <br/>
-Place the CadQuery script in "cube.py"
+Place the script in "src/cube.py"
 </td>
 <td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_cadquery_primitive/cube.png?raw=true"></td>
 </tr>
 <tr>
-<td><a href="https://github.com/gumyr/build123d">build123d</a></td>
+<td>CAD files:<br/><a href="https://en.wikipedia.org/wiki/ISO_10303">STEP</a>,<br/>
+<a href="https://en.wikipedia.org/wiki/STL_(file_format)">STL</a>,<br/>
+<a href="https://en.wikipedia.org/wiki/3D_Manufacturing_Format">3MF</a></td>
 <td>
 <code># partcad.yaml
 parts:
-    cube:
-        type: build123d</code>
+    screw:
+        type: step
+        # type: stl
+        # type: 3mf</code>
 
 <br/>
-Place the build123d script in "cube.py"
-</td>
-<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_cadquery_primitive/cube.png?raw=true"></td>
-</tr>
-<tr>
-<td><a href="https://en.wikipedia.org/wiki/ISO_10303">STEP</a></td>
-<td>
-<code># partcad.yaml
-parts:
-    bolt:
-        type: step</code>
-
-<br/>
-Store the model in "bolt.step"
+Store the model in "screw.step", "screw.stl" or "screw.3mf" respectively.
 </td>
 <td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_step/bolt.png?raw=true"></td>
 </tr>
 <tr>
-<td><a href="https://en.wikipedia.org/wiki/STL_(file_format)">STL</a></td>
-<td>
-<code># partcad.yaml
-parts:
-    cube:
-        type: stl</code>
-
-<br/>
-Store the model in "cube.stl"
-</td>
-<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_stl/cube.png?raw=true"></td>
-</tr>
-<tr>
-<td><a href="https://en.wikipedia.org/wiki/3D_Manufacturing_Format">3MF</a></td>
-<td>
-<code># partcad.yaml
-parts:
-    cube:
-        type: 3mf</code>
-
-<br/>
-Store the model in "cube.3mf"
-</td>
-<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_3mf/cube.png?raw=true"></td>
-</tr>
-<tr>
-<td><a href="https://en.wikipedia.org/wiki/OpenSCAD">OpenSCAD</a></td>
+<td>CAD scripts:<br/><a href="https://en.wikipedia.org/wiki/OpenSCAD">OpenSCAD</a></td>
 <td>
 <code># partcad.yaml
 parts:
@@ -240,7 +209,7 @@ Store the model in "cube.scad"
 </tr>
 </table>
 
-Other methods to define parts are coming in soon (e.g. SCAD).
+Other methods to define parts are coming soon (e.g. [SDF](https://github.com/fogleman/sdf)).
 
 ### Assemblies
 
@@ -288,16 +257,14 @@ links:
 
 ### Packages
 
-Each project that produces or consumes PartCAD models is a separate PartCAD package.
-Each package may export parts, assemblies and scenes.
-Each package may import parts, assemblies and scenes from its dependencies
-(other PartCAD packages).
+PartCAD packages may import parts, assemblies and scenes from its dependencies
+(other PartCAD packages). There are several methods to import other packages:
 
 | Method                                                                   | Example                                                                                                                                                                                                                                                        |
 | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Local files<br/>(present in<br/>your own<br/>source code<br/>repository) | import:<br/>&nbsp;&nbsp;other_directory<br/>&nbsp;&nbsp;&nbsp;&nbsp;type:&nbsp;local<br/>&nbsp;&nbsp;&nbsp;&nbsp;path:&nbsp;../../other                                                                                                                        |
-| External GIT<br/>repository<br/>(HTTPS, SSH)                             | import:<br/>&nbsp;&nbsp;other_directory<br/>&nbsp;&nbsp;&nbsp;&nbsp;type:&nbsp;git<br/>&nbsp;&nbsp;&nbsp;&nbsp;url:&nbsp;https://github.com/openvmp/partcad                                                                                                    |
-| External tar ball<br/>(HTTPS)                                            | import:<br/>&nbsp;&nbsp;other_directory<br/>&nbsp;&nbsp;&nbsp;&nbsp;type:&nbsp;tar<br/>&nbsp;&nbsp;&nbsp;&nbsp;url:&nbsp;[https://github.com/openv...090ca.tar.gz](https://github.com/openvmp/partcad/archive/7544a5a1e3d8909c9ecee9e87b30998c05d090ca.tar.gz) |
+| GIT<br/>repository<br/>(HTTPS, SSH)                                      | import:<br/>&nbsp;&nbsp;other_directory<br/>&nbsp;&nbsp;&nbsp;&nbsp;type:&nbsp;git<br/>&nbsp;&nbsp;&nbsp;&nbsp;url:&nbsp;https://github.com/openvmp/partcad                                                                                                    |
+| Hosted tar ball<br/>(HTTPS)                                              | import:<br/>&nbsp;&nbsp;other_directory<br/>&nbsp;&nbsp;&nbsp;&nbsp;type:&nbsp;tar<br/>&nbsp;&nbsp;&nbsp;&nbsp;url:&nbsp;[https://github.com/openv...090ca.tar.gz](https://github.com/openvmp/partcad/archive/7544a5a1e3d8909c9ecee9e87b30998c05d090ca.tar.gz) |
 
 The full syntax is below:
 
@@ -306,9 +273,10 @@ import:
     <package-name>:
         desc: <(optional) textual description>
         type: <git|tar|local>
-        path: <(local only) relative-path>
-        url: <(git|tar only) url-of-the-package>
-        relPath: <(git|tar only) relative-path-within-the-repository>
+        path: <(local only) relative path>
+        url: <(git|tar only) url of the package>
+        relPath: <(git|tar only) relative path within the repository>
+        revision: <(git only) the exact revision to import>
         web: <(optional) package or maintainer's url>
         poc: <(optional) maintainer's email>
         pythonVersion: <(optional) python version for sandboxing if applicable>
@@ -326,7 +294,7 @@ mkdir /tmp/test_show && cd /tmp/test_show
 # Initialize a package with the default dependency on public PartCAD repository
 pc init
 
-# Show one of available parts in 'OCP CAD Viewer'
+# Show the part in 'OCP CAD Viewer'
 pc show fastener/screw-buttonhead standard-metric-cqwarehouse
 ```
 
@@ -341,14 +309,16 @@ cd partcad-cqwarehouse
 pc render
 ```
 
+See [an example](./examples/feature_export/) how to configure package's
+rendering settings.
+
 ### Publishing
 
-It is very simple to publish your package to the public PartCAD repository.
-
-First, you need to publish your own package which defines the models you want to publish.
+It's very simple to publish your package to the public PartCAD repository.
+First, publish your package (e.g. as a repo on GitHub).
 Then create a pull request in [the public PartCAD repo](https://github.com/openvmp/partcad) to add a reference to your package.
 
-## Export
+## Export PartCAD models
 
 ### Images
 
@@ -360,6 +330,12 @@ following formats:
 - [STL](https://en.wikipedia.org/wiki/STL_(file_format))
 - [3MF](https://en.wikipedia.org/wiki/3D_Manufacturing_Format)
 - [ThreeJS](https://en.wikipedia.org/wiki/Three.js)
+
+```shell
+# Some "export to a file" examples:
+$ pc render -p -t stl <part> [<package>]
+$ pc render -p -t step -a <assembly> [<package>]
+```
 
 Expect more image formats to be added to the list of supported export formats in the future.
 

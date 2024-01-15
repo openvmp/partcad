@@ -64,8 +64,8 @@ def finalize_real():
     return init()._finalize_real(True)
 
 
-def render():
-    return init().render()
+def render(format=None):
+    return init().render(format)
 
 
 # Context
@@ -75,6 +75,7 @@ class Context(project_config.Configuration):
     def __init__(self, config_path="."):
         """Initializes the context and imports the root project."""
         super().__init__(consts.THIS, config_path)
+        self.option_create_dirs = False
         self.runtimes_python = {}
 
         if os.path.isdir(config_path):
@@ -214,9 +215,9 @@ class Context(project_config.Configuration):
             )
         self._last_to_finalize = None
 
-    def render(self):
+    def render(self, format=None):
         prj = self.get_project(consts.THIS)
-        prj.render()
+        prj.render(format=format)
 
     def get_python_runtime(self, version, python_runtime=None):
         if python_runtime is None:
@@ -227,3 +228,14 @@ class Context(project_config.Configuration):
                 self, version, python_runtime
             )
         return self.runtimes_python[runtime_name]
+
+    def ensure_dirs(self, path):
+        if not self.option_create_dirs:
+            return
+        os.makedirs(path)
+
+    def ensure_dirs_for_file(self, filename):
+        if not self.option_create_dirs:
+            return
+        path = os.path.dirname(filename)
+        os.makedirs(path)

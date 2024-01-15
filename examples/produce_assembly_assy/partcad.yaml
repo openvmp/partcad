@@ -1,13 +1,13 @@
 import:
   example_part_step:
     type: local
-    path: ../part_step
+    path: ../produce_part_step
   example_part_cadquery_logo:
     type: local
-    path: ../part_cadquery_logo
+    path: ../produce_part_cadquery_logo
   example_part_cadquery_primitive:
     type: local
-    path: ../part_cadquery_primitive
+    path: ../produce_part_cadquery_primitive
 
 assemblies:
   primitive:

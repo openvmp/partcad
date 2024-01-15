@@ -16,7 +16,7 @@ test_config_import_git = {
     "name": "part_step",
     "type": "git",
     "url": "https://github.com/openvmp/partcad",
-    "relPath": "examples/part_step",
+    "relPath": "examples/produce_part_step",
 }
 test_config_import_tar = {
     "name": "part_step",
@@ -33,7 +33,7 @@ def test_project_this_1():
 
 
 def test_project_this_2():
-    ctx = pc.Context("examples/part_step")
+    ctx = pc.Context("examples/produce_part_step")
     prj = ctx.get_project("this")
     assert prj is not None
 

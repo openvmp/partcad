@@ -12,16 +12,16 @@
 import:
   example_part_step:
     type: local
-    path: ../../examples/part_step
+    path: ../../examples/produce_part_step
   example_part_cadquery_primitive:
     type: local
-    path: ../../examples/part_cadquery_primitive
+    path: ../../examples/produce_part_cadquery_primitive
   example_part_cadquery_logo:
     type: local
-    path: ../../examples/part_cadquery_logo
+    path: ../../examples/produce_part_cadquery_logo
   example_part_build123d_primitive:
     type: local
-    path: ../../examples/part_build123d_primitive
+    path: ../../examples/produce_part_build123d_primitive
   example_assembly_assy:
     type: local
-    path: ../../examples/assembly_assy
+    path: ../../examples/produce_assembly_assy

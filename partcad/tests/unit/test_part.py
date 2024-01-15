@@ -15,20 +15,20 @@ import shutil
 test_config_local = {
     "name": "primitive_local",
     "type": "local",
-    "path": "examples/part_cadquery_primitive",
+    "path": "examples/produce_part_cadquery_primitive",
 }
 
 test_config_git = {
     "name": "primitive_git",
     "type": "git",
     "url": "https://github.com/openvmp/partcad",
-    "relPath": "examples/part_cadquery_primitive",
+    "relPath": "examples/produce_part_cadquery_primitive",
 }
 
 
 def test_part_get_step_1():
     """Load a STEP part from a project by the part name"""
-    ctx = pc.Context("examples/part_step")
+    ctx = pc.Context("examples/produce_part_step")
     repo1 = ctx.get_project("this")
     bolt = repo1.get_part("bolt")
     assert bolt is not None
@@ -37,7 +37,7 @@ def test_part_get_step_1():
 
 def test_part_get_step_2():
     """Load a STEP part from the context by the project and part names"""
-    ctx = pc.Context("examples/part_step")
+    ctx = pc.Context("examples/produce_part_step")
     bolt = ctx.get_part("bolt", "this")
     assert bolt is not None
     assert bolt.get_wrapped() is not None
@@ -45,7 +45,7 @@ def test_part_get_step_2():
 
 def test_part_get_stl():
     """Load a STL part"""
-    ctx = pc.Context("examples/part_stl")
+    ctx = pc.Context("examples/produce_part_stl")
     part = ctx.get_part("cube", "this")
     assert part is not None
     assert part.get_wrapped() is not None
@@ -53,7 +53,7 @@ def test_part_get_stl():
 
 def test_part_get_3mf():
     """Load a 3MF part"""
-    ctx = pc.Context("examples/part_3mf")
+    ctx = pc.Context("examples/produce_part_3mf")
     part = ctx.get_part("cube", "this")
     assert part is not None
     assert part.get_wrapped() is not None
@@ -63,7 +63,7 @@ def test_part_get_scad():
     """Load an OpenSCAD part"""
     scad_path = shutil.which("openscad")
     if not scad_path is None:
-        ctx = pc.Context("examples/part_scad")
+        ctx = pc.Context("examples/produce_part_scad")
         part = ctx.get_part("cube", "this")
         assert part is not None
         assert part.get_wrapped() is not None
