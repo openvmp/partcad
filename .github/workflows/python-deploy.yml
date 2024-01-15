@@ -82,9 +82,9 @@ jobs:
       name: pypi
 
     steps:
-      - uses: actions/checkout@v3
-        with:
-          path: partcad-git
+      # - uses: actions/checkout@v3
+      #   with:
+      #     path: partcad-git
 
       - name: Set up Python
         uses: actions/setup-python@v3
@@ -100,6 +100,7 @@ jobs:
       - name: Determine the release tag
         if: github.ref == 'refs/heads/main'
         run: |
+          git clone https://github.com/openvmp/partcad partcad-git;
           cd partcad-git;
           echo "MERGED_TAG=$(git describe --abbrev=0)" >> $GITHUB_ENV
 
