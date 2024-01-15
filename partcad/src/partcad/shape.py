@@ -227,6 +227,8 @@ class Shape:
         drawing.scale(scale, scale)
         drawing.width *= scale
         drawing.height *= scale
+        if not project is None:
+            project.ctx.ensure_dirs_for_file(filepath)
         renderPM.drawToFile(drawing, filepath, fmt="PNG")
 
     def render_step(
@@ -237,6 +239,8 @@ class Shape:
         step_opts, filepath = self.render_getopts("step", ".step", project, filepath)
 
         cq_obj = self.get_cadquery()
+        if not project is None:
+            project.ctx.ensure_dirs_for_file(filepath)
         cq.exporters.export(cq_obj, filepath)
 
     def render_stl(
@@ -248,6 +252,8 @@ class Shape:
         stl_opts, filepath = self.render_getopts("stl", ".stl", project, filepath)
 
         cq_obj = self.get_cadquery()
+        if not project is None:
+            project.ctx.ensure_dirs_for_file(filepath)
         cq.exporters.export(
             cq_obj,
             filepath,
@@ -278,6 +284,8 @@ class Shape:
                 angularTolerance = 0.1
 
         cq_obj = self.get_cadquery()
+        if not project is None:
+            project.ctx.ensure_dirs_for_file(filepath)
         cq.exporters.export(
             cq_obj,
             filepath,
@@ -312,6 +320,8 @@ class Shape:
                 angularTolerance = 0.1
 
         cq_obj = self.get_cadquery()
+        if not project is None:
+            project.ctx.ensure_dirs_for_file(filepath)
         cq.exporters.export(
             cq_obj,
             filepath,
@@ -320,10 +330,12 @@ class Shape:
             exportType=cq.exporters.ExportTypes.TJS,
         )
 
-    def render_txt(self, filepath=None):
+    def render_txt(self, project=None, filepath=None):
         if filepath is None:
             filepath = self.path + "/bom.txt"
 
+        if not project is None:
+            project.ctx.ensure_dirs_for_file(filepath)
         file = open(filepath, "w+")
         file.write("BoM:\n")
         self._render_txt_real(file)

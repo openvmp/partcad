@@ -17,6 +17,21 @@ def cli_help_render(subparsers: argparse.ArgumentParser):
         "render",
         help="Render the selected or all parts, assemblies and scenes in this package",
     )
+    parser_render.add_argument(
+        "-p",
+        help="Create the neccessary directory structure if it is missing",
+        dest="create_dirs",
+        action="store_true",
+    )
+    parser_render.add_argument(
+        "-t",
+        help="The object is an assembly",
+        dest="format",
+        type=str,
+        nargs="?",
+        choices=["png", "step", "stl", "3mf", "threejs"],
+    )
+
     group_type = parser_render.add_mutually_exclusive_group(required=False)
     group_type.add_argument(
         "-a",
@@ -37,10 +52,6 @@ def cli_help_render(subparsers: argparse.ArgumentParser):
         type=str,
         nargs="?",
     )
-    # TODO(clairbee): make the package argument depending on the object argument
-    #                 [<object> [<package>]]
-    #                 instead of
-    #                 [<object>] [<package>]
     parser_render.add_argument(
         "package",
         help="Package to retrieve the object from",
@@ -55,6 +66,8 @@ def cli_render(args):
     else:
         ctx = pc.init()
 
+    ctx.option_create_dirs = args.create_dirs
+
     if args.package is None:
         package = "this"
     else:
@@ -62,7 +75,7 @@ def cli_render(args):
 
     if args.object is None:
         # Render all parts and assemblies configured to be auto-rendered in this project
-        ctx.render()
+        ctx.render(format=args.format)
     else:
         # Render the requested part or assembly
         parts = []
@@ -73,4 +86,4 @@ def cli_render(args):
             parts.append(args.object)
 
         prj = ctx.get_project(package)
-        prj.render(parts=parts, assemblies=assemblies)
+        prj.render(parts=parts, assemblies=assemblies, format=args.format)

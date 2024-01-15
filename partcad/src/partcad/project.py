@@ -157,11 +157,12 @@ class Project(project_config.Configuration):
             return None
         return self.assemblies[assembly_name]
 
-    def render(self, parts=None, assemblies=None):
+    def render(self, parts=None, assemblies=None, format=None):
         logging.info("Rendering the project: %s" % self.path)
-        if not "render" in self.config_obj:
-            return
-        render = self.config_obj["render"]
+        if "render" in self.config_obj:
+            render = self.config_obj["render"]
+        else:
+            render = {}
 
         # Enumerating all parts and assemblies
         if parts is None:
@@ -173,24 +174,59 @@ class Project(project_config.Configuration):
             if "assemblies" in self.config_obj:
                 assemblies = self.config_obj["assemblies"].keys()
 
-        # See whether PNG is configured to be auto-rendered or not
+        # Determine which formats need to be rendered
+        if format is None and "png" in render:
+            render_png = True
+        elif not format is None and format == "png":
+            render_png = True
+        else:
+            render_png = False
 
+        if format is None and "step" in render:
+            render_step = True
+        elif not format is None and format == "step":
+            render_step = True
+        else:
+            render_step = False
+
+        if format is None and "stl" in render:
+            render_stl = True
+        elif not format is None and format == "stl":
+            render_stl = True
+        else:
+            render_stl = False
+
+        if format is None and "3mf" in render:
+            render_3mf = True
+        elif not format is None and format == "3mf":
+            render_3mf = True
+        else:
+            render_3mf = False
+
+        if format is None and "threejs" in render:
+            render_threejs = True
+        elif not format is None and format == "threejs":
+            render_threejs = True
+        else:
+            render_threejs = False
+
+        # Render
         for part_name in parts:
             part = self.get_part(part_name)
             if not part is None:
-                if "png" in render:
+                if render_png:
                     logging.info("Rendering PNG...")
                     part.render_png(project=self)
-                if "step" in render:
+                if render_step:
                     logging.info("Rendering STEP...")
                     part.render_step(project=self)
-                if "stl" in render:
+                if render_stl:
                     logging.info("Rendering STL...")
                     part.render_stl(project=self)
-                if "3mf" in render:
+                if render_3mf:
                     logging.info("Rendering 3MF...")
                     part.render_3mf(project=self)
-                if "threejs" in render:
+                if render_threejs:
                     logging.info("Rendering ThreeJS...")
                     part.render_threejs(project=self)
         for assembly_name in assemblies:
@@ -211,5 +247,3 @@ class Project(project_config.Configuration):
                 if "threejs" in render:
                     logging.info("Rendering ThreeJS...")
                     assembly.render_threejs(project=self)
-
-            # See whether STEP is configured to be auto-rendered or not
