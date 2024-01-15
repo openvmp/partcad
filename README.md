@@ -175,7 +175,7 @@ parts:
 <br/>
 Place the script in "src/cube.py"
 </td>
-<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_cadquery_primitive/cube.png?raw=true"></td>
+<td><img src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_cadquery_primitive/cube.png?raw=true"></td>
 </tr>
 <tr>
 <td>CAD files:<br/><a href="https://en.wikipedia.org/wiki/ISO_10303">STEP</a>,<br/>
@@ -192,7 +192,7 @@ parts:
 <br/>
 Store the model in "screw.step", "screw.stl" or "screw.3mf" respectively.
 </td>
-<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_step/bolt.png?raw=true"></td>
+<td><img src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_step/bolt.png?raw=true"></td>
 </tr>
 <tr>
 <td>CAD scripts:<br/><a href="https://en.wikipedia.org/wiki/OpenSCAD">OpenSCAD</a></td>
@@ -205,7 +205,7 @@ parts:
 <br/>
 Store the model in "cube.scad"
 </td>
-<td><img src="https://github.com/openvmp/partcad/blob/main/examples/part_scad/cube.png?raw=true"></td>
+<td><img src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_scad/cube.png?raw=true"></td>
 </tr>
 </table>
 
@@ -251,7 +251,7 @@ links:
     package: example_part_step
     location: [[0,0,7.5], [0,0,1], 0]</code>
 </td>
-<td><img src="https://github.com/openvmp/partcad/blob/main/examples/assembly_assy/logo.png?raw=true"></td>
+<td><img src="https://github.com/openvmp/partcad/blob/main/examples/produce_assembly_assy/logo.png?raw=true"></td>
 <tr>
 </table>
 
