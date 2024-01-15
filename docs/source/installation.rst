@@ -21,6 +21,7 @@ available on all platforms where Python is available. However it is only getting
 tested on Linux, MacOS and Windows.
 
 .. code-block:: shell
+
     python -m pip install -U partcad-cli
 
 The commands and options supported by PartCAD CLI:
