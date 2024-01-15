@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "partcad"
+project = "PartCAD"
 copyright = "2024, PartCAD"
 author = "Roman Kuzmenko"
 
@@ -16,7 +16,7 @@ author = "Roman Kuzmenko"
 extensions = []
 
 templates_path = ["_templates"]
-exclude_patterns = []
+exclude_patterns = ["docs/build", "_build", ".git"]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -24,3 +24,11 @@ exclude_patterns = []
 
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
+
+
+source_suffix = ".rst"
+master_doc = "index"
+html_title = "PartCAD Documentation"
+html_show_copyright = False
+html_show_sourcelink = False
+html_show_sphinx = False
