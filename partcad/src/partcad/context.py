@@ -215,9 +215,9 @@ class Context(project_config.Configuration):
             )
         self._last_to_finalize = None
 
-    def render(self):
+    def render(self, format=None):
         prj = self.get_project(consts.THIS)
-        prj.render()
+        prj.render(format=format)
 
     def get_python_runtime(self, version, python_runtime=None):
         if python_runtime is None:
