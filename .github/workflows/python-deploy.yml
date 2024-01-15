@@ -82,10 +82,6 @@ jobs:
       name: pypi
 
     steps:
-      # - uses: actions/checkout@v3
-      #   with:
-      #     path: partcad-git
-
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
