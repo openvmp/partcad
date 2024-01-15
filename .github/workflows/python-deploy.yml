@@ -82,6 +82,10 @@ jobs:
       name: pypi
 
     steps:
+      - uses: actions/checkout@v3
+        with:
+          path: partcad-git
+
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
@@ -93,13 +97,19 @@ jobs:
           name: python-package-distributions
           path: dist
 
+      - name: Determine the release tag
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cd partcad-git;
+          echo "MERGED_TAG=$(git describe --abbrev=0)" >> $GITHUB_ENV
+
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          gh release create '$(git describe --abbrev=0)' --repo '${{ github.repository }}' --notes "";
-          gh release upload '$(git describe --abbrev=0)' dist/** --repo '${{ github.repository }}'
+          gh release create '${{ env.MERGED_TAG }}' --repo '${{ github.repository }}' --notes "";
+          gh release upload '${{ env.MERGED_TAG }}' dist/** --repo '${{ github.repository }}'
 
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
