@@ -175,6 +175,13 @@ class Project(project_config.Configuration):
                 assemblies = self.config_obj["assemblies"].keys()
 
         # Determine which formats need to be rendered
+        if format is None and "svg" in render:
+            render_svg = True
+        elif not format is None and format == "svg":
+            render_svg = True
+        else:
+            render_svg = False
+
         if format is None and "png" in render:
             render_png = True
         elif not format is None and format == "png":
@@ -214,6 +221,9 @@ class Project(project_config.Configuration):
         for part_name in parts:
             part = self.get_part(part_name)
             if not part is None:
+                if render_svg:
+                    logging.info("Rendering SVG...")
+                    part.render_svg(project=self)
                 if render_png:
                     logging.info("Rendering PNG...")
                     part.render_png(project=self)
@@ -232,18 +242,21 @@ class Project(project_config.Configuration):
         for assembly_name in assemblies:
             assembly = self.get_assembly(assembly_name)
             if not assembly is None:
-                if "png" in render:
+                if render_svg:
+                    logging.info("Rendering SVG...")
+                    assembly.render_svg(project=self)
+                if render_png:
                     logging.info("Rendering PNG...")
                     assembly.render_png(project=self)
-                if "step" in render:
+                if render_step:
                     logging.info("Rendering STEP...")
                     assembly.render_step(project=self)
-                if "stl" in render:
+                if render_stl:
                     logging.info("Rendering STL...")
                     assembly.render_stl(project=self)
-                if "3mf" in render:
+                if render_3mf:
                     logging.info("Rendering 3MF...")
                     assembly.render_3mf(project=self)
-                if "threejs" in render:
+                if render_threejs:
                     logging.info("Rendering ThreeJS...")
                     assembly.render_threejs(project=self)

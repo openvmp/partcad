@@ -42,3 +42,11 @@ def test_render_svg_assy_2():
         assy.render_svg()
     except Exception as e:
         assert False, "Valid render request caused an exception: %s" % e
+
+
+def test_render_project():
+    """Render an entire project"""
+    ctx = pc.init("partcad/tests/partcad-examples.yaml")
+    prj = ctx.get_project("example_render")
+    assert prj is not None
+    prj.render()

@@ -166,27 +166,27 @@ PartCAD allows to define parts using any of the following methods:
 <tr>
 <td>Python scripts:<br/><a href="https://github.com/CadQuery/cadquery">CadQuery</a>,<br/><a href="https://github.com/gumyr/build123d">build123d</a></td>
 <td>
-<code># partcad.yaml
-parts:
-    src/cube:
-        type: cadquery
+Place the following in "partcad.yaml":<br/>
+<code>parts:<br/>
+    src/cylinder:<br/>
+        type: cadquery<br/>
         # type: build123d</code>
 <br/>
 <br/>
-Place the script in "src/cube.py"
+Place the script in "src/cylinder.py".
 </td>
-<td><img src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_cadquery_primitive/cube.png?raw=true"></td>
+<td><img src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_cadquery_primitive/cylinder.png?raw=true"></td>
 </tr>
 <tr>
 <td>CAD files:<br/><a href="https://en.wikipedia.org/wiki/ISO_10303">STEP</a>,<br/>
 <a href="https://en.wikipedia.org/wiki/STL_(file_format)">STL</a>,<br/>
 <a href="https://en.wikipedia.org/wiki/3D_Manufacturing_Format">3MF</a></td>
 <td>
-<code># partcad.yaml
-parts:
-    screw:
-        type: step
-        # type: stl
+Place the following in "partcad.yaml":<br/>
+<code>parts:<br/>
+    screw:<br/>
+        type: step<br/>
+        # type: stl<br/>
         # type: 3mf</code>
 
 <br/>
@@ -197,13 +197,13 @@ Store the model in "screw.step", "screw.stl" or "screw.3mf" respectively.
 <tr>
 <td>CAD scripts:<br/><a href="https://en.wikipedia.org/wiki/OpenSCAD">OpenSCAD</a></td>
 <td>
-<code># partcad.yaml
-parts:
-    cube:
+Place the following in "partcad.yaml":<br/>
+<code>parts:<br/>
+    cube:<br/>
         type: scad</code>
 
 <br/>
-Store the model in "cube.scad"
+Store the model in "cube.scad".
 </td>
 <td><img src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_scad/cube.png?raw=true"></td>
 </tr>
@@ -325,6 +325,7 @@ Then create a pull request in [the public PartCAD repo](https://github.com/openv
 Individual parts, assemblies and scenes can be rendered and exported into the
 following formats:
 
+- SVG
 - PNG
 - [STEP]
 - [STL](https://en.wikipedia.org/wiki/STL_(file_format))

@@ -116,7 +116,8 @@ class Shape:
         except:
             logging.error("Exception while exporting to " + filepath)
 
-    def render_svg(self, filepath=None, opt=DEFAULT_RENDER_SVG_OPTS):
+    def render_svg_somewhere(self, project=None, filepath=None):
+        """Renders an SVG file somewhere and ignore the project settings"""
         if filepath is None:
             filepath = tempfile.mktemp(".svg")
 
@@ -128,7 +129,7 @@ class Shape:
         max_dimension = max(
             *b3d.Compound(children=visible + hidden).bounding_box().size
         )
-        exporter = b3d.ExportSVG(scale=100 / max_dimension)
+        exporter = b3d.ExportSVG(scale=100 / max_dimension, line_weight=0.24)
         exporter.add_layer("Visible", fill_color=(224, 224, 48))
         # exporter.add_layer(
         #     "Hidden", line_color=(99, 99, 99), line_type=b3d.LineType.ISO_DOT
@@ -139,17 +140,10 @@ class Shape:
 
         self.svg_path = filepath
 
-    def _get_svg_path(self):
+    def _get_svg_path(self, project):
         if self.svg_path is None:
-            self.render_svg()
+            self.render_svg_somewhere(project, None)
         return self.svg_path
-
-    def _get_svg_url(self):
-        if self.svg_url is None:
-            svg_path = self._get_svg_path()
-            # TODO(clairbee): implement a complex logic to get url from path
-            self.svg_url = "./part.svg"
-        return self.svg_url
 
     def render_getopts(
         self,
@@ -186,6 +180,14 @@ class Shape:
 
         return opts, filepath
 
+    def render_svg(
+        self,
+        project=None,
+        filepath=None,
+    ):
+        _, filepath = self.render_getopts("svg", ".svg", project, filepath)
+        self.render_svg_somewhere(project, filepath)
+
     def render_png(
         self,
         project=None,
@@ -217,7 +219,7 @@ class Shape:
                 height = DEFAULT_RENDER_HEIGHT
 
         # Render the vector image
-        svg_path = self._get_svg_path()
+        svg_path = self._get_svg_path(project)
 
         # Render the raster image
         drawing = svglib.svg2rlg(svg_path)
