@@ -4,8 +4,6 @@ parts:
     type: step
     desc: M8x30-screw
 render:
-  png:
+  svg:
     prefix: ./
-    width: 128
-    height: 128
   markdown: README.md

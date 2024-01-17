@@ -8,8 +8,6 @@ parts:
     desc: Plate used as one of the bones on PartCAD logo
 
 render:
-  png:
+  svg:
     prefix: ./
-    width: 128
-    height: 128
   markdown: README.md

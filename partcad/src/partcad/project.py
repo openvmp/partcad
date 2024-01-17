@@ -217,6 +217,13 @@ class Project(project_config.Configuration):
         else:
             render_threejs = False
 
+        if format is None and "obj" in render:
+            render_obj = True
+        elif not format is None and format == "obj":
+            render_obj = True
+        else:
+            render_obj = False
+
         # Render
         for part_name in parts:
             part = self.get_part(part_name)
@@ -239,6 +246,9 @@ class Project(project_config.Configuration):
                 if render_threejs:
                     logging.info("Rendering ThreeJS...")
                     part.render_threejs(project=self)
+                if render_obj:
+                    logging.info("Rendering OBJ...")
+                    part.render_obj(project=self)
         for assembly_name in assemblies:
             assembly = self.get_assembly(assembly_name)
             if not assembly is None:
@@ -260,3 +270,6 @@ class Project(project_config.Configuration):
                 if render_threejs:
                     logging.info("Rendering ThreeJS...")
                     assembly.render_threejs(project=self)
+                if render_obj:
+                    logging.info("Rendering OBJ...")
+                    assembly.render_obj(project=self)

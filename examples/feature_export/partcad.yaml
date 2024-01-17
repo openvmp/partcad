@@ -4,12 +4,15 @@ parts:
     type: step
     desc: M8x30-screw
 render:
+  svg:
+    prefix: ./
   png:
     prefix: ./
     width: 128
-    height: 128
+    height: 256
   step: ./
   stl: ./
   3mf: ./
   threejs: ./
+  obj: ./
   markdown: README.md

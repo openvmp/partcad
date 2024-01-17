@@ -4,8 +4,6 @@ parts:
     type: 3mf
     desc: A cube defined in 3MF
 render:
-  png:
+  svg:
     prefix: ./
-    width: 128
-    height: 128
   markdown: README.md

@@ -61,7 +61,7 @@ def finalize(shape, show_object_fn):
 
 
 def finalize_real():
-    return init()._finalize_real(True)
+    return init()._finalize_real()
 
 
 def render(format=None):
@@ -201,18 +201,9 @@ class Context(project_config.Configuration):
         self._last_to_finalize = shape
         self._show_object_fn = show_object_fn
 
-    def _finalize_real(self, embedded=False):
-        """
-        embedded: PartCAD within PartCAD. True if
-          - this is a PartCAD module (calls pc.finalize() at the end, not show_object())
-            - internally pc.finalize() uses atexit() to schedule show_object()
-          - it is being called by PartCAD using CQGI
-            - atexit() handlers are not getting called until the process exits
-        """
+    def _finalize_real(self):
         if self._last_to_finalize is not None:
-            self._last_to_finalize._finalize_real(
-                self._show_object_fn, embedded=embedded
-            )
+            self._last_to_finalize._finalize_real(self._show_object_fn)
         self._last_to_finalize = None
 
     def render(self, format=None):

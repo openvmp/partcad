@@ -9,8 +9,6 @@
 import cadquery as cq
 import build123d as b3d
 
-# from svglib.svglib import svg2rlg
-# from reportlab.graphics import renderPM
 import importlib
 import logging
 import os
@@ -69,74 +67,18 @@ class Shape:
                     options={},
                 )
 
-    def _finalize_real(self, show_object, render_path=None, embedded=False):
+    def _finalize_real(self, show_object):
         if not show_object is None:
             self.show(show_object)
-
-        if not embedded and self.shape is not None:
-            if not render_path is None and not embedded:
-                logging.info("Generating STL...")
-                self.render_stl(render_path + "/" + self.name + ".stl")
-
-                logging.info("Generating OBJ...")
-                self.render_obj(render_path + "/" + self.name + ".obj")
-
-                logging.info("Generating SVG...")
-                self.render_svg(render_path + "/" + self.name + ".svg")
-
-                logging.info("Generating PNG...")
-                self.render_png(render_path + "/" + self.name + ".png")
-
-    def render_stl(self, filepath=None, tolerance=0.5, angularTolerance=5.0):
-        if filepath is None:
-            filepath = self.path + "/part.stl"
-
-        self.shape.exportStl(
-            filepath,
-            tolerance,
-            angularTolerance,
-        )
-
-    def render_obj(self, filepath=None):
-        if filepath is None:
-            filepath = self.path + "/part.obj"
-
-        try:
-            vertices, triangles = self.shape.tessellate(0.5)
-
-            with open(filepath, "w") as f:
-                f.write("# OBJ file\n")
-                for v in vertices:
-                    f.write("v %.4f %.4f %.4f\n" % (v.x, v.y, v.z))
-                for p in triangles:
-                    f.write("f")
-                    for i in p:
-                        f.write(" %d" % (i + 1))
-                    f.write("\n")
-        except:
-            logging.error("Exception while exporting to " + filepath)
 
     def render_svg_somewhere(self, project=None, filepath=None):
         """Renders an SVG file somewhere and ignore the project settings"""
         if filepath is None:
             filepath = tempfile.mktemp(".svg")
 
-        viewport_origin = (100, -100, 100)
-        b3d_obj = self.get_build123d()
-        visible, hidden = b3d_obj.project_to_viewport(
-            viewport_origin,
-        )
-        max_dimension = max(
-            *b3d.Compound(children=visible + hidden).bounding_box().size
-        )
-        exporter = b3d.ExportSVG(scale=100 / max_dimension, line_weight=0.24)
-        exporter.add_layer("Visible", fill_color=(224, 224, 48))
-        # exporter.add_layer(
-        #     "Hidden", line_color=(99, 99, 99), line_type=b3d.LineType.ISO_DOT
-        # )
-        exporter.add_shape(visible, layer="Visible", reverse_wires=False)
-        # exporter.add_shape(hidden, layer="Hidden")
-        exporter.write(filepath)
+        cq_obj = self.get_cadquery()
+        cq_obj = cq_obj.rotate((0, 0, 0), (1, -1, 0.75), 180)
+        cq.exporters.export(cq_obj, filepath, opt=DEFAULT_RENDER_SVG_OPTS)
 
         self.svg_path = filepath
 
@@ -231,7 +173,12 @@ class Shape:
         drawing.height *= scale
         if not project is None:
             project.ctx.ensure_dirs_for_file(filepath)
-        renderPM.drawToFile(drawing, filepath, fmt="PNG")
+        renderPM.drawToFile(
+            drawing,
+            filepath,
+            fmt="PNG",
+            configPIL={"transparent": True},
+        )
 
     def render_step(
         self,
@@ -331,6 +278,47 @@ class Shape:
             angularTolerance=angularTolerance,
             exportType=cq.exporters.ExportTypes.TJS,
         )
+
+    def render_obj(
+        self,
+        project=None,
+        filepath=None,
+        tolerance=None,
+        angularTolerance=None,
+    ):
+        obj_opts, filepath = self.render_getopts("obj", ".obj", project, filepath)
+
+        if tolerance is None:
+            if "tolerance" in obj_opts and not obj_opts["tolerance"] is None:
+                tolerance = obj_opts["tolerance"]
+            else:
+                tolerance = 0.1
+
+        if angularTolerance is None:
+            if (
+                "angularTolerance" in obj_opts
+                and not obj_opts["angularTolerance"] is None
+            ):
+                angularTolerance = obj_opts["angularTolerance"]
+            else:
+                angularTolerance = 0.1
+
+        cq_obj = self.get_cadquery()
+
+        try:
+            vertices, triangles = cq_obj.tessellate(tolerance, angularTolerance)
+
+            with open(filepath, "w") as f:
+                f.write("# OBJ file\n")
+                for v in vertices:
+                    f.write("v %.4f %.4f %.4f\n" % (v.x, v.y, v.z))
+                for p in triangles:
+                    f.write("f")
+                    for i in p:
+                        f.write(" %d" % (i + 1))
+                    f.write("\n")
+        except:
+            logging.error("Exception while exporting to " + filepath)
 
     def render_txt(self, project=None, filepath=None):
         if filepath is None:

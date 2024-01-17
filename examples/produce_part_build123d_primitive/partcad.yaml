@@ -4,8 +4,6 @@ parts:
     type: build123d
     desc: Sample part created by build123d
 render:
-  png:
+  svg:
     prefix: ./
-    width: 128
-    height: 128
   markdown: README.md

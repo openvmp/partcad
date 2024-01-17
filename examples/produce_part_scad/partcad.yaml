@@ -4,8 +4,6 @@ parts:
     type: scad
     desc: A cube defined in SCAD
 render:
-  png:
+  svg:
     prefix: ./
-    width: 128
-    height: 128
   markdown: README.md

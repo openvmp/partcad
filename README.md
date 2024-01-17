@@ -175,7 +175,7 @@ Place the following in "partcad.yaml":<br/>
 <br/>
 Place the script in "src/cylinder.py".
 </td>
-<td><img src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_cadquery_primitive/cylinder.png?raw=true"></td>
+<td><img width=128 src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_cadquery_primitive/cylinder.svg?raw=true"></td>
 </tr>
 <tr>
 <td>CAD files:<br/><a href="https://en.wikipedia.org/wiki/ISO_10303">STEP</a>,<br/>
@@ -192,7 +192,7 @@ Place the following in "partcad.yaml":<br/>
 <br/>
 Store the model in "screw.step", "screw.stl" or "screw.3mf" respectively.
 </td>
-<td><img src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_step/bolt.png?raw=true"></td>
+<td><img width=128 src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_step/bolt.svg?raw=true"></td>
 </tr>
 <tr>
 <td>CAD scripts:<br/><a href="https://en.wikipedia.org/wiki/OpenSCAD">OpenSCAD</a></td>
@@ -205,7 +205,7 @@ Place the following in "partcad.yaml":<br/>
 <br/>
 Store the model in "cube.scad".
 </td>
-<td><img src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_scad/cube.png?raw=true"></td>
+<td><img width=128 src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_scad/cube.svg?raw=true"></td>
 </tr>
 </table>
 
@@ -251,7 +251,7 @@ links:
     package: example_part_step
     location: [[0,0,7.5], [0,0,1], 0]</code>
 </td>
-<td><img src="https://github.com/openvmp/partcad/blob/main/examples/produce_assembly_assy/logo.png?raw=true"></td>
+<td><img width=256 src="https://github.com/openvmp/partcad/blob/main/examples/produce_assembly_assy/logo.svg?raw=true"></td>
 <tr>
 </table>
 
@@ -331,6 +331,7 @@ following formats:
 - [STL](https://en.wikipedia.org/wiki/STL_(file_format))
 - [3MF](https://en.wikipedia.org/wiki/3D_Manufacturing_Format)
 - [ThreeJS](https://en.wikipedia.org/wiki/Three.js)
+- [OBJ](https://en.wikipedia.org/wiki/Wavefront_.obj_file)
 
 ```shell
 # Some "export to a file" examples:

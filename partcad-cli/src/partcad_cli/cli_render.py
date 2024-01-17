@@ -29,7 +29,7 @@ def cli_help_render(subparsers: argparse.ArgumentParser):
         dest="format",
         type=str,
         nargs="?",
-        choices=["svg", "png", "step", "stl", "3mf", "threejs"],
+        choices=["svg", "png", "step", "stl", "3mf", "threejs", "obj"],
     )
 
     group_type = parser_render.add_mutually_exclusive_group(required=False)
