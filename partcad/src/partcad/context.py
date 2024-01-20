@@ -14,58 +14,12 @@ import importlib
 
 from . import consts
 from . import project_config
+from . import project
 from . import runtime_python_all
 from . import project_factory_local as rfl
 from . import project_factory_git as rfg
 from . import project_factory_tar as rft
 from .user_config import user_config
-
-global _partcad_context
-_partcad_context = None
-
-
-def init(config_path="."):
-    """Initialize the default context explicitly using the desired path."""
-    global _partcad_context
-    global _partcad_context_path
-
-    if _partcad_context is None:
-        # logging.debug("Initializing (%s)..." % __name__)
-
-        _partcad_context = Context(config_path)
-        _partcad_context_path = config_path
-    else:
-        if _partcad_context_path != config_path:
-            logging.error("Multiple context configurations")
-            raise Exception("partcad: multiple context configurations")
-
-    return _partcad_context
-
-
-def get_assembly(assembly_name, project_name=consts.THIS):
-    """Get the assembly from the given project"""
-    if project_name is None:
-        project_name = consts.THIS
-    return init().get_assembly(assembly_name, project_name)
-
-
-def get_part(part_name, project_name=consts.THIS):
-    """Get the part from the given project"""
-    if project_name is None:
-        project_name = consts.THIS
-    return init().get_part(part_name, project_name)
-
-
-def finalize(shape, show_object_fn):
-    return init().finalize(shape, show_object_fn)
-
-
-def finalize_real():
-    return init()._finalize_real()
-
-
-def render(format=None):
-    return init().render(format)
 
 
 # Context
@@ -116,7 +70,7 @@ class Context(project_config.Configuration):
 
         atexit.register(Context._finalize_real, self)
 
-    def get_project(self, project_name):
+    def get_project(self, project_name) -> project.Project:
         if not project_name in self.projects:
             logging.error("The project '%s' is not found." % project_name)
             logging.error("%s" % self.projects)
@@ -206,9 +160,9 @@ class Context(project_config.Configuration):
             self._last_to_finalize._finalize_real(self._show_object_fn)
         self._last_to_finalize = None
 
-    def render(self, format=None):
+    def render(self, format=None, output_dir=None):
         prj = self.get_project(consts.THIS)
-        prj.render(format=format)
+        prj.render(format=format, output_dir=output_dir)
 
     def get_python_runtime(self, version, python_runtime=None):
         if python_runtime is None:
@@ -230,3 +184,6 @@ class Context(project_config.Configuration):
             return
         path = os.path.dirname(filename)
         os.makedirs(path)
+
+
+# Global functions

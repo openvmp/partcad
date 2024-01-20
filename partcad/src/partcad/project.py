@@ -10,12 +10,14 @@ import logging
 import os
 
 from . import project_config
+from . import part
 from . import part_factory_scad as pfscad
 from . import part_factory_step as pfs
 from . import part_factory_stl as pfstl
 from . import part_factory_3mf as pf3
 from . import part_factory_cadquery as pfc
 from . import part_factory_build123d as pfb
+from . import assembly
 from . import assembly_factory_assy as afa
 
 
@@ -109,7 +111,7 @@ class Project(project_config.Configuration):
                 )
                 return None
 
-    def get_part(self, part_name):
+    def get_part(self, part_name) -> part.Part:
         if not part_name in self.parts:
             logging.error("Part not found: %s" % part_name)
             return None
@@ -151,18 +153,21 @@ class Project(project_config.Configuration):
                 )
                 return None
 
-    def get_assembly(self, assembly_name):
+    def get_assembly(self, assembly_name) -> assembly.Assembly:
         if not assembly_name in self.assemblies:
             logging.error("Assembly not found: %s" % assembly_name)
             return None
         return self.assemblies[assembly_name]
 
-    def render(self, parts=None, assemblies=None, format=None):
+    def render(self, parts=None, assemblies=None, format=None, output_dir=None):
         logging.info("Rendering the project: %s" % self.path)
-        if "render" in self.config_obj:
-            render = self.config_obj["render"]
-        else:
-            render = {}
+
+        # Override the default output_dir.
+        # TODO(clairbee): pass the preference downstream without making a
+        # persistent change.
+        if not output_dir is None:
+            self.config_obj["render"]["output_dir"] = output_dir
+        render = self.config_obj["render"]
 
         # Enumerating all parts and assemblies
         if parts is None:
@@ -174,7 +179,10 @@ class Project(project_config.Configuration):
             if "assemblies" in self.config_obj:
                 assemblies = self.config_obj["assemblies"].keys()
 
-        # Determine which formats need to be rendered
+        # Determine which formats need to be rendered.
+        # The format needs to be rendered either if it's mentioned in the config
+        # or if it's explicitly requested in the params (e.g. comes from the
+        # command line).
         if format is None and "svg" in render:
             render_svg = True
         elif not format is None and format == "svg":

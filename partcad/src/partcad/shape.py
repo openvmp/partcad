@@ -15,6 +15,7 @@ import os
 import tempfile
 
 from .render import *
+from .plugins import *
 
 
 class Shape:
@@ -94,11 +95,7 @@ class Shape:
         project=None,
         filepath=None,
     ):
-        if (
-            not project is None
-            and "render" in project.config_obj
-            and not project.config_obj["render"] is None
-        ):
+        if not project is None:
             render_opts = project.config_obj["render"]
         else:
             render_opts = {}
@@ -117,6 +114,15 @@ class Shape:
                 filepath = os.path.join(opts["prefix"], self.name + extension)
             else:
                 filepath = self.name + extension
+
+            # Check if the format specific section of the config (e.g. "png")
+            # provides a relative path and there is output dir in cmd line or
+            # the generic section of rendering options in the config.
+            if not os.path.isabs(filepath):
+                if "output_dir" in render_opts:
+                    filepath = os.path.join(render_opts["output_dir"], filepath)
+                elif not project is None:
+                    filepath = os.path.join(project.config_dir, filepath)
 
         logging.info("Rendering: %s" % filepath)
 
@@ -137,14 +143,8 @@ class Shape:
         width=None,
         height=None,
     ):
-        svglib = importlib.import_module("svglib.svglib")
-        if svglib is None:
-            logging.error('Failed to load "svglib". Aborting.')
-            return
-
-        renderPM = importlib.import_module("reportlab.graphics.renderPM")
-        if renderPM is None:
-            logging.error('Failed to load "renderPM". Aborting.')
+        if not plugins.export_png.is_supported():
+            logging.error("Export to PNG is not supported")
             return
 
         png_opts, filepath = self.render_getopts("png", ".png", project, filepath)
@@ -163,22 +163,7 @@ class Shape:
         # Render the vector image
         svg_path = self._get_svg_path(project)
 
-        # Render the raster image
-        drawing = svglib.svg2rlg(svg_path)
-        scale_width = float(width) / float(drawing.width)
-        scale_height = float(height) / float(drawing.height)
-        scale = min(scale_width, scale_height)
-        drawing.scale(scale, scale)
-        drawing.width *= scale
-        drawing.height *= scale
-        if not project is None:
-            project.ctx.ensure_dirs_for_file(filepath)
-        renderPM.drawToFile(
-            drawing,
-            filepath,
-            fmt="PNG",
-            configPIL={"transparent": True},
-        )
+        plugins.export_png.export(project, svg_path, width, height, filepath)
 
     def render_step(
         self,

@@ -168,14 +168,14 @@ PartCAD allows to define parts using any of the following methods:
 <td>
 Place the following in "partcad.yaml":<br/>
 <code>parts:<br/>
-    src/cylinder:<br/>
-        type: cadquery<br/>
-        # type: build123d</code>
+&nbsp;&nbsp;&nbsp;&nbsp;src/cylinder:<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;type: cadquery<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# type: build123d</code>
 <br/>
 <br/>
 Place the script in "src/cylinder.py".
 </td>
-<td><img width=128 src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_cadquery_primitive/cylinder.svg?raw=true"></td>
+<td><img width=128 src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_cadquery_primitive/cylinder.svg?raw=true" /></td>
 </tr>
 <tr>
 <td>CAD files:<br/><a href="https://en.wikipedia.org/wiki/ISO_10303">STEP</a>,<br/>
@@ -184,28 +184,28 @@ Place the script in "src/cylinder.py".
 <td>
 Place the following in "partcad.yaml":<br/>
 <code>parts:<br/>
-    screw:<br/>
-        type: step<br/>
-        # type: stl<br/>
-        # type: 3mf</code>
+&nbsp;&nbsp;&nbsp;&nbsp;screw:<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;type: step<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# type: stl<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# type: 3mf</code>
 
 <br/>
 Store the model in "screw.step", "screw.stl" or "screw.3mf" respectively.
 </td>
-<td><img width=128 src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_step/bolt.svg?raw=true"></td>
+<td><img width=128 src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_step/bolt.svg?raw=true"/></td>
 </tr>
 <tr>
 <td>CAD scripts:<br/><a href="https://en.wikipedia.org/wiki/OpenSCAD">OpenSCAD</a></td>
 <td>
 Place the following in "partcad.yaml":<br/>
 <code>parts:<br/>
-    cube:<br/>
-        type: scad</code>
+&nbsp;&nbsp;&nbsp;&nbsp;cube:<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;type: scad</code>
 
 <br/>
 Store the model in "cube.scad".
 </td>
-<td><img width=128 src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_scad/cube.svg?raw=true"></td>
+<td><img width=128 src="https://github.com/openvmp/partcad/blob/main/examples/produce_part_scad/cube.svg?raw=true" /></td>
 </tr>
 </table>
 
@@ -251,7 +251,7 @@ links:
     package: example_part_step
     location: [[0,0,7.5], [0,0,1], 0]</code>
 </td>
-<td><img width=256 src="https://github.com/openvmp/partcad/blob/main/examples/produce_assembly_assy/logo.svg?raw=true"></td>
+<td><img width=256 src="https://github.com/openvmp/partcad/blob/main/examples/produce_assembly_assy/logo.svg?raw=true" /></td>
 <tr>
 </table>
 

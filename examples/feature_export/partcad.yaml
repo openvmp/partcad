@@ -10,7 +10,6 @@ render:
     prefix: ./
     width: 128
     height: 256
-  step: ./
   stl: ./
   3mf: ./
   threejs: ./
