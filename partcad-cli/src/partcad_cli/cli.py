@@ -21,6 +21,10 @@ from .cli_render import *
 from .cli_show import *
 
 
+# Initialize plugins that are not enabled by default
+pc.plugins.export_png = pc.PluginExportPngReportlab()
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="PartCAD command line tool",

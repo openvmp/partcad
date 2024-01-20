@@ -7,8 +7,6 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import glob
-import json
 import os
 from . import project_factory as pf
 

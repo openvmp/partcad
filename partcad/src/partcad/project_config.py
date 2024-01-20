@@ -54,6 +54,9 @@ class Configuration:
         if self.config_path.endswith(".json"):
             self.config_obj = json.load(config)
 
+        if not "render" in self.config_obj or self.config_obj["render"] is None:
+            self.config_obj["render"] = {}
+
         # option: "partcad"
         # description: the version of PartCAD required to handle this package
         # values: string initializer for packaging.specifiers.SpecifierSet

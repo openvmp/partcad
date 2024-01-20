@@ -1,7 +1,6 @@
 from build123d import Location
 
-from .context import (
-    Context,
+from .globals import (
     init,
     get_part,
     get_assembly,
@@ -11,13 +10,15 @@ from .context import (
     render,
 )
 from .consts import THIS
+from .context import Context
 from .assembly import Assembly
 from .part import Part
 from .project_factory_local import ProjectFactoryLocal
 from .project_factory_git import ProjectFactoryGit
 from .project_factory_tar import ProjectFactoryTar
 from .user_config import user_config
-
+from .plugins import plugins
+from .plugin_export_png_reportlab import PluginExportPngReportlab
 
 __all__ = [
     "config",
@@ -37,6 +38,7 @@ __all__ = [
     "assembly_factory_python",
     "scene",
     "main_cli",
+    "plugins",
 ]
 
 __version__: str = "0.3.69"

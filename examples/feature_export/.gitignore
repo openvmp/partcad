@@ -1,5 +1,6 @@
+*.svg
 *.png
-*.step
 *.stl
 *.3mf
 *.json
+*.obj

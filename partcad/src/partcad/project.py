@@ -10,12 +10,14 @@ import logging
 import os
 
 from . import project_config
+from . import part
 from . import part_factory_scad as pfscad
 from . import part_factory_step as pfs
 from . import part_factory_stl as pfstl
 from . import part_factory_3mf as pf3
 from . import part_factory_cadquery as pfc
 from . import part_factory_build123d as pfb
+from . import assembly
 from . import assembly_factory_assy as afa
 
 
@@ -109,7 +111,7 @@ class Project(project_config.Configuration):
                 )
                 return None
 
-    def get_part(self, part_name):
+    def get_part(self, part_name) -> part.Part:
         if not part_name in self.parts:
             logging.error("Part not found: %s" % part_name)
             return None
@@ -151,18 +153,21 @@ class Project(project_config.Configuration):
                 )
                 return None
 
-    def get_assembly(self, assembly_name):
+    def get_assembly(self, assembly_name) -> assembly.Assembly:
         if not assembly_name in self.assemblies:
             logging.error("Assembly not found: %s" % assembly_name)
             return None
         return self.assemblies[assembly_name]
 
-    def render(self, parts=None, assemblies=None, format=None):
+    def render(self, parts=None, assemblies=None, format=None, output_dir=None):
         logging.info("Rendering the project: %s" % self.path)
-        if "render" in self.config_obj:
-            render = self.config_obj["render"]
-        else:
-            render = {}
+
+        # Override the default output_dir.
+        # TODO(clairbee): pass the preference downstream without making a
+        # persistent change.
+        if not output_dir is None:
+            self.config_obj["render"]["output_dir"] = output_dir
+        render = self.config_obj["render"]
 
         # Enumerating all parts and assemblies
         if parts is None:
@@ -174,7 +179,17 @@ class Project(project_config.Configuration):
             if "assemblies" in self.config_obj:
                 assemblies = self.config_obj["assemblies"].keys()
 
-        # Determine which formats need to be rendered
+        # Determine which formats need to be rendered.
+        # The format needs to be rendered either if it's mentioned in the config
+        # or if it's explicitly requested in the params (e.g. comes from the
+        # command line).
+        if format is None and "svg" in render:
+            render_svg = True
+        elif not format is None and format == "svg":
+            render_svg = True
+        else:
+            render_svg = False
+
         if format is None and "png" in render:
             render_png = True
         elif not format is None and format == "png":
@@ -210,10 +225,20 @@ class Project(project_config.Configuration):
         else:
             render_threejs = False
 
+        if format is None and "obj" in render:
+            render_obj = True
+        elif not format is None and format == "obj":
+            render_obj = True
+        else:
+            render_obj = False
+
         # Render
         for part_name in parts:
             part = self.get_part(part_name)
             if not part is None:
+                if render_svg:
+                    logging.info("Rendering SVG...")
+                    part.render_svg(project=self)
                 if render_png:
                     logging.info("Rendering PNG...")
                     part.render_png(project=self)
@@ -229,21 +254,30 @@ class Project(project_config.Configuration):
                 if render_threejs:
                     logging.info("Rendering ThreeJS...")
                     part.render_threejs(project=self)
+                if render_obj:
+                    logging.info("Rendering OBJ...")
+                    part.render_obj(project=self)
         for assembly_name in assemblies:
             assembly = self.get_assembly(assembly_name)
             if not assembly is None:
-                if "png" in render:
+                if render_svg:
+                    logging.info("Rendering SVG...")
+                    assembly.render_svg(project=self)
+                if render_png:
                     logging.info("Rendering PNG...")
                     assembly.render_png(project=self)
-                if "step" in render:
+                if render_step:
                     logging.info("Rendering STEP...")
                     assembly.render_step(project=self)
-                if "stl" in render:
+                if render_stl:
                     logging.info("Rendering STL...")
                     assembly.render_stl(project=self)
-                if "3mf" in render:
+                if render_3mf:
                     logging.info("Rendering 3MF...")
                     assembly.render_3mf(project=self)
-                if "threejs" in render:
+                if render_threejs:
                     logging.info("Rendering ThreeJS...")
                     assembly.render_threejs(project=self)
+                if render_obj:
+                    logging.info("Rendering OBJ...")
+                    assembly.render_obj(project=self)

@@ -25,3 +25,6 @@ import:
   example_assembly_assy:
     type: local
     path: ../../examples/produce_assembly_assy
+  example_render:
+    type: local
+    path: ../../examples/feature_export

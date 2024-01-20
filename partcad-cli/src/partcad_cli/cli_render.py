@@ -24,12 +24,19 @@ def cli_help_render(subparsers: argparse.ArgumentParser):
         action="store_true",
     )
     parser_render.add_argument(
+        "-O",
+        help="Create artifacts in the given output directory",
+        dest="output_dir",
+        type=str,
+        nargs="?",
+    )
+    parser_render.add_argument(
         "-t",
         help="The object is an assembly",
         dest="format",
         type=str,
         nargs="?",
-        choices=["png", "step", "stl", "3mf", "threejs"],
+        choices=["svg", "png", "step", "stl", "3mf", "threejs", "obj"],
     )
 
     group_type = parser_render.add_mutually_exclusive_group(required=False)
@@ -75,7 +82,7 @@ def cli_render(args):
 
     if args.object is None:
         # Render all parts and assemblies configured to be auto-rendered in this project
-        ctx.render(format=args.format)
+        ctx.render(format=args.format, output_dir=args.output_dir)
     else:
         # Render the requested part or assembly
         parts = []
@@ -86,4 +93,9 @@ def cli_render(args):
             parts.append(args.object)
 
         prj = ctx.get_project(package)
-        prj.render(parts=parts, assemblies=assemblies, format=args.format)
+        prj.render(
+            parts=parts,
+            assemblies=assemblies,
+            format=args.format,
+            output_dir=args.output_dir,
+        )

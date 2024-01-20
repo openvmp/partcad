@@ -9,8 +9,6 @@ parts:
     path: cylinder.py
     desc: This is a cylinder from examples
 render:
-  png:
+  svg:
     prefix: ./
-    width: 128
-    height: 128
   markdown: README.md

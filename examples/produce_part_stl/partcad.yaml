@@ -4,8 +4,6 @@ parts:
     type: stl
     desc: A cube defined in STL
 render:
-  png:
+  svg:
     prefix: ./
-    width: 128
-    height: 128
   markdown: README.md
