@@ -20,6 +20,7 @@ from . import project_factory_local as rfl
 from . import project_factory_git as rfg
 from . import project_factory_tar as rft
 from .user_config import user_config
+from .utils import total_size
 
 
 # Context
@@ -31,6 +32,14 @@ class Context(project_config.Configuration):
         super().__init__(consts.THIS, config_path)
         self.option_create_dirs = False
         self.runtimes_python = {}
+
+        self.stats_packages = 0
+        self.stats_packages_instantiated = 0
+        self.stats_parts = 0
+        self.stats_parts_instantiated = 0
+        self.stats_assemblies = 0
+        self.stats_assemblies_instantiated = 0
+        self.stats_memory = 0
 
         if os.path.isdir(config_path):
             config_path = "."
@@ -69,6 +78,9 @@ class Context(project_config.Configuration):
             logging.info("PartCAD: Finished loading dependencies.")
 
         atexit.register(Context._finalize_real, self)
+
+    def stats_recalc(self, verbose=False):
+        self.stats_memory = total_size(self, verbose)
 
     def get_project(self, project_name) -> project.Project:
         if not project_name in self.projects:
@@ -117,6 +129,9 @@ class Context(project_config.Configuration):
         if not name in self.projects:
             logging.error("Failed to create the project: %s" % project_import_config)
             return None
+
+        self.stats_packages += 1
+        self.stats_packages_instantiated += 1
 
         imported_project = self.projects[name]
 

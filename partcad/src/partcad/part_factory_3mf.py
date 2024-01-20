@@ -21,3 +21,5 @@ class PartFactory3mf(pf.PartFactory):
     def instantiate(self, part):
         shape = b3d.Mesher().read(part.path)[0].wrapped
         part.set_shape(shape)
+
+        self.ctx.stats_parts_instantiated += 1

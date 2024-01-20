@@ -50,3 +50,5 @@ class PartFactoryBuild123d(pfp.PartFactoryPython):
         else:
             logging.error(result["exception"])
             raise Exception(result["exception"])
+
+        self.ctx.stats_parts_instantiated += 1

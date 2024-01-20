@@ -42,3 +42,5 @@ class PartFactoryScad(pf.PartFactory):
         os.unlink(stl_path)
 
         part.set_shape(shape)
+
+        self.ctx.stats_parts_instantiated += 1
