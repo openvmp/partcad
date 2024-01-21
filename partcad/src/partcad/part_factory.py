@@ -13,6 +13,8 @@ from . import part as p
 
 
 class PartFactory:
+    part: p.Part
+
     def __init__(self, ctx, project, part_config, extension=""):
         self.ctx = ctx
         self.project = project
@@ -44,3 +46,5 @@ class PartFactory:
                 self.project.parts[alias] = self.part
 
         self.part.instantiate = lambda part_self: self.instantiate(part_self)
+
+        self.ctx.stats_parts += 1

@@ -53,6 +53,8 @@ class AssemblyFactoryAssy(af.AssemblyFactory):
         if "links" in self.assy and not self.assy["links"] is None:
             self.handle_node_list(assembly, self.assy["links"])
 
+        self.ctx.stats_assemblies_instantiated += 1
+
     def handle_node_list(self, assembly, node_list):
         for link in node_list:
             self.handle_node(assembly, link)

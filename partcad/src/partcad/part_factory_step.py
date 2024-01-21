@@ -21,3 +21,5 @@ class PartFactoryStep(pf.PartFactory):
     def instantiate(self, part):
         shape = cq.importers.importStep(part.path).val().wrapped
         part.set_shape(shape)
+
+        self.ctx.stats_parts_instantiated += 1
