@@ -249,7 +249,7 @@ class Project(project_config.Configuration):
     def add_part(self, kind: str, path: str) -> bool:
         logging.info("Adding the part %s of type %s" % (path, kind))
         ext_by_kind = {
-            "cadquery": "py",
+            "CadQuery": "py",
             "build123d": "py",
         }
         return self._add_component(kind, path, "parts", ext_by_kind)
