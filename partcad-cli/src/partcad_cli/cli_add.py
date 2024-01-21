@@ -7,10 +7,8 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import logging
-import os
-import ruamel.yaml
-import sys
+
+from pathlib import Path
 
 import partcad as pc
 
@@ -31,36 +29,66 @@ def cli_help_add(subparsers):
         type=str,
     )
 
+    parser_add_part = subparsers.add_parser(
+        "add-part",
+        help="Add a part",
+    )
+    parser_add_part.add_argument(
+        "kind",
+        help="Type of the part",
+        type=str,
+        choices=["cadquery", "build123d", "step", "stl", "3mf"],
+    )
+    parser_add_part.add_argument(
+        "path",
+        help="Path to the file",
+        type=str,
+    )
+
+    parser_add_assembly = subparsers.add_parser(
+        "add-assembly",
+        help="Add a assembly",
+    )
+    parser_add_assembly.add_argument(
+        "kind",
+        help="Type of the assembly",
+        type=str,
+        choices=["assy"],
+    )
+    parser_add_assembly.add_argument(
+        "path",
+        help="Path to the file",
+        type=str,
+    )
+
 
 def cli_add(args):
-    if not os.path.exists("partcad.yaml"):
-        logging.error("'partcad.yaml' not found!")
-        sys.exit(1)
-
-    if ":" in args.location:
-        location_param = "url"
-        if args.location.endswith(".tar.gz"):
-            location_type = "tar"
-        else:
-            location_type = "git"
+    if not args.config_path is None:
+        ctx = pc.init(args.config_path)
     else:
-        location_param = "path"
-        location_type = "local"
+        ctx = pc.init()
 
-    yaml = ruamel.yaml.YAML()
-    yaml.preserve_quotes = True
-    with open("partcad.yaml") as fp:
-        config = yaml.load(fp)
-        fp.close()
+    prj = ctx.get_project(pc.THIS)
+    prj.add_import(args.alias, args.location)
 
-    for elem in config:
-        if elem == "import":
-            imports = config["import"]
-            imports[args.alias] = {
-                location_param: args.location,
-                "type": location_type,
-            }
-            break  # no need to iterate further
-    with open("partcad.yaml", "w") as fp:
-        yaml.dump(config, fp)
-        fp.close()
+
+def cli_add_part(args):
+    if not args.config_path is None:
+        ctx = pc.init(args.config_path)
+    else:
+        ctx = pc.init()
+
+    prj = ctx.get_project(pc.THIS)
+    if prj.add_part(args.kind, args.path):
+        Path(args.path).touch()
+
+
+def cli_add_assembly(args):
+    if not args.config_path is None:
+        ctx = pc.init(args.config_path)
+    else:
+        ctx = pc.init()
+
+    prj = ctx.get_project(pc.THIS)
+    if prj.add_assembly(args.kind, args.path):
+        Path(args.path).touch()
