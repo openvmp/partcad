@@ -8,6 +8,7 @@
 
 import logging
 import os
+import ruamel.yaml
 
 from . import project_config
 from . import part
@@ -158,6 +159,105 @@ class Project(project_config.Configuration):
             logging.error("Assembly not found: %s" % assembly_name)
             return None
         return self.assemblies[assembly_name]
+
+    def add_import(self, alias, location):
+        if ":" in location:
+            location_param = "url"
+            if location.endswith(".tar.gz"):
+                location_type = "tar"
+            else:
+                location_type = "git"
+        else:
+            location_param = "path"
+            location_type = "local"
+
+        yaml = ruamel.yaml.YAML()
+        yaml.preserve_quotes = True
+        with open(self.config_path) as fp:
+            config = yaml.load(fp)
+            fp.close()
+
+        for elem in config:
+            if elem == "import":
+                imports = config["import"]
+                imports[alias] = {
+                    location_param: location,
+                    "type": location_type,
+                }
+                break  # no need to iterate further
+        with open(self.config_path) as fp:
+            yaml.dump(config, fp)
+            fp.close()
+
+    def _validate_path(self, path, extension) -> (bool, str, str):
+        if not os.path.isabs(path):
+            path = os.path.abspath(path)
+        root = self.config_dir
+        if not os.path.isabs(root):
+            root = os.path.abspath(root)
+
+        if not path.startswith(root):
+            logging.error("Can't add files outside of the package")
+            return False, None, None
+
+        path = path[len(root) :]
+        if path[0] == os.path.sep:
+            path = path[1:]
+
+        name = path
+        if name.endswith(".%s" % extension):
+            name = name[: -len(extension) - 1]
+
+        return True, path, name
+
+    def _add_component(self, kind: str, path: str, section: str, ext_by_kind) -> bool:
+        if kind in ext_by_kind:
+            ext = ext_by_kind[kind]
+        else:
+            ext = kind
+
+        valid, path, name = self._validate_path(path, ext)
+        if not valid:
+            return False
+
+        yaml = ruamel.yaml.YAML()
+        yaml.preserve_quotes = True
+        with open(self.config_path) as fp:
+            config = yaml.load(fp)
+            fp.close()
+
+        obj = {"type": kind}
+        if name == path:
+            obj["path"] = path
+
+        found = False
+        for elem in config:
+            if elem == section:
+                section = config[section]
+                section[name] = obj
+                found = True
+                break  # no need to iterate further
+        if not found:
+            config[section] = {name: obj}
+
+        with open(self.config_path, "w") as fp:
+            yaml.dump(config, fp)
+            fp.close()
+
+        return True
+
+    def add_part(self, kind: str, path: str) -> bool:
+        logging.info("Adding the part %s of type %s" % (path, kind))
+        ext_by_kind = {
+            "cadquery": "py",
+            "build123d": "py",
+        }
+        return self._add_component(kind, path, "parts", ext_by_kind)
+
+    def add_assembly(self, kind: str, path: str) -> bool:
+        logging.info("Adding the assembly %s of type %s" % (path, kind))
+        ext_by_kind = {}
+        return self._add_component(kind, path, "assemblies", ext_by_kind)
 
     def render(self, parts=None, assemblies=None, format=None, output_dir=None):
         logging.info("Rendering the project: %s" % self.path)

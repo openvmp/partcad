@@ -30,6 +30,13 @@ def main():
         description="PartCAD command line tool",
     )
     parser.add_argument(
+        "-v",
+        help="Increase the level of verbosity",
+        dest="verbosity",
+        action="count",
+        default=0,
+    )
+    parser.add_argument(
         "-p",
         help="Package path (a YAML file or a directory with 'partcad.yaml')",
         type=str,
@@ -47,10 +54,19 @@ def main():
 
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO)
+    if args.verbosity > 0:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
     if args.command == "add":
         cli_add(args)
+
+    elif args.command == "add-part":
+        cli_add_part(args)
+
+    elif args.command == "add-assembly":
+        cli_add_assembly(args)
 
     elif args.command == "init":
         cli_init(args)
