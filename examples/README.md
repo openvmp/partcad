@@ -34,7 +34,7 @@ There are many ways to consume existing modules:
   - [Import PartCAD parts in buid123d scripts](./consume_build123d/)
 
 - Any other python script:
-  - [Import PartCAD parts in buid123d scripts](./consume_standalone/)
+  - [Import PartCAD parts in Python scripts](./consume_standalone/)
 
 ## Features
 
