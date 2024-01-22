@@ -20,4 +20,7 @@ assemblies:
 render:
   svg:
     prefix: ./
+    marginTop: 100
+    marginLeft: 100
+    strokeWidth: 0.5
   markdown: README.md

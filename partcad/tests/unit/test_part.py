@@ -28,7 +28,7 @@ test_config_git = {
 
 def test_part_get_step_1():
     """Load a STEP part from a project by the part name"""
-    ctx = pc.Context("examples/produce_part_step")
+    ctx = pc.Context("examples/produce_part_step/partcad.yaml")
     repo1 = ctx.get_project("this")
     bolt = repo1.get_part("bolt")
     assert bolt is not None
@@ -37,7 +37,7 @@ def test_part_get_step_1():
 
 def test_part_get_step_2():
     """Load a STEP part from the context by the project and part names"""
-    ctx = pc.Context("examples/produce_part_step")
+    ctx = pc.Context("examples/produce_part_step/partcad.yaml")
     bolt = ctx.get_part("bolt", "this")
     assert bolt is not None
     assert bolt.get_wrapped() is not None
@@ -45,7 +45,7 @@ def test_part_get_step_2():
 
 def test_part_get_stl():
     """Load a STL part"""
-    ctx = pc.Context("examples/produce_part_stl")
+    ctx = pc.Context("examples/produce_part_stl/partcad.yaml")
     part = ctx.get_part("cube", "this")
     assert part is not None
     assert part.get_wrapped() is not None
@@ -53,7 +53,7 @@ def test_part_get_stl():
 
 def test_part_get_3mf():
     """Load a 3MF part"""
-    ctx = pc.Context("examples/produce_part_3mf")
+    ctx = pc.Context("examples/produce_part_3mf/partcad.yaml")
     part = ctx.get_part("cube", "this")
     assert part is not None
     assert part.get_wrapped() is not None
@@ -63,7 +63,7 @@ def test_part_get_scad():
     """Load an OpenSCAD part"""
     scad_path = shutil.which("openscad")
     if not scad_path is None:
-        ctx = pc.Context("examples/produce_part_scad")
+        ctx = pc.Context("examples/produce_part_scad/partcad.yaml")
         part = ctx.get_part("cube", "this")
         assert part is not None
         assert part.get_wrapped() is not None
@@ -114,7 +114,7 @@ def test_part_aliases():
 
 def test_part_example_cadquery_primitive():
     """Instantiate all parts from the example: part_cadquery_primitive"""
-    ctx = pc.init("partcad/tests/partcad-examples.yaml")
+    ctx = pc.Context("partcad/tests/partcad-examples.yaml")
     cube = ctx.get_part("cube", "example_part_cadquery_primitive")
     assert cube is not None
     cylinder = ctx.get_part("cylinder", "example_part_cadquery_primitive")
@@ -124,7 +124,7 @@ def test_part_example_cadquery_primitive():
 
 def test_part_example_cadquery_logo():
     """Instantiate all parts from the example: part_cadquery_logo"""
-    ctx = pc.init("partcad/tests/partcad-examples.yaml")
+    ctx = pc.Context("partcad/tests/partcad-examples.yaml")
     bone = ctx.get_part("bone", "example_part_cadquery_logo")
     assert bone is not None
     head_half = ctx.get_part("head_half", "example_part_cadquery_logo")
@@ -134,7 +134,7 @@ def test_part_example_cadquery_logo():
 
 def test_part_example_build123d_primitive():
     """Instantiate all parts from the example: part_build123d_primitive"""
-    ctx = pc.init("partcad/tests/partcad-examples.yaml")
+    ctx = pc.Context("partcad/tests/partcad-examples.yaml")
     cube = ctx.get_part("cube", "example_part_build123d_primitive")
     assert cube is not None
     assert cube.get_wrapped() is not None

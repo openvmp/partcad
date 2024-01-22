@@ -12,3 +12,8 @@ __pycache__
 /partcad-cli/dist
 .ocp_vscode
 docs/build
+.idea
+part-cad#86PR.ipynb
+box-with-opts.svg
+box.svg
+.ipynb_checkpoints

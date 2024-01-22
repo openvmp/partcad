@@ -18,6 +18,7 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
         super().__init__(ctx, "conda", version)
 
         self.conda_path = shutil.which("conda")
+        self.python = shutil.which("python")
 
     def run(self, cmd, stdin=""):
         with self.lock:
@@ -61,7 +62,7 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
                     "--no-capture-output",
                     "-p",
                     self.path,
-                    "python",
+                    self.python,
                     # "python%s" % self.version,  # This doesn't work on Windows
                 ]
                 + cmd,
