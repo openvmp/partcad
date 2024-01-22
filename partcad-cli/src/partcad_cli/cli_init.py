@@ -9,7 +9,6 @@
 
 import logging
 import os
-import shutil
 import sys
 
 import partcad as pc
@@ -29,12 +28,6 @@ def cli_help_init(subparsers):
 
 
 def cli_init(args):
-    if args.private:
-        template_name = "init-private.yaml"
-    else:
-        template_name = "init-public.yaml"
-    src_path = os.path.join(os.path.dirname(__file__), "template", template_name)
-
     if not args.config_path is None:
         if os.path.isdir(args.config_path):
             dst_path = os.path.join(args.config_path, "partcad.yaml")
@@ -43,7 +36,6 @@ def cli_init(args):
     else:
         dst_path = "partcad.yaml"
 
-    if os.path.exists(dst_path):
-        logging.error("'%s' already exists!" % dst_path)
+    if not pc.create_package(dst_path, args.private):
+        logging.error("Failed creating '%s'!" % dst_path)
         sys.exit(1)
-    shutil.copyfile(src_path, dst_path)

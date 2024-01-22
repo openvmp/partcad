@@ -7,6 +7,8 @@
 # Licensed under Apache License, Version 2.0.
 
 import logging
+import os
+import shutil
 
 from .context import Context
 from .assembly import Assembly
@@ -59,3 +61,17 @@ def finalize_real():
 
 def render(format=None, output_dir=None):
     return init().render(format, output_dir)
+
+
+def create_package(dst_path=consts.DEFAULT_PACKAGE_CONFIG, private=False):
+    if private:
+        template_name = "init-private.yaml"
+    else:
+        template_name = "init-public.yaml"
+    src_path = os.path.join(os.path.dirname(__file__), "template", template_name)
+
+    if os.path.exists(dst_path):
+        return False
+    shutil.copyfile(src_path, dst_path)
+
+    return True
