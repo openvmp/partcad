@@ -7,10 +7,9 @@
 # Licensed under Apache License, Version 2.0.
 
 import atexit
+import importlib
 import logging
 import os
-
-import importlib
 
 from . import consts
 from . import project_config
@@ -199,6 +198,3 @@ class Context(project_config.Configuration):
             return
         path = os.path.dirname(filename)
         os.makedirs(path)
-
-
-# Global functions
