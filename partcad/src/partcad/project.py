@@ -233,8 +233,11 @@ class Project(project_config.Configuration):
         found = False
         for elem in config:
             if elem == section:
-                section = config[section]
-                section[name] = obj
+                config_section = config[section]
+                if config_section is None:
+                    config_section = {}
+                config_section[name] = obj
+                config[section] = config_section
                 found = True
                 break  # no need to iterate further
         if not found:
@@ -249,7 +252,7 @@ class Project(project_config.Configuration):
     def add_part(self, kind: str, path: str) -> bool:
         logging.info("Adding the part %s of type %s" % (path, kind))
         ext_by_kind = {
-            "CadQuery": "py",
+            "cadquery": "py",
             "build123d": "py",
         }
         return self._add_component(kind, path, "parts", ext_by_kind)
