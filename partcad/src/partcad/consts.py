@@ -8,3 +8,4 @@
 #
 
 THIS = "this"
+DEFAULT_PACKAGE_CONFIG = "partcad.yaml"

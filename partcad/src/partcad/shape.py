@@ -52,10 +52,10 @@ class Shape:
                     )
                 else:
                     try:
-                        ocp_vscode.config.status()
+                        # ocp_vscode.config.status()
                         logging.info('Visualizing in "OCP CAD Viewer"...')
                         # logging.debug(self.shape)
-                        ocp_vscode.show(shape)
+                        ocp_vscode.show(shape, progress=None)
                     except Exception as e:
                         logging.warning(e)
                         logging.warning(

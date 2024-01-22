@@ -2,6 +2,7 @@ from build123d import Location
 
 from .globals import (
     init,
+    create_package,
     get_part,
     get_assembly,
     finalize,
@@ -41,4 +42,4 @@ __all__ = [
     "plugins",
 ]
 
-__version__: str = "0.3.72"
+__version__: str = "0.3.75"

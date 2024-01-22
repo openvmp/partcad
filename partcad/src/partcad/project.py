@@ -233,8 +233,11 @@ class Project(project_config.Configuration):
         found = False
         for elem in config:
             if elem == section:
-                section = config[section]
-                section[name] = obj
+                config_section = config[section]
+                if config_section is None:
+                    config_section = {}
+                config_section[name] = obj
+                config[section] = config_section
                 found = True
                 break  # no need to iterate further
         if not found:
