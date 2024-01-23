@@ -72,20 +72,20 @@ class Shape:
         if not show_object is None:
             self.show(show_object)
 
-    def render_svg_somewhere(self, project=None, filepath=None):
+    def render_svg_somewhere(self,  project=None, filepath=None, extra_opts={}):
         """Renders an SVG file somewhere and ignore the project settings"""
         if filepath is None:
             filepath = tempfile.mktemp(".svg")
 
         cq_obj = self.get_cadquery()
         cq_obj = cq_obj.rotate((0, 0, 0), (1, -1, 0.75), 180)
-        cq.exporters.export(cq_obj, filepath, opt=DEFAULT_RENDER_SVG_OPTS)
-
+        cq.exporters.export(cq_obj, filepath, opt={**DEFAULT_RENDER_SVG_OPTS, **extra_opts})
+        print(f"{filepath=:}")
         self.svg_path = filepath
 
-    def _get_svg_path(self, project):
+    def _get_svg_path(self, project, extra_opts={}):
         if self.svg_path is None:
-            self.render_svg_somewhere(project, None)
+            self.render_svg_somewhere(project, None, extra_opts=extra_opts)
         return self.svg_path
 
     def render_getopts(
@@ -93,7 +93,7 @@ class Shape:
         kind,
         extension,
         project=None,
-        filepath=None,
+        filepath=None, include_extra_opts=False
     ):
         if not project is None:
             render_opts = project.config_obj["render"]
@@ -126,6 +126,11 @@ class Shape:
 
         logging.info("Rendering: %s" % filepath)
 
+        extra_opts = render_opts.get("extra_opts", {})
+
+        if include_extra_opts:
+            return opts, filepath, extra_opts
+
         return opts, filepath
 
     def render_svg(
@@ -133,8 +138,8 @@ class Shape:
         project=None,
         filepath=None,
     ):
-        _, filepath = self.render_getopts("svg", ".svg", project, filepath)
-        self.render_svg_somewhere(project, filepath)
+        _, filepath, extra_opts = self.render_getopts("svg", ".svg", project, filepath, include_extra_opts=True)
+        self.render_svg_somewhere(project, filepath, extra_opts=extra_opts)
 
     def render_png(
         self,
@@ -147,21 +152,21 @@ class Shape:
             logging.error("Export to PNG is not supported")
             return
 
-        png_opts, filepath = self.render_getopts("png", ".png", project, filepath)
+        png_opts, filepath, extra_opts = self.render_getopts("png", ".png", project, filepath, include_extra_opts=True)
 
-        if width is None:
-            if "width" in png_opts and not png_opts["width"] is None:
-                width = png_opts["width"]
-            else:
-                width = DEFAULT_RENDER_WIDTH
-        if height is None:
-            if "height" in png_opts and not png_opts["height"] is None:
-                height = png_opts["height"]
-            else:
-                height = DEFAULT_RENDER_HEIGHT
+        # if width is None:
+        #     if "width" in png_opts and not png_opts["width"] is None:
+        #         width = png_opts["width"]
+        #     else:
+        #         width = DEFAULT_RENDER_WIDTH
+        # if height is None:
+        #     if "height" in png_opts and not png_opts["height"] is None:
+        #         height = png_opts["height"]
+        #     else:
+        #         height = DEFAULT_RENDER_HEIGHT
 
         # Render the vector image
-        svg_path = self._get_svg_path(project)
+        svg_path = self._get_svg_path(project, extra_opts=extra_opts)
 
         plugins.export_png.export(project, svg_path, width, height, filepath)
 
