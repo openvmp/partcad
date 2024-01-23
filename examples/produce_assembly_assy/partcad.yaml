@@ -20,4 +20,5 @@ assemblies:
 render:
   svg:
     prefix: ./
+  stl: ./
   markdown: README.md
