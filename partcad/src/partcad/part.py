@@ -19,17 +19,14 @@ from . import shape
 
 
 class Part(shape.Shape):
-    def __init__(self, name=None, path=None, config={}, shape=None):
+    def __init__(self, name: str = None, config: object = {}, shape=None):
         if name is None:
             name = "part" + "".join(
                 random.choices(string.ascii_uppercase + string.digits, k=8)
             )
-        if path is None:
-            path = name
         super().__init__(name)
 
         self.config = config
-        self.path = path
         self.shape = shape
         self.lock = threading.RLock()
 
@@ -64,7 +61,7 @@ class Part(shape.Shape):
         self.count += 1
 
     def clone(self):
-        cloned = Part(self.name, self.path, self.config, self.shape)
+        cloned = Part(self.name, self.config, self.shape)
         cloned.count = self.count
         return cloned
 

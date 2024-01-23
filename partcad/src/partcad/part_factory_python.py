@@ -7,10 +7,10 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-from . import part_factory as pf
+from . import part_factory_file as pff
 
 
-class PartFactoryPython(pf.PartFactory):
+class PartFactoryPython(pff.PartFactoryFile):
     def __init__(self, ctx, project, part_config):
         super().__init__(ctx, project, part_config, extension=".py")
 

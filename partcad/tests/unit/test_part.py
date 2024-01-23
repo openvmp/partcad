@@ -43,6 +43,30 @@ def test_part_get_step_2():
     assert bolt.get_wrapped() is not None
 
 
+def test_part_get_alias_1():
+    """Load a STEP part using a short form alias"""
+    ctx = pc.Context("examples/produce_part_step")
+    bolt = ctx.get_part("screw", "this")
+    assert bolt is not None
+    assert bolt.get_wrapped() is not None
+
+
+def test_part_get_alias_2():
+    """Load a STEP part using a long form alias"""
+    ctx = pc.Context("examples/produce_part_step")
+    bolt = ctx.get_part("fastener", "this")
+    assert bolt is not None
+    assert bolt.get_wrapped() is not None
+
+
+def test_part_get_alias_3():
+    """Load a STEP part using a long form alias"""
+    ctx = pc.Context("examples/produce_part_step")
+    bolt = ctx.get_part("hexhead", "this")
+    assert bolt is not None
+    assert bolt.get_wrapped() is not None
+
+
 def test_part_get_stl():
     """Load a STL part"""
     ctx = pc.Context("examples/produce_part_stl")

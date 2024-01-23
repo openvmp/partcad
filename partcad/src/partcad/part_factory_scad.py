@@ -13,11 +13,10 @@ import subprocess
 import tempfile
 
 import build123d as b3d
-from . import part_factory as pf
-from . import part as p
+from . import part_factory_file as pff
 
 
-class PartFactoryScad(pf.PartFactory):
+class PartFactoryScad(pff.PartFactoryFile):
     def __init__(self, ctx, project, part_config):
         super().__init__(ctx, project, part_config, extension=".scad")
         # Complement the config object here if necessary
