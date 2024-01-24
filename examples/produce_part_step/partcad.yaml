@@ -10,6 +10,14 @@ parts:
     type: alias
     target: bolt
 render:
+  extra_opts:
+    marginTop: 100
+    marginLeft: 100
+    strokeWidth: 0.5
+    height: 300
+    width: 300
   svg:
+    prefix: ./
+  png:
     prefix: ./
   markdown: README.md

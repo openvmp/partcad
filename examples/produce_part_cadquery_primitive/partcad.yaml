@@ -9,6 +9,10 @@ parts:
     path: cylinder.py
     desc: This is a cylinder from examples
 render:
+  extra_opts:
+    focus: 25
   svg:
+    prefix: ./
+  png:
     prefix: ./
   markdown: README.md

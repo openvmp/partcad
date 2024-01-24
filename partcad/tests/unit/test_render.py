@@ -21,6 +21,7 @@ def test_render_svg_part_1():
     assert cube is not None
     try:
         cube.render_svg(project=prj)
+        # cube.render_png(project=prj)
     except Exception as e:
         assert False, "Valid render request caused an exception: %s" % e
 
@@ -45,6 +46,7 @@ def test_render_svg_assy_2():
     assert assy is not None
     try:
         assy.render_svg(project=prj)
+        # assy.render_stl(project=prj)
     except Exception as e:
         assert False, "Valid render request caused an exception: %s" % e
 
