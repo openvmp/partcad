@@ -2,7 +2,13 @@ desc: PartCAD example project to demonstrate parts implemented using STEP files
 parts:
   bolt:
     type: step
+    aliases:
+      - hexhead
     desc: M8x30-screw
+  screw: bolt
+  fastener:
+    type: alias
+    target: bolt
 render:
   svg:
     prefix: ./

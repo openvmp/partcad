@@ -18,6 +18,7 @@ from . import part_factory_stl as pfstl
 from . import part_factory_3mf as pf3
 from . import part_factory_cadquery as pfc
 from . import part_factory_build123d as pfb
+from . import part_factory_alias as pfa
 from . import assembly
 from . import assembly_factory_assy as afa
 
@@ -71,6 +72,10 @@ class Project(project_config.Configuration):
         for part_name in self.part_configs:
             part_config = self.get_part_config(part_name)
 
+            if isinstance(part_config, str):
+                # This is a short form alias
+                part_config = {"type": "alias", "target": part_config}
+
             # Handle the case of the part being declared in the config
             # but not defined (a one liner like "part_name:").
             # TODO(clairbee): Revisit whether it's a bug or a feature
@@ -106,11 +111,24 @@ class Project(project_config.Configuration):
             elif part_config["type"] == "scad":
                 logging.info("Initializing OpenSCAD part: %s..." % part_name)
                 pfscad.PartFactoryScad(self.ctx, self, part_config)
+            elif part_config["type"] == "alias":
+                logging.info("Initializing an alias: %s..." % part_name)
+                pfa.PartFactoryAlias(self.ctx, self, part_config)
             else:
                 logging.error(
                     "Invalid part type encountered: %s: %s" % (part_name, part_config)
                 )
                 return None
+
+            # Initialize aliases if they are declared implicitly
+            if "aliases" in part_config and not part_config["aliases"] is None:
+                for alias in part_config["aliases"]:
+                    alias_part_config = {
+                        "type": "alias",
+                        "name": alias,
+                        "target": part_name,
+                    }
+                    pfa.PartFactoryAlias(self.ctx, self, alias_part_config)
 
     def get_part(self, part_name) -> part.Part:
         if not part_name in self.parts:

@@ -119,32 +119,21 @@ def cli_list_parts(args):
             continue
         project = ctx.projects[project_name]
 
-        if args.used_by is None:
-            if (
-                "parts" in project.config_obj
-                and project.config_obj["parts"] is not None
-            ):
-                part_names = project.config_obj["parts"].keys()
-            else:
-                part_names = []
-        else:
-            part_names = project.parts.keys()
-        for part_name in part_names:
+        for part_name, part in project.parts.items():
+            if args.used_by is not None and part.count == 0:
+                continue
+
             line = "\t"
             if args.recursive:
                 line += "%s" % project_name
-                line += " " * (36 - len(project_name))
+                line += " " + " " * (35 - len(project_name))
             line += "%s" % part_name
             if args.used_by is not None:
                 part = project.parts[part_name]
                 line += "(%d)" % part.count
                 part_count = part_count + part.count
-            line += " " * (36 - len(part_name))
-            if (
-                project.config_obj["parts"][part_name] is not None
-                and "desc" in project.config_obj["parts"][part_name]
-            ):
-                line += "%s" % project.config_obj["parts"][part_name]["desc"]
+            line += " " + " " * (35 - len(part_name))
+            line += "%s" % part.desc
             print(line)
             part_kinds = part_kinds + 1
 
@@ -167,6 +156,7 @@ def cli_list_assemblies(args):
 
     if args.used_by is not None:
         print("Instantiating %s..." % args.used_by)
+        # TODO(clairbee): do not call it twice in 'list-all'
         pc.get_assembly(args.used_by)
 
     print()
@@ -178,32 +168,21 @@ def cli_list_assemblies(args):
             continue
         project = ctx.projects[project_name]
 
-        if args.used_by is None:
-            if (
-                "assemblies" in project.config_obj
-                and project.config_obj["assemblies"] is not None
-            ):
-                assy_names = project.config_obj["assemblies"].keys()
-            else:
-                assy_names = []
-        else:
-            assy_names = project.assemblies.keys()
-        for assy_name in assy_names:
+        for assy_name, assy in project.assemblies.items():
+            if args.used_by is not None and assy.count == 0:
+                continue
+
             line = "\t"
             if args.recursive:
                 line += "%s" % project_name
-                line += " " * (36 - len(project_name))
+                line += " " + " " * (35 - len(project_name))
             line += "%s" % assy_name
             if args.used_by is not None:
                 assy = project.assemblies[assy_name]
                 line += "(%d)" % assy.count
                 assy_count = assy_count + assy.count
-            line += " " * (36 - len(assy_name))
-            if (
-                project.config_obj["assemblies"][assy_name] is not None
-                and "desc" in project.config_obj["assemblies"][assy_name]
-            ):
-                line += "%s" % project.config_obj["assemblies"][assy_name]["desc"]
+            line += " " + " " * (35 - len(assy_name))
+            line += "%s" % assy.desc
             print(line)
             assy_kinds = assy_kinds + 1
 
