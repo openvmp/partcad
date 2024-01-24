@@ -15,6 +15,7 @@ import partcad as pc
 
 from .cli_add import *
 from .cli_init import *
+from .cli_info import *
 from .cli_install import *
 from .cli_list import *
 from .cli_render import *
@@ -47,6 +48,7 @@ def main():
     subparsers = parser.add_subparsers(dest="command")
     cli_help_add(subparsers)
     cli_help_init(subparsers)
+    cli_help_info(subparsers)
     cli_help_install(subparsers)
     cli_help_list(subparsers)
     cli_help_render(subparsers)
@@ -70,6 +72,9 @@ def main():
 
     elif args.command == "init":
         cli_init(args)
+
+    elif args.command == "info":
+        cli_info(args)
 
     elif args.command == "install":
         cli_install(args)
