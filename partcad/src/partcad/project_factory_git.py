@@ -11,6 +11,8 @@ from git import Repo
 import hashlib
 import logging
 import os
+import pathlib
+import time
 
 from . import project_factory as pf
 
@@ -56,6 +58,7 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
         if self.import_revision is not None:
             repo_hash += "-" + self.import_revision
         cache_path = os.path.join(cache_dir, repo_hash)
+        guard_path = os.path.join(cache_path, ".partcad.git.cloned")
 
         # Check if the repository is already cached.
         if os.path.exists(cache_path):
@@ -65,22 +68,30 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
                 origin = repo.remote("origin")
                 before = repo.active_branch.commit
                 if self.import_revision is None:
-                    origin.pull()
+                    if time.time() - os.path.getmtime(guard_path) > 24 * 3600:
+                        origin.pull()
                 else:
-                    origin.fetch()
-                    repo.git.checkout(self.import_revision, force=True)
+                    if (
+                        before != self.import_revision
+                        or time.time() - os.path.getmtime(guard_path) > 24 * 3600
+                    ):
+                        # Need to check for updates
+                        origin.fetch()
+                        repo.git.checkout(self.import_revision, force=True)
                 after = repo.active_branch.commit
                 if before != after:
                     logging.info("\nUpdated the GIT repo: %s" % self.import_config_url)
             except Exception as e:
                 logging.error("\nException: %s" % e)
-                # If update fails, fall back to cloning a new copy.
-                pass
+                # Fall back to using the previous copy
         else:
             # Clone the repository if not cached.
             try:
                 logging.info("\nCloning the GIT repo: %s" % self.import_config_url)
                 Repo.clone_from(repo_url, cache_path)
+
+                if not os.path.exists(guard_path):
+                    pathlib.Path(guard_path).touch()
             except Exception as e:
                 raise RuntimeError(f"Failed to clone repository: {e}")
 
