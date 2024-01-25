@@ -72,15 +72,17 @@ class Shape:
         if not show_object is None:
             self.show(show_object)
 
-    def render_svg_somewhere(self, project=None, filepath=None):
+    def render_svg_somewhere(self,  project=None, filepath=None, svg_render_opts=None):
         """Renders an SVG file somewhere and ignore the project settings"""
         if filepath is None:
             filepath = tempfile.mktemp(".svg")
 
+        if svg_render_opts is None:
+            svg_render_opts = DEFAULT_RENDER_SVG_OPTS
+
         cq_obj = self.get_cadquery()
         cq_obj = cq_obj.rotate((0, 0, 0), (1, -1, 0.75), 180)
-        cq.exporters.export(cq_obj, filepath, opt=DEFAULT_RENDER_SVG_OPTS)
-
+        cq.exporters.export(cq_obj, filepath, opt=svg_render_opts)
         self.svg_path = filepath
 
     def _get_svg_path(self, project):
@@ -99,7 +101,6 @@ class Shape:
             render_opts = project.config_obj["render"]
         else:
             render_opts = {}
-
         if kind in render_opts and not render_opts[kind] is None:
             if isinstance(render_opts[kind], str):
                 opts = {"prefix": render_opts[kind]}
@@ -119,8 +120,8 @@ class Shape:
             # provides a relative path and there is output dir in cmd line or
             # the generic section of rendering options in the config.
             if not os.path.isabs(filepath):
-                if "output_dir" in render_opts:
-                    filepath = os.path.join(render_opts["output_dir"], filepath)
+                if "render_output_dir" in render_opts:
+                    filepath = os.path.join(render_opts["render_output_dir"], filepath)
                 elif not project is None:
                     filepath = os.path.join(project.config_dir, filepath)
 
@@ -133,8 +134,15 @@ class Shape:
         project=None,
         filepath=None,
     ):
-        _, filepath = self.render_getopts("svg", ".svg", project, filepath)
-        self.render_svg_somewhere(project, filepath)
+        svg_opts, filepath = self.render_getopts("svg", ".svg", project, filepath)
+
+        svg_render_opts = DEFAULT_RENDER_SVG_OPTS.copy()
+
+        svg_render_opts["marginTop"] = svg_opts.get("marginTop", svg_render_opts["marginTop"])
+        svg_render_opts["marginLeft"] = svg_opts.get("marginLeft", svg_render_opts["marginLeft"])
+        svg_render_opts["strokeWidth"] = svg_opts.get("strokeWidth", svg_render_opts["strokeWidth"])
+
+        self.render_svg_somewhere(project, filepath, svg_render_opts=svg_render_opts)
 
     def render_png(
         self,

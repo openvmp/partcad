@@ -30,7 +30,7 @@ def test_project_config_version_2():
 
 
 def test_project_config_template():
-    ctx = pc.init("partcad/tests/partcad-examples.yaml")
+    ctx = pc.Context("partcad/tests/partcad-examples.yaml")
     this = ctx.get_project(pc.THIS)
     ctx.import_project(
         this,

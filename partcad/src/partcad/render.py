@@ -19,6 +19,6 @@ DEFAULT_RENDER_SVG_OPTS = {
     "strokeColor": [64, 192, 64],
     "hiddenColor": [32, 64, 32],
     "showHidden": False,
-    # "marginLeft": 0,
-    # "marginTop": 0,
+    "marginLeft": 0,
+    "marginTop": 0,
 }

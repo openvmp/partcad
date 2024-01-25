@@ -2,7 +2,7 @@ name: CI on Linux, MacOS and Windows
 
 on:
   push:
-    branches: ["main", "devel"]
+    branches: ["main", "devel", "devel-86"]
   pull_request:
     branches: ["main", "devel"]
 
