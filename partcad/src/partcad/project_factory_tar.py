@@ -29,8 +29,8 @@ class TarImportConfiguration:
 
 
 class ProjectFactoryTar(pf.ProjectFactory, TarImportConfiguration):
-    def __init__(self, ctx, parent, config, name=None):
-        pf.ProjectFactory.__init__(self, ctx, parent, config, name)
+    def __init__(self, ctx, parent, config):
+        pf.ProjectFactory.__init__(self, ctx, parent, config)
         TarImportConfiguration.__init__(self)
 
         # TODO(clairbee): Clone self.import_config_url to self.path

@@ -17,8 +17,8 @@ class LocalImportConfiguration:
 
 
 class ProjectFactoryLocal(pf.ProjectFactory, LocalImportConfiguration):
-    def __init__(self, ctx, parent, config, name=None):
-        pf.ProjectFactory.__init__(self, ctx, parent, config, name)
+    def __init__(self, ctx, parent, config):
+        pf.ProjectFactory.__init__(self, ctx, parent, config)
         LocalImportConfiguration.__init__(self)
 
         if not os.path.isabs(self.import_config_path) and self.config_dir != "":
