@@ -15,18 +15,15 @@ from . import project as p
 class ImportConfiguration:
     def __init__(self, config_obj={}):
         self.config_obj = config_obj
-        self.import_config_name = self.config_obj.get("name")
+        self.name = self.config_obj.get("name")
         self.import_config_type = self.config_obj.get("type")
 
 
 class ProjectFactory(ImportConfiguration):
-    def __init__(self, ctx, parent, import_config_obj, name):
+    def __init__(self, ctx, parent, import_config_obj):
         super().__init__(import_config_obj)
         self.ctx = ctx
         self.parent = parent
-
-        if not name is None:
-            self.import_config_name = name
 
         if parent is None:
             self.config_path = ctx.config_path
@@ -39,7 +36,7 @@ class ProjectFactory(ImportConfiguration):
 
     def _create(self, config):
         # TODO(clairbee): Finalize the config object if necessary
-        self.project = p.Project(self.ctx, self.import_config_name, self.path)
+        self.project = p.Project(self.ctx, self.name, self.path)
 
     def _save(self):
-        self.ctx.projects[self.import_config_name] = self.project
+        self.ctx.projects[self.name] = self.project

@@ -18,7 +18,7 @@ DEFAULT_CONFIG_FILENAME = "partcad.yaml"
 
 
 class Configuration:
-    def __init__(self, import_config_name, config_path=DEFAULT_CONFIG_FILENAME):
+    def __init__(self, name, config_path=DEFAULT_CONFIG_FILENAME):
         self.config_obj = {}
         self.config_dir = config_path
         self.config_path = config_path
@@ -44,7 +44,7 @@ class Configuration:
             loader=FileSystemLoader(self.config_dir + os.path.sep)
         ).from_string(config)
         config = template.render(
-            package_name=import_config_name,
+            package_name=name,
         )
         self.config_text = config
 
@@ -53,6 +53,8 @@ class Configuration:
             self.config_obj = yaml.safe_load(config)
         if self.config_path.endswith(".json"):
             self.config_obj = json.load(config)
+
+        self.config_obj["name"] = name
 
         if not "render" in self.config_obj or self.config_obj["render"] is None:
             self.config_obj["render"] = {}

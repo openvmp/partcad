@@ -25,8 +25,8 @@ class GitImportConfiguration:
 
 
 class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
-    def __init__(self, ctx, parent, config, name=None):
-        pf.ProjectFactory.__init__(self, ctx, parent, config, name)
+    def __init__(self, ctx, parent, config):
+        pf.ProjectFactory.__init__(self, ctx, parent, config)
         GitImportConfiguration.__init__(self)
 
         self.path = self._clone_or_update_repo(self.import_config_url)
