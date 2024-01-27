@@ -88,7 +88,9 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
             # Clone the repository if not cached.
             try:
                 logging.info("\nCloning the GIT repo: %s" % self.import_config_url)
-                Repo.clone_from(repo_url, cache_path)
+                repo = Repo.clone_from(repo_url, cache_path)
+                if not self.import_revision is None:
+                    repo.git.checkout(self.import_revision, force=True)
 
                 if not os.path.exists(guard_path):
                     pathlib.Path(guard_path).touch()
