@@ -68,9 +68,10 @@ def cli_show(args):
         package = args.package
 
     params = {}
-    for kv in args.params:
-        k, v = kv.split("=")
-        params[k] = v
+    if not args.params is None:
+        for kv in args.params:
+            k, v = kv.split("=")
+            params[k] = v
 
     if args.assembly:
         obj = ctx.get_assembly(args.object, package, params=params)
