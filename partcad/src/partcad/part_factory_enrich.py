@@ -7,6 +7,7 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import copy
 import logging
 import typing
 
@@ -40,6 +41,11 @@ class PartFactoryEnrich(pf.PartFactory):
             augmented_config = ctx.get_project(self.target_project).get_part_config(
                 self.target_part
             )
+        if augmented_config is None:
+            logging.error("Failed to find the part to enrich: %s" % self.target_part)
+            return
+
+        augmented_config = copy.deepcopy(augmented_config)
         # TODO(clairbee): ideally whatever we pull from the project is already normalized
         augmented_config = part_config.PartConfiguration.normalize(
             self.target_part, augmented_config
@@ -67,6 +73,6 @@ class PartFactoryEnrich(pf.PartFactory):
         # Fill in the parameter values using the simplified "with" option
         if "with" in config:
             for param in config["with"]:
-                augmented_config["params"][param]["default"] = config["with"][param]
+                augmented_config["parameters"][param]["default"] = config["with"][param]
 
         project.init_part_by_config(augmented_config)

@@ -20,22 +20,26 @@ class PartConfiguration(ShapeConfiguration):
             # This is a short form alias
             config = {"type": "alias", "target": config}
 
-        if "params" in config:
-            for param_name, param_value in config["params"].items():
+        if "parameters" in config:
+            for param_name, param_value in config["parameters"].items():
+                # Expand short formats
                 if isinstance(param_value, str):
-                    config["params"][param_name] = {
+                    config["parameters"][param_name] = {
                         "type": "string",
                         "default": param_value,
                     }
                 elif isinstance(param_value, float):
-                    config["params"][param_name] = {
+                    config["parameters"][param_name] = {
                         "type": "int",
                         "default": param_value,
                     }
                 elif isinstance(param_value, int):
-                    config["params"][param_name] = {
+                    config["parameters"][param_name] = {
                         "type": "float",
                         "default": param_value,
                     }
+                # All params are float unless another type is explicitly speciifed
+                elif isinstance(param_value, dict) and not "type" in param_value:
+                    param_value["type"] = "float"
 
         return ShapeConfiguration.normalize(name, config)

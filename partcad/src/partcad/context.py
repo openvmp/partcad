@@ -159,19 +159,19 @@ class Context(project_config.Configuration):
 
         return imported_project
 
-    def get_part(self, part_name, project_name):
+    def get_part(self, part_name, project_name, params=None):
         prj = self.get_project(project_name)
         if prj is None:
             # Don't print anything as self.get_project is expected to report errors
             return None
-        return prj.get_part(part_name)
+        return prj.get_part(part_name, params)
 
-    def get_assembly(self, assembly_name, project_name):
+    def get_assembly(self, assembly_name, project_name, params=None):
         prj = self.get_project(project_name)
         if prj is None:
             # Don't print anything as self.get_project is expected to report errors
             return None
-        return prj.get_assembly(assembly_name)
+        return prj.get_assembly(assembly_name, params)
 
     def finalize(self, shape, show_object_fn):
         self._last_to_finalize = shape

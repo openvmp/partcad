@@ -18,7 +18,10 @@ DEFAULT_CONFIG_FILENAME = "partcad.yaml"
 
 
 class Configuration:
+    name: str
+
     def __init__(self, name, config_path=DEFAULT_CONFIG_FILENAME):
+        self.name = name
         self.config_obj = {}
         self.config_dir = config_path
         self.config_path = config_path
