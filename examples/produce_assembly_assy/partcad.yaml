@@ -16,6 +16,10 @@ assemblies:
     type: assy
   logo_embedded:
     type: assy
+  partcad_logo:
+    type: alias
+    target: logo
+  partcad_logo_short: logo
 
 render:
   svg:

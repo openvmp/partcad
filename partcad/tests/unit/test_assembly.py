@@ -18,7 +18,7 @@ def test_assembly_primitive():
     part2 = ctx.get_part("cylinder", "example_part_cadquery_primitive")
     assert part2 is not None
 
-    model = pc.Assembly("example1")
+    model = pc.Assembly({"name": "example1"})
     model.add(part1, loc=pc.Location((0, 0, 0), (0, 0, 1), 0))
     model.add(part2, loc=pc.Location((0, 0, 1), (0, 0, 1), 0))
     ctx.finalize(model, None)

@@ -12,6 +12,7 @@ import ruamel.yaml
 
 from . import project_config
 from . import part
+from . import part_config
 from . import part_factory_scad as pfscad
 from . import part_factory_step as pfs
 from . import part_factory_stl as pfstl
@@ -19,7 +20,10 @@ from . import part_factory_3mf as pf3
 from . import part_factory_cadquery as pfc
 from . import part_factory_build123d as pfb
 from . import part_factory_alias as pfa
+from . import part_factory_enrich as pfe
 from . import assembly
+from . import assembly_config
+from . import assembly_factory_alias as afalias
 from . import assembly_factory_assy as afa
 
 
@@ -70,65 +74,59 @@ class Project(project_config.Configuration):
             return
 
         for part_name in self.part_configs:
-            part_config = self.get_part_config(part_name)
+            config = self.get_part_config(part_name)
+            config = part_config.PartConfiguration.normalize(part_name, config)
+            self.init_part_by_config(config)
 
-            if isinstance(part_config, str):
-                # This is a short form alias
-                part_config = {"type": "alias", "target": part_config}
+    def init_part_by_config(self, config):
+        part_name: str = config["name"]
 
-            # Handle the case of the part being declared in the config
-            # but not defined (a one liner like "part_name:").
-            # TODO(clairbee): Revisit whether it's a bug or a feature
-            #                 that this code allows to load undeclared scripts
-            if part_config is None:
-                part_config = {}
+        if not "type" in config:
+            raise Exception(
+                "ERROR: Part type is not specified: %s: %s" % (part_name, config)
+            )
+        elif config["type"] == "cadquery":
+            logging.info("Initializing CadQuery part: %s..." % part_name)
+            pfc.PartFactoryCadquery(self.ctx, self, config)
+        elif config["type"] == "build123d":
+            logging.info("Initializing build123d part: %s..." % part_name)
+            pfb.PartFactoryBuild123d(self.ctx, self, config)
+        elif config["type"] == "step":
+            logging.info("Initializing STEP part: %s..." % part_name)
+            pfs.PartFactoryStep(self.ctx, self, config)
+        elif config["type"] == "stl":
+            logging.info("Initializing STL part: %s..." % part_name)
+            pfstl.PartFactoryStl(self.ctx, self, config)
+        elif config["type"] == "3mf":
+            logging.info("Initializing 3mf part: %s..." % part_name)
+            pf3.PartFactory3mf(self.ctx, self, config)
+        elif config["type"] == "scad":
+            logging.info("Initializing OpenSCAD part: %s..." % part_name)
+            pfscad.PartFactoryScad(self.ctx, self, config)
+        elif config["type"] == "alias":
+            logging.info("Initializing an alias: %s..." % part_name)
+            pfa.PartFactoryAlias(self.ctx, self, config)
+        elif config["type"] == "enrich":
+            logging.info("Initializing an enrich: %s..." % part_name)
+            pfe.PartFactoryEnrich(self.ctx, self, config)
+        else:
+            logging.error("Invalid part type encountered: %s: %s" % (part_name, config))
+            return None
 
-            # Instead of passing the name as a parameter,
-            # enrich the configuration object
-            # TODO(clairbee): reconsider passing the name as a parameter
-            part_config["name"] = part_name
-
-            if not "type" in part_config:
-                raise Exception(
-                    "ERROR: Part type is not specified: %s: %s"
-                    % (part_name, part_config)
+        # Initialize aliases if they are declared implicitly
+        if "aliases" in config and not config["aliases"] is None:
+            for alias in config["aliases"]:
+                if ":" in part_name:
+                    alias += part_name[part_name.index(":") :]
+                alias_part_config = {
+                    "type": "alias",
+                    "name": alias,
+                    "target": part_name,
+                }
+                alias_part_config = part_config.PartConfiguration.normalize(
+                    alias, alias_part_config
                 )
-            elif part_config["type"] == "cadquery":
-                logging.info("Initializing CadQuery part: %s..." % part_name)
-                pfc.PartFactoryCadquery(self.ctx, self, part_config)
-            elif part_config["type"] == "build123d":
-                logging.info("Initializing build123d part: %s..." % part_name)
-                pfb.PartFactoryBuild123d(self.ctx, self, part_config)
-            elif part_config["type"] == "step":
-                logging.info("Initializing STEP part: %s..." % part_name)
-                pfs.PartFactoryStep(self.ctx, self, part_config)
-            elif part_config["type"] == "stl":
-                logging.info("Initializing STL part: %s..." % part_name)
-                pfstl.PartFactoryStl(self.ctx, self, part_config)
-            elif part_config["type"] == "3mf":
-                logging.info("Initializing 3mf part: %s..." % part_name)
-                pf3.PartFactory3mf(self.ctx, self, part_config)
-            elif part_config["type"] == "scad":
-                logging.info("Initializing OpenSCAD part: %s..." % part_name)
-                pfscad.PartFactoryScad(self.ctx, self, part_config)
-            elif part_config["type"] == "alias":
-                logging.info("Initializing an alias: %s..." % part_name)
-                pfa.PartFactoryAlias(self.ctx, self, part_config)
-            else:
-                logging.error(
-                    "Invalid part type encountered: %s: %s" % (part_name, part_config)
-                )
-                return None
-
-            # Initialize aliases if they are declared implicitly
-            if "aliases" in part_config and not part_config["aliases"] is None:
-                for alias in part_config["aliases"]:
-                    alias_part_config = {
-                        "type": "alias",
-                        "name": alias,
-                        "target": part_name,
-                    }
-                    pfa.PartFactoryAlias(self.ctx, self, alias_part_config)
+                pfa.PartFactoryAlias(self.ctx, self, alias_part_config)
 
     def get_part(self, part_name) -> part.Part:
         if not part_name in self.parts:
@@ -146,31 +144,26 @@ class Project(project_config.Configuration):
             return
 
         for assembly_name in self.assembly_configs:
-            assembly_config = self.get_assembly_config(assembly_name)
+            config = self.get_assembly_config(assembly_name)
+            config = assembly_config.AssemblyConfiguration.normalize(
+                assembly_name, config
+            )
+            self.init_assembly_by_config(config)
 
-            # Handle the case of the part being declared in the config
-            # but not defined (a one liner like "part_name:").
-            # TODO(clairbee): Revisit whether it's a bug or a feature
-            #                 that this code allows to load undeclared scripts
-            if assembly_config is None:
-                assembly_config = {}
+    def init_assembly_by_config(self, config):
+        assembly_name: str = config["name"]
 
-            # Instead of passing the name as a parameter,
-            # enrich the configuration object
-            # TODO(clairbee): reconsider passing the name as a parameter
-            assembly_config["name"] = assembly_name
-
-            if assembly_config["type"] == "assy":
-                logging.info(
-                    "Initializing AssemblyYAML assembly: %s..." % assembly_name
-                )
-                afa.AssemblyFactoryAssy(self.ctx, self, assembly_config)
-            else:
-                logging.error(
-                    "Invalid assembly type encountered: %s: %s"
-                    % (assembly_name, assembly_config)
-                )
-                return None
+        if config["type"] == "assy":
+            logging.info("Initializing AssemblyYAML assembly: %s..." % assembly_name)
+            afa.AssemblyFactoryAssy(self.ctx, self, config)
+        elif config["type"] == "alias":
+            logging.info("Initializing alias assembly: %s..." % assembly_name)
+            afalias.AssemblyFactoryAlias(self.ctx, self, config)
+        else:
+            logging.error(
+                "Invalid assembly type encountered: %s: %s" % (assembly_name, config)
+            )
+            return None
 
     def get_assembly(self, assembly_name) -> assembly.Assembly:
         if not assembly_name in self.assemblies:

@@ -3,7 +3,20 @@ parts:
   cube:
     type: cadquery
     desc: This is a cube from examples
+    params:
+      width:
+        default: 10.0
+      length:
+        default: 10.0
+      height: 10.0
     aliases: ["box"]
+  brick:
+    type: enrich
+    target: cube
+    with:
+      width: 20.0
+      length: 10.0
+      height: 7.5
   cylinder:
     type: cadquery
     path: cylinder.py

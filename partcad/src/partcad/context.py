@@ -26,6 +26,14 @@ from .utils import total_size
 class Context(project_config.Configuration):
     """Stores and caches all imported objects."""
 
+    stats_packages: int
+    stats_packages_instantiated: int
+    stats_parts: int
+    stats_parts_instantiated: int
+    stats_assemblies: int
+    stats_assemblies_instantiated: int
+    stats_memory: int
+
     def __init__(self, config_path="."):
         """Initializes the context and imports the root project."""
         super().__init__(consts.THIS, config_path)

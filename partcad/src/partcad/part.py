@@ -8,25 +8,17 @@
 #
 
 import math
-import random
-import string
 import threading
-
-import cadquery as cq
-import build123d as b3d
 
 from . import shape
 
 
 class Part(shape.Shape):
-    def __init__(self, name: str = None, config: object = {}, shape=None):
-        if name is None:
-            name = "part" + "".join(
-                random.choices(string.ascii_uppercase + string.digits, k=8)
-            )
-        super().__init__(name)
+    path: str | None = None
 
-        self.config = config
+    def __init__(self, config: object = {}, shape=None):
+        super().__init__(config)
+
         self.shape = shape
         self.lock = threading.RLock()
 
@@ -47,9 +39,6 @@ class Part(shape.Shape):
         else:
             self.count_per_sku = 1
         self.count = 0
-
-    def set_shape(self, shape):
-        self.shape = shape
 
     def get_shape(self):
         with self.lock:
