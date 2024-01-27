@@ -7,9 +7,8 @@
 # Licensed under Apache License, Version 2.0.
 
 import copy
-import random
-import string
 import threading
+import typing
 
 import build123d as b3d
 
@@ -24,16 +23,11 @@ class AssemblyChild:
 
 
 class Assembly(shape.Shape):
-    def __init__(self, name=None, config={}):
-        super().__init__(name)
+    path: typing.Optional[str] = None
 
-        self.config = config
-        if name is None:
-            self.name = "assembly_" + "".join(
-                random.choice(string.ascii_uppercase + string.digits) for _ in range(6)
-            )
-        else:
-            self.name = name
+    def __init__(self, config={}):
+        super().__init__(config)
+
         if "location" in config:
             self.location = config["location"]
         else:

@@ -22,7 +22,7 @@ class PartFactoryFile(pf.PartFactory):
         if "path" in part_config:
             self.path = part_config["path"]
         else:
-            self.path = self.name + extension
+            self.path = self.orig_name + extension
 
         if not os.path.isdir(project.config_dir):
             raise Exception(
@@ -32,6 +32,3 @@ class PartFactoryFile(pf.PartFactory):
         self.path = os.path.join(project.config_dir, self.path)
         if not os.path.isfile(self.path):
             raise Exception("ERROR: The part path (%s) must be a file" % self.path)
-
-        # Pass the autodetected path to the 'Part' class
-        part_config["path"] = self.path

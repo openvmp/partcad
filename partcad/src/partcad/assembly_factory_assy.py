@@ -14,10 +14,10 @@ import os
 import yaml
 
 from .assembly import Assembly
-from . import assembly_factory as af
+from . import assembly_factory_file as aff
 
 
-class AssemblyFactoryAssy(af.AssemblyFactory):
+class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
     def __init__(self, ctx, project, assembly_config):
         super().__init__(ctx, project, assembly_config, extension=".assy")
         # Complement the config object here if necessary
@@ -77,7 +77,9 @@ class AssemblyFactoryAssy(af.AssemblyFactory):
 
         # Check if this node is for an assembly
         if "links" in node:
-            item = Assembly(name, node["links"])
+            item = Assembly(
+                {"name": name}
+            )  # TODO(clairbee): revisit why node["links"]) was used there
             item.instantiate = lambda x: True
             self.handle_node_list(item, node["links"])
         else:

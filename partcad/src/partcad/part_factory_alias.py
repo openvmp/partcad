@@ -7,23 +7,32 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import logging
+import typing
+
 from . import part_factory as pf
 
 
 class PartFactoryAlias(pf.PartFactory):
-    def __init__(self, ctx, project, part_config):
-        super().__init__(ctx, project, part_config)
-        # Complement the config object here if necessary
-        self._create(part_config)
+    target_part: str
+    target_project: typing.Optional[str]
 
-        self.target_part: str = part_config["target"]
-        if ":" in self.target_part:
-            self.target_project, self.target_part = self.target_part.split(":")
-        elif "project" in part_config:
-            self.target_project = part_config["project"]
+    def __init__(self, ctx, project, config):
+        super().__init__(ctx, project, config)
+        # Complement the config object here if necessary
+        self._create(config)
+
+        self.target_part = config["target"]
+        if "project" in config:
+            self.target_project = config["project"]
         else:
             self.target_project = None
 
+        logging.debug(
+            "Initializing an alias to %s:%s" % (self.target_project, self.target_part)
+        )
+
+        # Get the config of the part the alias points to
         if self.target_project is None:
             self.part.desc = "Alias to %s" % self.target_part
         else:
@@ -33,12 +42,12 @@ class PartFactoryAlias(pf.PartFactory):
             )
 
     def instantiate(self, part):
+        # TODO(clairbee): resolve the absolute package path?
         if self.target_project is None:
             target = self.project.get_part(self.target_part)
         else:
             target = self.project.ctx.get_part(self.target_part, self.target_project)
 
-        # TODO(clairbee): resolve the absolute package path
         part.set_shape(target.get_shape())
 
         self.ctx.stats_parts_instantiated += 1

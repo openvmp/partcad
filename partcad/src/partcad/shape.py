@@ -16,17 +16,26 @@ import tempfile
 
 from .render import *
 from .plugins import *
+from .shape_config import ShapeConfiguration
 
 
-class Shape:
-    def __init__(self, name):
-        self.name = name
+class Shape(ShapeConfiguration):
+    name: str
+    svg_path: str
+    svg_url: str
+    # shape: None | b3d.TopoDS_Shape | OCP.TopoDS.TopoDS_Solid
+
+    def __init__(self, config):
+        super().__init__(config)
         self.shape = None
         self.compound = None
 
         # Leave the svg path empty to get it created on demand
         self.svg_path = None
         self.svg_url = None
+
+    def set_shape(self, shape):
+        self.shape = shape
 
     def get_wrapped(self):
         return self.get_shape()

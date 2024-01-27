@@ -7,32 +7,28 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import os
+import typing
 
 from . import assembly
 
 
+# TODO(clairbee): introduce ShapeFactory
 class AssemblyFactory:
+    # TODO(clairbee): Make the next line work for assembly_factory_file only
+    path: typing.Optional[str] = None
+
     def __init__(self, ctx, project, assembly_config, extension=""):
         self.ctx = ctx
         self.project = project
         self.assembly_config = assembly_config
         self.name = assembly_config["name"]
-
-        self.path = self.name + extension
-        if "path" in assembly_config:
-            self.path = assembly_config["path"]
-        if not os.path.isdir(project.path):
-            raise Exception("ERROR: The project path must be a directory")
-        self.path = os.path.join(project.path, self.path)
-        if not os.path.exists(self.path):
-            raise Exception("ERROR: The assembly path must exist")
-
-        # Pass the autodetected path to the 'Assembly' class
-        assembly_config["path"] = self.path
+        self.orig_name = assembly_config["orig_name"]
 
     def _create(self, assembly_config):
-        self.assembly = assembly.Assembly(self.name, assembly_config)
+        self.assembly = assembly.Assembly(assembly_config)
+        # TODO(clairbee): Make the next line work for assembly_factory_file only
+        if self.path:
+            self.assembly.path = self.path
         self.project.assemblies[self.name] = self.assembly
 
         self.assembly.instantiate = lambda assembly_self: self.instantiate(
