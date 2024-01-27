@@ -6,9 +6,11 @@
 #
 # Licensed under Apache License, Version 2.0.
 
+import copy
 import logging
 import os
 import ruamel.yaml
+import typing
 
 from . import project_config
 from . import part
@@ -128,11 +130,102 @@ class Project(project_config.Configuration):
                 )
                 pfa.PartFactoryAlias(self.ctx, self, alias_part_config)
 
-    def get_part(self, part_name) -> part.Part:
-        if not part_name in self.parts:
-            logging.error("Part not found: %s" % part_name)
+    def get_part(self, part_name, func_params=None) -> part.Part:
+        if func_params is None or not func_params:
+            # Quick check if it's already available
+            if part_name in self.parts:
+                return self.parts[part_name]
+            has_func_params = False
+        else:
+            has_func_params = True
+
+        params: {str: typing.Any} = {}
+        if ":" in part_name:
+            has_name_params = True
+            base_part_name = part_name.splt(":")[0]
+            part_name_params_string = part_name.split(":")[1]
+
+            for kv in part_name_params_string.split[","]:
+                k, v = kv.split("")
+                params[k] = v
+        else:
+            has_name_params = False
+            base_part_name = part_name
+
+        if has_func_params:
+            params = {**params, **func_params}
+            has_name_params = True
+
+        if not has_name_params:
+            # This is just a regular part name, no params
+            if not part_name in self.parts:
+                logging.error("Part '%s' not found in '%s'", part_name, self.name)
+                return None
+            return self.parts[part_name]
+
+        if not base_part_name in self.parts:
+            logging.error("Base part '%s' not found in '%s'", base_part_name, self.name)
             return None
-        return self.parts[part_name]
+        logging.info("Found the base part: %s" % base_part_name)
+
+        # Now we have the original part name and the complete set of parameters
+        config = self.part_configs[base_part_name]
+        if config is None:
+            logging.error(
+                "The config for the base part '%s' is not found in '%s'",
+                base_part_name,
+                self.name,
+            )
+            return None
+
+        config = copy.deepcopy(config)
+        if not "parameters" in config or config["parameters"] is None:
+            logging.error(
+                "Attempt to parametrize '%s' of '%s' which has no parameters",
+                base_part_name,
+                self.name,
+            )
+            return None
+
+        # Determine the name we want this parameterized part to have
+        result_name = base_part_name + ":"
+        result_name += ",".join(map(lambda n: n + "=" + str(params[n]), sorted(params)))
+
+        # Expand the config object so that the parameter values can be set
+        config = part_config.PartConfiguration.normalize(result_name, config)
+        config["orig_name"] = base_part_name
+
+        # Fill in the parameter values
+        param_name: str
+        for param_name, param_value in params.items():
+            if config["parameters"][param_name]["type"] == "string":
+                config["parameters"][param_name]["default"] = str(param_value)
+            elif config["parameters"][param_name]["type"] == "int":
+                config["parameters"][param_name]["default"] = int(param_value)
+            elif config["parameters"][param_name]["type"] == "float":
+                config["parameters"][param_name]["default"] = float(param_value)
+            elif config["parameters"][param_name]["type"] == "bool":
+                if isinstance(param_value, str):
+                    if param_value.lower() == "true":
+                        config["parameters"][param_name]["default"] = True
+                    else:
+                        config["parameters"][param_name]["default"] = False
+                else:
+                    config["parameters"][param_name]["default"] = bool(param_value)
+
+        # Now initialize the part
+        self.init_part_by_config(config)
+
+        # See if it worked
+        if not result_name in self.parts:
+            logging.error(
+                "Failed to instantiate parameterized part '%s' in '%s'",
+                result_name,
+                self.name,
+            )
+            return None
+
+        return self.parts[result_name]
 
     def get_assembly_config(self, assembly_name):
         if not assembly_name in self.assembly_configs:
@@ -165,7 +258,9 @@ class Project(project_config.Configuration):
             )
             return None
 
-    def get_assembly(self, assembly_name) -> assembly.Assembly:
+    def get_assembly(self, assembly_name, _func_params=None) -> assembly.Assembly:
+        # TODO(clairbee): handle assembly params
+
         if not assembly_name in self.assemblies:
             logging.error("Assembly not found: %s" % assembly_name)
             return None

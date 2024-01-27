@@ -33,3 +33,15 @@ def test_part_alias_get_3():
     bolt = ctx.get_part("hexhead", "this")
     assert bolt is not None
     assert bolt.get_wrapped() is not None
+
+
+# Add support for the following one
+# def test_part_alias_get_with_params():
+#     """Load a CadQuery part using an alias with parameters in its name and see if the parameters changed"""
+#     ctx = pc.Context("examples/produce_part_cadquery_primitive")
+#     brick = ctx.get_part("brick2", "this")
+#     assert brick is not None
+#     assert brick.get_wrapped() is not None
+
+#     # Check whether the parameter change is in effect
+#     assert brick.config["parameters"]["width"]["default"] == 20.0

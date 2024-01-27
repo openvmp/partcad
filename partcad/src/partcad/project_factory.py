@@ -37,6 +37,8 @@ class ProjectFactory(ImportConfiguration):
     def _create(self, config):
         # TODO(clairbee): Finalize the config object if necessary
         self.project = p.Project(self.ctx, self.name, self.path)
+        # Make the project config inherit some properties of the import config
+        self.project.config_obj["type"] = self.import_config_type
 
     def _save(self):
         self.ctx.projects[self.name] = self.project

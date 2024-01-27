@@ -13,6 +13,10 @@ import cadquery as cq
 if __name__ != "__cqgi__":
     from cq_server.ui import ui, show_object
 
-shape = cq.Workplane("front").box(10.0, 10.0, 10.0)
+width = 10.0
+length = 10.0
+height = 10.0
+
+shape = cq.Workplane("front").box(width, length, height)
 
 show_object(shape)

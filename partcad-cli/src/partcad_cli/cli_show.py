@@ -7,11 +7,14 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+# import argparse
 import logging
 
 import partcad as pc
 
 
+# TODO(clairbee): fix type checking here
+# def cli_help_show(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]):
 def cli_help_show(subparsers):
     parser_show = subparsers.add_parser(
         "show",
@@ -29,6 +32,15 @@ def cli_help_show(subparsers):
         help="The object is a scene",
         dest="scene",
         action="store_true",
+    )
+
+    parser_show.add_argument(
+        "-p",
+        "--param",
+        metavar="<param_name>=<param_value>",
+        help="Assign a value to the parameter",
+        dest="params",
+        action="append",
     )
 
     parser_show.add_argument(
@@ -55,10 +67,15 @@ def cli_show(args):
     else:
         package = args.package
 
+    params = {}
+    for kv in args.params:
+        k, v = kv.split("=")
+        params[k] = v
+
     if args.assembly:
-        obj = ctx.get_assembly(args.object, package)
+        obj = ctx.get_assembly(args.object, package, params=params)
     else:
-        obj = ctx.get_part(args.object, package)
+        obj = ctx.get_part(args.object, package, params=params)
 
     if obj is None:
         if args.package is None:

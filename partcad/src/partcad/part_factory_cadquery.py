@@ -32,6 +32,10 @@ class PartFactoryCadquery(pfp.PartFactoryPython):
         wrapper_path = wrapper.get("cadquery.py")
 
         request = {"build_parameters": {}}
+        if "parameters" in self.part_config:
+            for param_name, param in self.part_config["parameters"].items():
+                request["build_parameters"][param_name] = param["default"]
+
         picklestring = pickle.dumps(request)
         request_serialized = base64.b64encode(picklestring).decode()
 

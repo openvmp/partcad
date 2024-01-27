@@ -37,18 +37,18 @@ def init(config_path=".") -> Context:
     return _partcad_context
 
 
-def get_assembly(assembly_name, project_name=consts.THIS) -> Assembly:
+def get_assembly(assembly_name, project_name=consts.THIS, params=None) -> Assembly:
     """Get the assembly from the given project"""
     if project_name is None:
         project_name = consts.THIS
-    return init().get_assembly(assembly_name, project_name)
+    return init().get_assembly(assembly_name, project_name, params=params)
 
 
-def get_part(part_name, project_name=consts.THIS) -> Part:
+def get_part(part_name, project_name=consts.THIS, params=None) -> Part:
     """Get the part from the given project"""
     if project_name is None:
         project_name = consts.THIS
-    return init().get_part(part_name, project_name)
+    return init().get_part(part_name, project_name, params=params)
 
 
 def finalize(shape, show_object_fn):
