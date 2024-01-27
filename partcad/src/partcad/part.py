@@ -9,12 +9,13 @@
 
 import math
 import threading
+import typing
 
 from . import shape
 
 
 class Part(shape.Shape):
-    path: str | None = None
+    path: typing.Optional[str] = None
 
     def __init__(self, config: object = {}, shape=None):
         super().__init__(config)

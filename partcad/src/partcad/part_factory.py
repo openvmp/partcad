@@ -7,12 +7,14 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import typing
+
 from . import part as p
 
 
 class PartFactory:
     # TODO(clairbee): Make the next line work for part_factory_file only
-    path: str | None = None
+    path: typing.Optional[str] = None
     part: p.Part
 
     def __init__(self, ctx, project, part_config: object, extension: str = ""):

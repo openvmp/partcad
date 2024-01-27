@@ -56,6 +56,7 @@
   "python.testing.pytestEnabled": true,
   "python.terminal.executeInFileDir": true,
   "python.terminal.launchArgs": [],
+  // TODO(clairbee): "python.analysis.typeCheckingMode": "basic",
   "OcpCadViewer.advanced.autostart": false,
   "yaml.format.bracketSpacing": false // prevent YAML formatter from breaking Jinja2 templates
 }

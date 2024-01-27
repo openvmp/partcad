@@ -7,7 +7,7 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import os
+import typing
 
 from . import assembly
 
@@ -15,7 +15,7 @@ from . import assembly
 # TODO(clairbee): introduce ShapeFactory
 class AssemblyFactory:
     # TODO(clairbee): Make the next line work for assembly_factory_file only
-    path: str | None = None
+    path: typing.Optional[str] = None
 
     def __init__(self, ctx, project, assembly_config, extension=""):
         self.ctx = ctx

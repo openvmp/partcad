@@ -8,6 +8,7 @@
 
 import copy
 import threading
+import typing
 
 import build123d as b3d
 
@@ -22,7 +23,7 @@ class AssemblyChild:
 
 
 class Assembly(shape.Shape):
-    path: str | None = None
+    path: typing.Optional[str] = None
 
     def __init__(self, config={}):
         super().__init__(config)

@@ -8,13 +8,14 @@
 #
 
 import logging
+import typing
 
 from . import part_factory as pf
 
 
 class PartFactoryAlias(pf.PartFactory):
     target_part: str
-    target_project: str | None
+    target_project: typing.Optional[str]
 
     def __init__(self, ctx, project, config):
         super().__init__(ctx, project, config)
