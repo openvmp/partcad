@@ -86,7 +86,8 @@ class Assembly(shape.Shape):
             if not self.location is None:
                 shape.locate(self.location)
             self.shape = shape.wrapped
-        return copy.copy(self.shape)
+        return self.shape
+        # return copy.copy(self.shape) # TODO(clairbee): fix this for the case when the parts are made with cadquery
 
     def _render_txt_real(self, file):
         self.do_instantiate()
