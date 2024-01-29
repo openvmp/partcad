@@ -41,7 +41,12 @@ class PartFactoryCadquery(pfp.PartFactoryPython):
 
         self.runtime.ensure("cadquery")
         response_serialized, errors = self.runtime.run(
-            [wrapper_path, self.path], request_serialized
+            [
+                wrapper_path,
+                os.path.abspath(self.path),
+                os.path.abspath(self.project.config_dir),
+            ],
+            request_serialized,
         )
         sys.stderr.write(errors)
 

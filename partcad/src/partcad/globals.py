@@ -29,12 +29,22 @@ def init(config_path=".") -> Context:
 
         _partcad_context = Context(config_path)
         _partcad_context_path = config_path
-    else:
-        if _partcad_context_path != config_path:
-            logging.error("Multiple context configurations")
-            raise Exception("partcad: multiple context configurations")
+    # else:
+    #     # The below is useful to troubleshoot common pitfalls.
+    #     # But it's not really wrong, and in some cases it's a desired bahavior.
+    #     if _partcad_context_path != config_path:
+    #         logging.error("Multiple context configurations")
+    #         raise Exception("partcad: multiple context configurations")
 
     return _partcad_context
+
+
+def fini():
+    global _partcad_context
+    global _partcad_context_path
+
+    _partcad_context = None
+    _partcad_context_path = None
 
 
 def get_assembly(assembly_name, project_name=consts.THIS, params=None) -> Assembly:

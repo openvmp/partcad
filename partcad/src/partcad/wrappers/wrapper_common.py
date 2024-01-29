@@ -27,6 +27,8 @@ def handle_input():
     # Handle the input
     # - Comand line parameters
     path = sys.argv[1]
+    if len(sys.argv) > 2:
+        os.chdir(sys.argv[2])
     # - Content passed via stdin
     # #   - Make stdin blocking so that we can read until EOF
     # flag = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)

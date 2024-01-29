@@ -88,6 +88,8 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
                 package_name = node["package"]
             else:
                 package_name = "this"
+            if package_name == "this":
+                package_name = self.project.name
             part_name = node["part"]
             item = self.ctx.get_part(part_name, package_name)
 

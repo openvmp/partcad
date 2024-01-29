@@ -43,7 +43,7 @@ class Project(project_config.Configuration):
         self.path = dir_name
 
         # self.part_configs contains the configs of all the parts in this project
-        if "parts" in self.config_obj:
+        if "parts" in self.config_obj and not self.config_obj["parts"] is None:
             self.part_configs = self.config_obj["parts"]
         else:
             self.part_configs = {}
@@ -51,7 +51,10 @@ class Project(project_config.Configuration):
         self.parts = {}
 
         # self.assembly_configs contains the configs of all the assemblies in this project
-        if "assemblies" in self.config_obj:
+        if (
+            "assemblies" in self.config_obj
+            and not self.config_obj["assemblies"] is None
+        ):
             self.assembly_configs = self.config_obj["assemblies"]
         else:
             self.assembly_configs = {}

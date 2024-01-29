@@ -146,7 +146,10 @@ class Context(project_config.Configuration):
         # while preventing circular dependencies
         self._projects_being_loaded[name] = True
         # logging.debug("Imported config: %s..." % imported_project.config_obj)
-        if "import" in imported_project.config_obj:
+        if (
+            "import" in imported_project.config_obj
+            and not imported_project.config_obj["import"] is None
+        ):
             for prj_name in imported_project.config_obj["import"]:
                 # logging.debug("Importing: %s..." % prj_name)
                 prj_conf = imported_project.config_obj["import"][prj_name]
