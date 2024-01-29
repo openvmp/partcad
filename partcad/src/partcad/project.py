@@ -162,8 +162,14 @@ class Project(project_config.Configuration):
         if not has_name_params:
             # This is just a regular part name, no params
             if not part_name in self.parts:
-                logging.error("Part '%s' not found in '%s'", part_name, self.name)
-                return None
+                if not part_name in self.part_configs:
+                    # We don't know anything about such a part
+                    logging.error("Part '%s' not found in '%s'", part_name, self.name)
+                    return None
+                # This is not yet created (invalidated?)
+                config = self.get_part_config(part_name)
+                config = part_config.PartConfiguration.normalize(part_name, config)
+                self.init_part_by_config(config)
             return self.parts[part_name]
 
         if not base_part_name in self.parts:
@@ -261,13 +267,114 @@ class Project(project_config.Configuration):
             )
             return None
 
-    def get_assembly(self, assembly_name, _func_params=None) -> assembly.Assembly:
-        # TODO(clairbee): handle assembly params
+    def get_assembly(self, assembly_name, func_params=None) -> assembly.Assembly:
+        if func_params is None or not func_params:
+            # Quick check if it's already available
+            if assembly_name in self.assemblies:
+                return self.assemblies[assembly_name]
+            has_func_params = False
+        else:
+            has_func_params = True
 
-        if not assembly_name in self.assemblies:
-            logging.error("Assembly not found: %s" % assembly_name)
+        params: {str: typing.Any} = {}
+        if ":" in assembly_name:
+            has_name_params = True
+            base_assembly_name = assembly_name.splt(":")[0]
+            assembly_name_params_string = assembly_name.split(":")[1]
+
+            for kv in assembly_name_params_string.split[","]:
+                k, v = kv.split("")
+                params[k] = v
+        else:
+            has_name_params = False
+            base_assembly_name = assembly_name
+
+        if has_func_params:
+            params = {**params, **func_params}
+            has_name_params = True
+
+        if not has_name_params:
+            # This is just a regular assembly name, no params
+            if not assembly_name in self.assemblies:
+                if not assembly_name in self.assembly_configs:
+                    # We don't know anything about such a assembly
+                    logging.error(
+                        "Assembly '%s' not found in '%s'", assembly_name, self.name
+                    )
+                    return None
+                # This is not yet created (invalidated?)
+                config = self.get_assembly_config(assembly_name)
+                config = assembly_config.AssemblyConfiguration.normalize(
+                    assembly_name, config
+                )
+                self.init_assembly_by_config(config)
+            return self.assemblies[assembly_name]
+
+        if not base_assembly_name in self.assemblies:
+            logging.error(
+                "Base assembly '%s' not found in '%s'", base_assembly_name, self.name
+            )
             return None
-        return self.assemblies[assembly_name]
+        logging.info("Found the base assembly: %s" % base_assembly_name)
+
+        # Now we have the original assembly name and the complete set of parameters
+        config = self.assembly_configs[base_assembly_name]
+        if config is None:
+            logging.error(
+                "The config for the base assembly '%s' is not found in '%s'",
+                base_assembly_name,
+                self.name,
+            )
+            return None
+
+        config = copy.deepcopy(config)
+        if not "parameters" in config or config["parameters"] is None:
+            logging.error(
+                "Attempt to parametrize '%s' of '%s' which has no parameters",
+                base_assembly_name,
+                self.name,
+            )
+            return None
+
+        # Determine the name we want this parameterized assembly to have
+        result_name = base_assembly_name + ":"
+        result_name += ",".join(map(lambda n: n + "=" + str(params[n]), sorted(params)))
+
+        # Expand the config object so that the parameter values can be set
+        config = assembly_config.AssemblyConfiguration.normalize(result_name, config)
+        config["orig_name"] = base_assembly_name
+
+        # Fill in the parameter values
+        param_name: str
+        for param_name, param_value in params.items():
+            if config["parameters"][param_name]["type"] == "string":
+                config["parameters"][param_name]["default"] = str(param_value)
+            elif config["parameters"][param_name]["type"] == "int":
+                config["parameters"][param_name]["default"] = int(param_value)
+            elif config["parameters"][param_name]["type"] == "float":
+                config["parameters"][param_name]["default"] = float(param_value)
+            elif config["parameters"][param_name]["type"] == "bool":
+                if isinstance(param_value, str):
+                    if param_value.lower() == "true":
+                        config["parameters"][param_name]["default"] = True
+                    else:
+                        config["parameters"][param_name]["default"] = False
+                else:
+                    config["parameters"][param_name]["default"] = bool(param_value)
+
+        # Now initialize the assembly
+        self.init_assembly_by_config(config)
+
+        # See if it worked
+        if not result_name in self.assemblies:
+            logging.error(
+                "Failed to instantiate parameterized assembly '%s' in '%s'",
+                result_name,
+                self.name,
+            )
+            return None
+
+        return self.assemblies[result_name]
 
     def add_import(self, alias, location):
         if ":" in location:
