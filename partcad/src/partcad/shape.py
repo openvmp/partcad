@@ -21,6 +21,7 @@ from .shape_config import ShapeConfiguration
 
 class Shape(ShapeConfiguration):
     name: str
+    desc: str
     svg_path: str
     svg_url: str
     # shape: None | b3d.TopoDS_Shape | OCP.TopoDS.TopoDS_Solid

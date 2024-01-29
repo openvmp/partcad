@@ -2,6 +2,7 @@ from build123d import Location
 
 from .globals import (
     init,
+    fini,
     create_package,
     get_part,
     get_assembly,
