@@ -90,8 +90,12 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
                 package_name = "this"
             if package_name == "this":
                 package_name = self.project.name
-            part_name = node["part"]
-            item = self.ctx.get_part(part_name, package_name)
+            if "assembly" in node:
+                assy_name = node["assembly"]
+                item = self.ctx.get_assembly(assy_name, package_name)
+            else:
+                part_name = node["part"]
+                item = self.ctx.get_part(part_name, package_name)
 
         if not item is None:
             assembly.add(item, name, location)
