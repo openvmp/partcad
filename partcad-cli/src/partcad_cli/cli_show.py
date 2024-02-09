@@ -7,10 +7,7 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-# import argparse
-import logging
-
-import partcad as pc
+import partcad.logging as pc_logging
 
 
 # TODO(clairbee): fix type checking here
@@ -56,12 +53,7 @@ def cli_help_show(subparsers):
     )
 
 
-def cli_show(args):
-    if not args.config_path is None:
-        ctx = pc.init(args.config_path)
-    else:
-        ctx = pc.init()
-
+def cli_show(args, ctx):
     if args.package is None:
         package = "this"
     else:
@@ -80,9 +72,9 @@ def cli_show(args):
 
     if obj is None:
         if args.package is None:
-            logging.error("Object %s not found" % args.object)
+            pc_logging.error("Object %s not found" % args.object)
         else:
-            logging.error(
+            pc_logging.error(
                 "Object %s not found in package %s" % (args.object, args.package)
             )
     else:

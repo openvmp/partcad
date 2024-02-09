@@ -7,7 +7,6 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import logging
 import partcad as pc
 
 
@@ -71,14 +70,9 @@ def cli_help_list(subparsers):
     )
 
 
-def cli_list(args):
-    if not args.config_path is None:
-        ctx = pc.init(args.config_path)
-    else:
-        ctx = pc.init()
+def cli_list(args, ctx):
     pkg_count = 0
 
-    print()
     print("PartCAD dependencies:")
     for project_name in ctx.projects:
         if project_name == pc.THIS or project_name.startswith("partcad-"):
@@ -98,11 +92,7 @@ def cli_list(args):
         print("\t<none>")
 
 
-def cli_list_parts(args):
-    if not args.config_path is None:
-        ctx = pc.init(args.config_path)
-    else:
-        ctx = pc.init()
+def cli_list_parts(args, ctx):
     part_count = 0
     part_kinds = 0
 
@@ -110,7 +100,6 @@ def cli_list_parts(args):
         print("Instantiating %s..." % args.used_by)
         pc.get_assembly(args.used_by)
 
-    print()
     print("PartCAD parts:")
     for project_name in ctx.projects:
         if project_name != pc.THIS and not args.recursive:
@@ -146,11 +135,7 @@ def cli_list_parts(args):
         print("\t<none>")
 
 
-def cli_list_assemblies(args):
-    if not args.config_path is None:
-        ctx = pc.init(args.config_path)
-    else:
-        ctx = pc.init()
+def cli_list_assemblies(args, ctx):
     assy_count = 0
     assy_kinds = 0
 
@@ -159,7 +144,6 @@ def cli_list_assemblies(args):
         # TODO(clairbee): do not call it twice in 'list-all'
         pc.get_assembly(args.used_by)
 
-    print()
     print("PartCAD assemblies:")
     for project_name in ctx.projects:
         if project_name != pc.THIS and not args.recursive:

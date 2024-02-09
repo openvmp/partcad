@@ -6,7 +6,6 @@
 #
 # Licensed under Apache License, Version 2.0.
 
-import logging
 import os
 import shutil
 
@@ -14,6 +13,8 @@ from .context import Context
 from .assembly import Assembly
 from .part import Part
 from . import consts
+
+# from . import logging as pc_logging
 
 global _partcad_context
 _partcad_context = None
@@ -25,7 +26,7 @@ def init(config_path=".") -> Context:
     global _partcad_context_path
 
     if _partcad_context is None:
-        # logging.debug("Initializing (%s)..." % __name__)
+        # pc_logging.debug("Initializing (%s)..." % __name__)
 
         _partcad_context = Context(config_path)
         _partcad_context_path = config_path
@@ -33,7 +34,7 @@ def init(config_path=".") -> Context:
     #     # The below is useful to troubleshoot common pitfalls.
     #     # But it's not really wrong, and in some cases it's a desired bahavior.
     #     if _partcad_context_path != config_path:
-    #         logging.error("Multiple context configurations")
+    #         pc_logging.error("Multiple context configurations")
     #         raise Exception("partcad: multiple context configurations")
 
     return _partcad_context

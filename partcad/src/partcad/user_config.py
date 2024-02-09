@@ -6,10 +6,11 @@
 #
 # Licensed under Apache License, Version 2.0.
 
-import logging
 import os
 import shutil
 import yaml
+
+from . import logging as pc_logging
 
 
 class UserConfig:
@@ -21,7 +22,7 @@ class UserConfig:
             try:
                 self.config_obj = yaml.safe_load(open(config_path, "r"))
             except Exception as e:
-                logging.error("ERROR: Failed to parse %s" % config_path)
+                pc_logging.error("ERROR: Failed to parse %s" % config_path)
 
         # option: pythonSandbox
         # description: sandboxing environment for invoking python scripts

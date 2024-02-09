@@ -62,33 +62,18 @@ def cli_help_add(subparsers):
     )
 
 
-def cli_add(args):
-    if not args.config_path is None:
-        ctx = pc.init(args.config_path)
-    else:
-        ctx = pc.init()
-
+def cli_add(args, ctx):
     prj = ctx.get_project(pc.THIS)
     prj.add_import(args.alias, args.location)
 
 
-def cli_add_part(args):
-    if not args.config_path is None:
-        ctx = pc.init(args.config_path)
-    else:
-        ctx = pc.init()
-
+def cli_add_part(args, ctx):
     prj = ctx.get_project(pc.THIS)
     if prj.add_part(args.kind, args.path):
         Path(args.path).touch()
 
 
-def cli_add_assembly(args):
-    if not args.config_path is None:
-        ctx = pc.init(args.config_path)
-    else:
-        ctx = pc.init()
-
+def cli_add_assembly(args, ctx):
     prj = ctx.get_project(pc.THIS)
     if prj.add_assembly(args.kind, args.path):
         Path(args.path).touch()

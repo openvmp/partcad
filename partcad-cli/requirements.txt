@@ -4,4 +4,3 @@ renderlab
 rlPyCairo
 svglib
 ocp_vscode
-progress

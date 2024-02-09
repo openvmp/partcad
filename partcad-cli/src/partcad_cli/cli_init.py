@@ -7,11 +7,11 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import logging
 import os
 import sys
 
 import partcad as pc
+import partcad.logging as pc_logging
 
 
 def cli_help_init(subparsers):
@@ -37,5 +37,5 @@ def cli_init(args):
         dst_path = "partcad.yaml"
 
     if not pc.create_package(dst_path, args.private):
-        logging.error("Failed creating '%s'!" % dst_path)
+        pc_logging.error("Failed creating '%s'!" % dst_path)
         sys.exit(1)

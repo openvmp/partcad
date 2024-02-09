@@ -9,12 +9,12 @@
 
 from git import Repo
 import hashlib
-import logging
 import os
 import pathlib
 import time
 
 from . import project_factory as pf
+from . import logging as pc_logging
 
 
 class GitImportConfiguration:
@@ -80,14 +80,14 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
                         repo.git.checkout(self.import_revision, force=True)
                 after = repo.active_branch.commit
                 if before != after:
-                    logging.info("\nUpdated the GIT repo: %s" % self.import_config_url)
+                    pc_logging.info("Updated the GIT repo: %s" % self.import_config_url)
             except Exception as e:
-                logging.error("\nException: %s" % e)
+                pc_logging.error("Exception: %s" % e)
                 # Fall back to using the previous copy
         else:
             # Clone the repository if not cached.
             try:
-                logging.info("\nCloning the GIT repo: %s" % self.import_config_url)
+                pc_logging.info("Cloning the GIT repo: %s" % self.import_config_url)
                 repo = Repo.clone_from(repo_url, cache_path)
                 if not self.import_revision is None:
                     repo.git.checkout(self.import_revision, force=True)

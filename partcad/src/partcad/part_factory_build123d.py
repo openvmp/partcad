@@ -8,13 +8,13 @@
 #
 
 import base64
-import logging
 import os
 import pickle
 import sys
 
 from . import part_factory_python as pfp
 from . import wrapper
+from . import logging as pc_logging
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "wrappers"))
 from cq_serialize import (
@@ -24,31 +24,35 @@ from cq_serialize import (
 
 class PartFactoryBuild123d(pfp.PartFactoryPython):
     def __init__(self, ctx, project, part_config):
-        super().__init__(ctx, project, part_config)
-        # Complement the config object here if necessary
-        self._create(part_config)
+        with pc_logging.Action("InitBuild123d", project.name, part_config["name"]):
+            super().__init__(ctx, project, part_config)
+            # Complement the config object here if necessary
+            self._create(part_config)
 
     def instantiate(self, part):
-        wrapper_path = wrapper.get("build123d.py")
+        with pc_logging.Action(
+            "Build123d", self.project.name, self.part_config["name"]
+        ):
+            wrapper_path = wrapper.get("build123d.py")
 
-        request = {"build_parameters": {}}
-        picklestring = pickle.dumps(request)
-        request_serialized = base64.b64encode(picklestring).decode()
+            request = {"build_parameters": {}}
+            picklestring = pickle.dumps(request)
+            request_serialized = base64.b64encode(picklestring).decode()
 
-        self.runtime.ensure("build123d")
-        response_serialized, errors = self.runtime.run(
-            [wrapper_path, self.path], request_serialized
-        )
-        sys.stderr.write(errors)
+            self.runtime.ensure("build123d")
+            response_serialized, errors = self.runtime.run(
+                [wrapper_path, self.path], request_serialized
+            )
+            sys.stderr.write(errors)
 
-        response = base64.b64decode(response_serialized)
-        result = pickle.loads(response)
+            response = base64.b64decode(response_serialized)
+            result = pickle.loads(response)
 
-        if result["success"]:
-            shape = result["shape"]
-            part.set_shape(shape)
-        else:
-            logging.error(result["exception"])
-            raise Exception(result["exception"])
+            if result["success"]:
+                shape = result["shape"]
+                part.set_shape(shape)
+            else:
+                pc_logging.error(result["exception"])
+                raise Exception(result["exception"])
 
-        self.ctx.stats_parts_instantiated += 1
+            self.ctx.stats_parts_instantiated += 1

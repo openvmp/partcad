@@ -7,11 +7,10 @@
 # Licensed under Apache License, Version 2.0.
 
 import atexit
-import importlib
-import logging
 import os
 
 from . import consts
+from . import logging as pc_logging
 from . import project_config
 from . import project
 from . import runtime_python_all
@@ -59,30 +58,15 @@ class Context(project_config.Configuration):
         self._projects_being_loaded = {}
         self._last_to_finalize = None
 
-        spinner = None
-        if logging.root.level < 60:
-            try:
-                progress = importlib.import_module("progress.spinner")
-                if not progress is None:
-                    spinner = progress.Spinner("PartCAD: Loading dependencies...")
-                    spinner.start()
-                    spinner.next()
-            except Exception as e:
-                print(e)
-                _ignore = True
-
-        self.import_project(
-            None,  # parent
-            {
-                "name": consts.THIS,
-                "type": "local",
-                "path": config_path,
-            },
-            spinner=spinner,
-        )
-        if not spinner is None:
-            spinner.finish()
-            logging.info("PartCAD: Finished loading dependencies.")
+        with pc_logging.Process("ImportDeps", self.config_dir):
+            self.import_project(
+                None,  # parent
+                {
+                    "name": consts.THIS,
+                    "type": "local",
+                    "path": config_path,
+                },
+            )
 
         atexit.register(Context._finalize_real, self)
 
@@ -91,76 +75,72 @@ class Context(project_config.Configuration):
 
     def get_project(self, project_name) -> project.Project:
         if not project_name in self.projects:
-            logging.error("The project '%s' is not found." % project_name)
-            logging.error("%s" % self.projects)
+            pc_logging.error("The project '%s' is not found." % project_name)
+            pc_logging.error("%s" % self.projects)
             return None
 
         config = self.projects[project_name]
         return config
 
-    def import_project(self, parent, project_import_config, spinner=None):
+    def import_project(self, parent, project_import_config):
         if not "name" in project_import_config or not "type" in project_import_config:
-            logging.error(
+            pc_logging.error(
                 "Invalid project configuration found: %s" % project_import_config
             )
             return None
 
         name = project_import_config["name"]
+        with pc_logging.Action("Import", name):
+            if name in self._projects_being_loaded:
+                pc_logging.error(
+                    "Recursive project loading detected (%s), aborting." % name
+                )
+                return None
 
-        if not spinner is None:
-            spinner.message = "PartCAD: Loading %s..." % name
-            spinner.next()
+            # Depending on the project type, use different factories
+            if (
+                not "type" in project_import_config
+                or project_import_config["type"] == "local"
+            ):
+                rfl.ProjectFactoryLocal(self, parent, project_import_config)
+            elif project_import_config["type"] == "git":
+                with pc_logging.Action("Git", name):
+                    rfg.ProjectFactoryGit(self, parent, project_import_config)
+            elif project_import_config["type"] == "tar":
+                with pc_logging.Action("Tar", name):
+                    rft.ProjectFactoryTar(self, parent, project_import_config)
+            else:
+                pc_logging.error("Invalid project type found: %s." % name)
+                return None
 
-        if name in self._projects_being_loaded:
-            logging.error("Recursive project loading detected (%s), aborting." % name)
-            return None
+            # Check whether the factory was able to successfully add the project
+            if not name in self.projects:
+                pc_logging.error(
+                    "Failed to create the project: %s" % project_import_config
+                )
+                return None
 
-        # Depending on the project type, use different factories
-        if (
-            not "type" in project_import_config
-            or project_import_config["type"] == "local"
-        ):
-            rfl.ProjectFactoryLocal(self, parent, project_import_config)
-        elif project_import_config["type"] == "git":
-            rfg.ProjectFactoryGit(self, parent, project_import_config)
-        elif project_import_config["type"] == "tar":
-            rft.ProjectFactoryTar(self, parent, project_import_config)
-        else:
-            logging.error("Invalid project type found: %s." % name)
-            return None
+            self.stats_packages += 1
+            self.stats_packages_instantiated += 1
 
-        if not spinner is None:
-            spinner.next()
+            imported_project = self.projects[name]
 
-        # Check whether the factory was able to successfully add the project
-        if not name in self.projects:
-            logging.error("Failed to create the project: %s" % project_import_config)
-            return None
+            # Load the dependencies recursively
+            # while preventing circular dependencies
+            self._projects_being_loaded[name] = True
+            # pc_logging.debug("Imported config: %s..." % imported_project.config_obj)
+            if (
+                "import" in imported_project.config_obj
+                and not imported_project.config_obj["import"] is None
+            ):
+                for prj_name in imported_project.config_obj["import"]:
+                    # pc_logging.debug("Importing: %s..." % prj_name)
+                    prj_conf = imported_project.config_obj["import"][prj_name]
+                    prj_conf["name"] = prj_name
+                    self.import_project(imported_project, prj_conf)
+            del self._projects_being_loaded[name]
 
-        self.stats_packages += 1
-        self.stats_packages_instantiated += 1
-
-        imported_project = self.projects[name]
-
-        # Load the dependencies recursively
-        # while preventing circular dependencies
-        self._projects_being_loaded[name] = True
-        # logging.debug("Imported config: %s..." % imported_project.config_obj)
-        if (
-            "import" in imported_project.config_obj
-            and not imported_project.config_obj["import"] is None
-        ):
-            for prj_name in imported_project.config_obj["import"]:
-                # logging.debug("Importing: %s..." % prj_name)
-                prj_conf = imported_project.config_obj["import"][prj_name]
-                prj_conf["name"] = prj_name
-                self.import_project(imported_project, prj_conf, spinner=spinner)
-        del self._projects_being_loaded[name]
-
-        if not spinner is None:
-            spinner.next()
-
-        return imported_project
+            return imported_project
 
     def get_part(self, part_name, project_name, params=None):
         prj = self.get_project(project_name)

@@ -26,6 +26,9 @@ class PartFactory:
 
     def _create(self, part_config: object):
         self.part = p.Part(part_config)
+        self.part.project_name = (
+            self.project.name
+        )  # TODO(clairbee): pass it via the constructor
         # TODO(clairbee): Make the next line work for part_factory_file only
         if self.path:
             self.part.path = self.path

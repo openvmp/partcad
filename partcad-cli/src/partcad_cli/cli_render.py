@@ -9,8 +9,6 @@
 
 import argparse
 
-import partcad as pc
-
 
 def cli_help_render(subparsers: argparse.ArgumentParser):
     parser_render = subparsers.add_parser(
@@ -67,12 +65,7 @@ def cli_help_render(subparsers: argparse.ArgumentParser):
     )
 
 
-def cli_render(args):
-    if not args.config_path is None:
-        ctx = pc.init(args.config_path)
-    else:
-        ctx = pc.init()
-
+def cli_render(args, ctx):
     ctx.option_create_dirs = args.create_dirs
 
     if args.package is None:

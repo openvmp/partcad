@@ -9,51 +9,55 @@
 
 import build123d as b3d
 from jinja2 import Environment, FileSystemLoader
-import logging
 import os
 import yaml
 
 from .assembly import Assembly
 from . import assembly_factory_file as aff
+from . import logging as pc_logging
 
 
 class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
     def __init__(self, ctx, project, assembly_config):
-        super().__init__(ctx, project, assembly_config, extension=".assy")
-        # Complement the config object here if necessary
-        self._create(assembly_config)
+        with pc_logging.Action("InitASSY", project.name, assembly_config["name"]):
+            super().__init__(ctx, project, assembly_config, extension=".assy")
+            # Complement the config object here if necessary
+            self._create(assembly_config)
 
     def instantiate(self, assembly):
-        self.assy = {}
-        if os.path.exists(self.path):
-            # Read the body of the configuration file
-            fp = open(self.path, "r")
-            config = fp.read()
-            fp.close()
+        with pc_logging.Action("ASSY", self.project.name, self.assembly_config["name"]):
+            self.assy = {}
+            if os.path.exists(self.path):
+                # Read the body of the configuration file
+                fp = open(self.path, "r")
+                config = fp.read()
+                fp.close()
 
-            # Resolve Jinja templates
-            template = Environment(
-                loader=FileSystemLoader(os.path.dirname(self.path) + os.path.sep)
-            ).from_string(config)
-            config = template.render(
-                name=self.assembly_config["name"],
-            )
-            self.config_text = config
+                # Resolve Jinja templates
+                template = Environment(
+                    loader=FileSystemLoader(os.path.dirname(self.path) + os.path.sep)
+                ).from_string(config)
+                config = template.render(
+                    name=self.assembly_config["name"],
+                )
+                self.config_text = config
 
-            # Parse the resulting config
-            try:
-                self.assy = yaml.safe_load(config)
-            except Exception as e:
-                logging.error("ERROR: Failed to parse the assembly file %s" % self.path)
-            if self.assy is None:
-                self.assy = {}
-        else:
-            logging.error("ERROR: Assembly file not found: %s" % self.path)
+                # Parse the resulting config
+                try:
+                    self.assy = yaml.safe_load(config)
+                except Exception as e:
+                    pc_logging.error(
+                        "ERROR: Failed to parse the assembly file %s" % self.path
+                    )
+                if self.assy is None:
+                    self.assy = {}
+            else:
+                pc_logging.error("ERROR: Assembly file not found: %s" % self.path)
 
-        if "links" in self.assy and not self.assy["links"] is None:
-            self.handle_node_list(assembly, self.assy["links"])
+            if "links" in self.assy and not self.assy["links"] is None:
+                self.handle_node_list(assembly, self.assy["links"])
 
-        self.ctx.stats_assemblies_instantiated += 1
+            self.ctx.stats_assemblies_instantiated += 1
 
     def handle_node_list(self, assembly, node_list):
         for link in node_list:
@@ -100,4 +104,4 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
         if not item is None:
             assembly.add(item, name, location)
         else:
-            logging.error("Part not found: %s" % name)
+            pc_logging.error("Part not found: %s" % name)

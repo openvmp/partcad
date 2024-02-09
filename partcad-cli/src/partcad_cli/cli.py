@@ -12,6 +12,7 @@ import argparse
 import logging
 
 import partcad as pc
+import partcad.logging as pc_logging
 
 from .cli_add import *
 from .cli_init import *
@@ -38,6 +39,12 @@ def main():
         default=0,
     )
     parser.add_argument(
+        "--no-ansi",
+        help="Plain logging output. Do not use colors or animations.",
+        dest="no_ansi",
+        action="store_true",
+    )
+    parser.add_argument(
         "-p",
         help="Package path (a YAML file or a directory with 'partcad.yaml')",
         type=str,
@@ -56,47 +63,74 @@ def main():
 
     args = parser.parse_args()
 
-    if args.verbosity > 0:
-        logging.basicConfig(level=logging.DEBUG)
+    # Configure logging
+    if not args.no_ansi:
+        pc.logging_ansi_terminal_init()
     else:
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig()
 
+    if args.verbosity > 0:
+        pc.logging.setLevel(logging.DEBUG)
+    else:
+        pc.logging.setLevel(logging.INFO)
+
+    # First, handle the commands that don't require a context or initialize it
+    # in their own way
+    if args.command == "init":
+        cli_init(args)
+        return
+
+    # Initialize the context
+    if not args.config_path is None:
+        ctx = pc.init(args.config_path)
+    else:
+        ctx = pc.init()
+
+    # Handle the command
     if args.command == "add":
-        cli_add(args)
+        with pc_logging.Process("Add", "this"):
+            cli_add(args, ctx)
 
     elif args.command == "add-part":
-        cli_add_part(args)
+        with pc_logging.Process("AddPart", "this"):
+            cli_add_part(args, ctx)
 
     elif args.command == "add-assembly":
-        cli_add_assembly(args)
-
-    elif args.command == "init":
-        cli_init(args)
+        with pc_logging.Process("AddAssy", "this"):
+            cli_add_assembly(args, ctx)
 
     elif args.command == "info":
-        cli_info(args)
+        with pc_logging.Process("Info", "this"):
+            cli_info(args, ctx)
 
     elif args.command == "install":
-        cli_install(args)
+        with pc_logging.Process("Install", "this"):
+            cli_install(args)
 
     elif args.command == "list":
-        cli_list(args)
+        with pc_logging.Process("List", "this"):
+            cli_list(args, ctx)
 
     elif args.command == "list-all":
-        cli_list_assemblies(args)
-        cli_list_parts(args)
+        with pc_logging.Process("ListAll", "this"):
+            cli_list_assemblies(args, ctx)
+            cli_list_parts(args, ctx)
 
     elif args.command == "list-parts":
-        cli_list_parts(args)
+        with pc_logging.Process("ListParts", "this"):
+            cli_list_parts(args, ctx)
 
     elif args.command == "list-assemblies":
-        cli_list_assemblies(args)
+        with pc_logging.Process("ListAssy", "this"):
+            cli_list_assemblies(args, ctx)
 
     elif args.command == "render":
-        cli_render(args)
+        with pc_logging.Process("Render", "this"):
+            cli_render(args, ctx)
 
     elif args.command == "show":
-        cli_show(args)
+        with pc_logging.Process("Show", "this"):
+            cli_show(args, ctx)
 
     else:
         print("Unknown command.\n")

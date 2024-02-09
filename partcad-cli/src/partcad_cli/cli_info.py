@@ -7,10 +7,9 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import logging
 from pprint import pprint
 
-import partcad as pc
+import partcad.logging as pc_logging
 from partcad.utils import total_size
 
 
@@ -46,12 +45,7 @@ def cli_help_info(subparsers):
     )
 
 
-def cli_info(args):
-    if not args.config_path is None:
-        ctx = pc.init(args.config_path)
-    else:
-        ctx = pc.init()
-
+def cli_info(args, ctx):
     if args.package is None:
         package = "this"
     else:
@@ -64,9 +58,9 @@ def cli_info(args):
 
     if obj is None:
         if args.package is None:
-            logging.error("Object %s not found" % args.object)
+            pc_logging.error("Object %s not found" % args.object)
         else:
-            logging.error(
+            pc_logging.error(
                 "Object %s not found in package %s" % (args.object, args.package)
             )
     else:

@@ -7,11 +7,12 @@
 # Licensed under Apache License, Version 2.0.
 
 import copy
-import logging
 import os
 import ruamel.yaml
+import threading
 import typing
 
+from . import logging as pc_logging
 from . import project_config
 from . import part
 from . import part_config
@@ -91,31 +92,25 @@ class Project(project_config.Configuration):
                 "ERROR: Part type is not specified: %s: %s" % (part_name, config)
             )
         elif config["type"] == "cadquery":
-            logging.info("Initializing CadQuery part: %s..." % part_name)
             pfc.PartFactoryCadquery(self.ctx, self, config)
         elif config["type"] == "build123d":
-            logging.info("Initializing build123d part: %s..." % part_name)
             pfb.PartFactoryBuild123d(self.ctx, self, config)
         elif config["type"] == "step":
-            logging.info("Initializing STEP part: %s..." % part_name)
             pfs.PartFactoryStep(self.ctx, self, config)
         elif config["type"] == "stl":
-            logging.info("Initializing STL part: %s..." % part_name)
             pfstl.PartFactoryStl(self.ctx, self, config)
         elif config["type"] == "3mf":
-            logging.info("Initializing 3mf part: %s..." % part_name)
             pf3.PartFactory3mf(self.ctx, self, config)
         elif config["type"] == "scad":
-            logging.info("Initializing OpenSCAD part: %s..." % part_name)
             pfscad.PartFactoryScad(self.ctx, self, config)
         elif config["type"] == "alias":
-            logging.info("Initializing an alias: %s..." % part_name)
             pfa.PartFactoryAlias(self.ctx, self, config)
         elif config["type"] == "enrich":
-            logging.info("Initializing an enrich: %s..." % part_name)
             pfe.PartFactoryEnrich(self.ctx, self, config)
         else:
-            logging.error("Invalid part type encountered: %s: %s" % (part_name, config))
+            pc_logging.error(
+                "Invalid part type encountered: %s: %s" % (part_name, config)
+            )
             return None
 
         # Initialize aliases if they are declared implicitly
@@ -164,7 +159,9 @@ class Project(project_config.Configuration):
             if not part_name in self.parts:
                 if not part_name in self.part_configs:
                     # We don't know anything about such a part
-                    logging.error("Part '%s' not found in '%s'", part_name, self.name)
+                    pc_logging.error(
+                        "Part '%s' not found in '%s'", part_name, self.name
+                    )
                     return None
                 # This is not yet created (invalidated?)
                 config = self.get_part_config(part_name)
@@ -173,14 +170,16 @@ class Project(project_config.Configuration):
             return self.parts[part_name]
 
         if not base_part_name in self.parts:
-            logging.error("Base part '%s' not found in '%s'", base_part_name, self.name)
+            pc_logging.error(
+                "Base part '%s' not found in '%s'", base_part_name, self.name
+            )
             return None
-        logging.info("Found the base part: %s" % base_part_name)
+        pc_logging.info("Found the base part: %s" % base_part_name)
 
         # Now we have the original part name and the complete set of parameters
         config = self.part_configs[base_part_name]
         if config is None:
-            logging.error(
+            pc_logging.error(
                 "The config for the base part '%s' is not found in '%s'",
                 base_part_name,
                 self.name,
@@ -189,7 +188,7 @@ class Project(project_config.Configuration):
 
         config = copy.deepcopy(config)
         if not "parameters" in config or config["parameters"] is None:
-            logging.error(
+            pc_logging.error(
                 "Attempt to parametrize '%s' of '%s' which has no parameters",
                 base_part_name,
                 self.name,
@@ -227,7 +226,7 @@ class Project(project_config.Configuration):
 
         # See if it worked
         if not result_name in self.parts:
-            logging.error(
+            pc_logging.error(
                 "Failed to instantiate parameterized part '%s' in '%s'",
                 result_name,
                 self.name,
@@ -256,13 +255,11 @@ class Project(project_config.Configuration):
         assembly_name: str = config["name"]
 
         if config["type"] == "assy":
-            logging.info("Initializing AssemblyYAML assembly: %s..." % assembly_name)
             afa.AssemblyFactoryAssy(self.ctx, self, config)
         elif config["type"] == "alias":
-            logging.info("Initializing alias assembly: %s..." % assembly_name)
             afalias.AssemblyFactoryAlias(self.ctx, self, config)
         else:
-            logging.error(
+            pc_logging.error(
                 "Invalid assembly type encountered: %s: %s" % (assembly_name, config)
             )
             return None
@@ -298,7 +295,7 @@ class Project(project_config.Configuration):
             if not assembly_name in self.assemblies:
                 if not assembly_name in self.assembly_configs:
                     # We don't know anything about such a assembly
-                    logging.error(
+                    pc_logging.error(
                         "Assembly '%s' not found in '%s'", assembly_name, self.name
                     )
                     return None
@@ -311,16 +308,16 @@ class Project(project_config.Configuration):
             return self.assemblies[assembly_name]
 
         if not base_assembly_name in self.assemblies:
-            logging.error(
+            pc_logging.error(
                 "Base assembly '%s' not found in '%s'", base_assembly_name, self.name
             )
             return None
-        logging.info("Found the base assembly: %s" % base_assembly_name)
+        pc_logging.info("Found the base assembly: %s" % base_assembly_name)
 
         # Now we have the original assembly name and the complete set of parameters
         config = self.assembly_configs[base_assembly_name]
         if config is None:
-            logging.error(
+            pc_logging.error(
                 "The config for the base assembly '%s' is not found in '%s'",
                 base_assembly_name,
                 self.name,
@@ -329,7 +326,7 @@ class Project(project_config.Configuration):
 
         config = copy.deepcopy(config)
         if not "parameters" in config or config["parameters"] is None:
-            logging.error(
+            pc_logging.error(
                 "Attempt to parametrize '%s' of '%s' which has no parameters",
                 base_assembly_name,
                 self.name,
@@ -367,7 +364,7 @@ class Project(project_config.Configuration):
 
         # See if it worked
         if not result_name in self.assemblies:
-            logging.error(
+            pc_logging.error(
                 "Failed to instantiate parameterized assembly '%s' in '%s'",
                 result_name,
                 self.name,
@@ -413,7 +410,7 @@ class Project(project_config.Configuration):
             root = os.path.abspath(root)
 
         if not path.startswith(root):
-            logging.error("Can't add files outside of the package")
+            pc_logging.error("Can't add files outside of the package")
             return False, None, None
 
         path = path[len(root) :]
@@ -466,7 +463,7 @@ class Project(project_config.Configuration):
         return True
 
     def add_part(self, kind: str, path: str) -> bool:
-        logging.info("Adding the part %s of type %s" % (path, kind))
+        pc_logging.info("Adding the part %s of type %s" % (path, kind))
         ext_by_kind = {
             "cadquery": "py",
             "build123d": "py",
@@ -474,129 +471,151 @@ class Project(project_config.Configuration):
         return self._add_component(kind, path, "parts", ext_by_kind)
 
     def add_assembly(self, kind: str, path: str) -> bool:
-        logging.info("Adding the assembly %s of type %s" % (path, kind))
+        pc_logging.info("Adding the assembly %s of type %s" % (path, kind))
         ext_by_kind = {}
         return self._add_component(kind, path, "assemblies", ext_by_kind)
 
     def render(self, parts=None, assemblies=None, format=None, output_dir=None):
-        logging.info("Rendering the project: %s" % self.path)
+        with pc_logging.Action("RenderPrj", self.name):
 
-        # Override the default output_dir.
-        # TODO(clairbee): pass the preference downstream without making a
-        # persistent change.
-        if not output_dir is None:
-            self.config_obj["render"]["output_dir"] = output_dir
-        render = self.config_obj["render"]
+            # Override the default output_dir.
+            # TODO(clairbee): pass the preference downstream without making a
+            # persistent change.
+            if not output_dir is None:
+                self.config_obj["render"]["output_dir"] = output_dir
+            render = self.config_obj["render"]
 
-        # Enumerating all parts and assemblies
-        if parts is None:
-            parts = []
-            if "parts" in self.config_obj:
-                parts = self.config_obj["parts"].keys()
-        if assemblies is None:
-            assemblies = []
-            if "assemblies" in self.config_obj:
-                assemblies = self.config_obj["assemblies"].keys()
+            # Enumerating all parts and assemblies
+            if parts is None:
+                parts = []
+                if "parts" in self.config_obj:
+                    parts = self.config_obj["parts"].keys()
+            if assemblies is None:
+                assemblies = []
+                if "assemblies" in self.config_obj:
+                    assemblies = self.config_obj["assemblies"].keys()
 
-        # Determine which formats need to be rendered.
-        # The format needs to be rendered either if it's mentioned in the config
-        # or if it's explicitly requested in the params (e.g. comes from the
-        # command line).
-        if format is None and "svg" in render:
-            render_svg = True
-        elif not format is None and format == "svg":
-            render_svg = True
-        else:
-            render_svg = False
+            # Determine which formats need to be rendered.
+            # The format needs to be rendered either if it's mentioned in the config
+            # or if it's explicitly requested in the params (e.g. comes from the
+            # command line).
+            if format is None and "svg" in render:
+                render_svg = True
+            elif not format is None and format == "svg":
+                render_svg = True
+            else:
+                render_svg = False
 
-        if format is None and "png" in render:
-            render_png = True
-        elif not format is None and format == "png":
-            render_png = True
-        else:
-            render_png = False
+            if format is None and "png" in render:
+                render_png = True
+            elif not format is None and format == "png":
+                render_png = True
+            else:
+                render_png = False
 
-        if format is None and "step" in render:
-            render_step = True
-        elif not format is None and format == "step":
-            render_step = True
-        else:
-            render_step = False
+            if format is None and "step" in render:
+                render_step = True
+            elif not format is None and format == "step":
+                render_step = True
+            else:
+                render_step = False
 
-        if format is None and "stl" in render:
-            render_stl = True
-        elif not format is None and format == "stl":
-            render_stl = True
-        else:
-            render_stl = False
+            if format is None and "stl" in render:
+                render_stl = True
+            elif not format is None and format == "stl":
+                render_stl = True
+            else:
+                render_stl = False
 
-        if format is None and "3mf" in render:
-            render_3mf = True
-        elif not format is None and format == "3mf":
-            render_3mf = True
-        else:
-            render_3mf = False
+            if format is None and "3mf" in render:
+                render_3mf = True
+            elif not format is None and format == "3mf":
+                render_3mf = True
+            else:
+                render_3mf = False
 
-        if format is None and "threejs" in render:
-            render_threejs = True
-        elif not format is None and format == "threejs":
-            render_threejs = True
-        else:
-            render_threejs = False
+            if format is None and "threejs" in render:
+                render_threejs = True
+            elif not format is None and format == "threejs":
+                render_threejs = True
+            else:
+                render_threejs = False
 
-        if format is None and "obj" in render:
-            render_obj = True
-        elif not format is None and format == "obj":
-            render_obj = True
-        else:
-            render_obj = False
+            if format is None and "obj" in render:
+                render_obj = True
+            elif not format is None and format == "obj":
+                render_obj = True
+            else:
+                render_obj = False
 
-        # Render
-        for part_name in parts:
-            part = self.get_part(part_name)
-            if not part is None:
-                if render_svg:
-                    logging.info("Rendering SVG...")
-                    part.render_svg(project=self)
-                if render_png:
-                    logging.info("Rendering PNG...")
-                    part.render_png(project=self)
-                if render_step:
-                    logging.info("Rendering STEP...")
-                    part.render_step(project=self)
-                if render_stl:
-                    logging.info("Rendering STL...")
-                    part.render_stl(project=self)
-                if render_3mf:
-                    logging.info("Rendering 3MF...")
-                    part.render_3mf(project=self)
-                if render_threejs:
-                    logging.info("Rendering ThreeJS...")
-                    part.render_threejs(project=self)
-                if render_obj:
-                    logging.info("Rendering OBJ...")
-                    part.render_obj(project=self)
-        for assembly_name in assemblies:
-            assembly = self.get_assembly(assembly_name)
-            if not assembly is None:
-                if render_svg:
-                    logging.info("Rendering SVG...")
-                    assembly.render_svg(project=self)
-                if render_png:
-                    logging.info("Rendering PNG...")
-                    assembly.render_png(project=self)
-                if render_step:
-                    logging.info("Rendering STEP...")
-                    assembly.render_step(project=self)
-                if render_stl:
-                    logging.info("Rendering STL...")
-                    assembly.render_stl(project=self)
-                if render_3mf:
-                    logging.info("Rendering 3MF...")
-                    assembly.render_3mf(project=self)
-                if render_threejs:
-                    logging.info("Rendering ThreeJS...")
-                    assembly.render_threejs(project=self)
-                if render_obj:
-                    logging.info("Rendering OBJ...")
-                    assembly.render_obj(project=self)
+            # Render
+            threads = []
+            for part_name in parts:
+                part = self.get_part(part_name)
+                if not part is None:
+                    if render_svg:
+                        threads.append(
+                            threading.Thread(target=part.render_svg, args=[self])
+                        )
+                    if render_png:
+                        threads.append(
+                            threading.Thread(target=part.render_png, args=[self])
+                        )
+                    if render_step:
+                        threads.append(
+                            threading.Thread(target=part.render_step, args=[self])
+                        )
+                    if render_stl:
+                        threads.append(
+                            threading.Thread(target=part.render_stl, args=[self])
+                        )
+                    if render_3mf:
+                        threads.append(
+                            threading.Thread(target=part.render_3mf, args=[self])
+                        )
+                    if render_threejs:
+                        threads.append(
+                            threading.Thread(target=part.render_threejs, args=[self])
+                        )
+                    if render_obj:
+                        threads.append(
+                            threading.Thread(target=part.render_obj, args=[self])
+                        )
+            for assembly_name in assemblies:
+                assembly = self.get_assembly(assembly_name)
+                if not assembly is None:
+                    if render_svg:
+                        threads.append(
+                            threading.Thread(target=assembly.render_svg, args=[self])
+                        )
+                    if render_png:
+                        threads.append(
+                            threading.Thread(target=assembly.render_png, args=[self])
+                        )
+                    if render_step:
+                        threads.append(
+                            threading.Thread(target=assembly.render_step, args=[self])
+                        )
+                    if render_stl:
+                        threads.append(
+                            threading.Thread(target=assembly.render_stl, args=[self])
+                        )
+                    if render_3mf:
+                        threads.append(
+                            threading.Thread(target=assembly.render_3mf, args=[self])
+                        )
+                    if render_threejs:
+                        threads.append(
+                            threading.Thread(
+                                target=assembly.render_threejs, args=[self]
+                            )
+                        )
+                    if render_obj:
+                        threads.append(
+                            threading.Thread(target=assembly.render_obj, args=[self])
+                        )
+
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()

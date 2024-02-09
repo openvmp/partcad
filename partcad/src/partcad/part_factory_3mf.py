@@ -8,17 +8,21 @@
 #
 
 import build123d as b3d
+
 from . import part_factory_file as pff
+from . import logging as pc_logging
 
 
 class PartFactory3mf(pff.PartFactoryFile):
     def __init__(self, ctx, project, part_config):
-        super().__init__(ctx, project, part_config, extension=".3mf")
-        # Complement the config object here if necessary
-        self._create(part_config)
+        with pc_logging.Action("Init3MF", project.name, part_config["name"]):
+            super().__init__(ctx, project, part_config, extension=".3mf")
+            # Complement the config object here if necessary
+            self._create(part_config)
 
     def instantiate(self, part):
-        shape = b3d.Mesher().read(self.path)[0].wrapped
-        part.set_shape(shape)
+        with pc_logging.Action("3MF", self.project.name, self.part_config["name"]):
+            shape = b3d.Mesher().read(self.path)[0].wrapped
+            part.set_shape(shape)
 
-        self.ctx.stats_parts_instantiated += 1
+            self.ctx.stats_parts_instantiated += 1

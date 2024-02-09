@@ -6,8 +6,7 @@
 #
 # Licensed under Apache License, Version 2.0.
 
-import importlib
-import logging
+from . import logging as pc_logging
 
 # import svglib.svglib as svglib
 # import reportlab.graphics.renderPM as renderPM
@@ -18,15 +17,17 @@ class PluginExportPngReportlab:
         return True
 
     def export(self, project, svg_path, width, height, filepath):
+        import importlib
+
         # Load necessary symbols
         svglib = importlib.import_module("svglib.svglib")
         if svglib is None:
-            logging.error('Failed to load "svglib". Aborting.')
+            pc_logging.error('Failed to load "svglib". Aborting.')
             return
 
         renderPM = importlib.import_module("reportlab.graphics.renderPM")
         if renderPM is None:
-            logging.error('Failed to load "renderPM". Aborting.')
+            pc_logging.error('Failed to load "renderPM". Aborting.')
             return
 
         # Render the raster image

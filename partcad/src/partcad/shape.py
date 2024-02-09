@@ -9,14 +9,15 @@
 import cadquery as cq
 import build123d as b3d
 
-import importlib
-import logging
 import os
+import shutil
 import tempfile
+import threading
 
 from .render import *
 from .plugins import *
 from .shape_config import ShapeConfiguration
+from . import logging as pc_logging
 
 
 class Shape(ShapeConfiguration):
@@ -32,6 +33,7 @@ class Shape(ShapeConfiguration):
         self.compound = None
 
         # Leave the svg path empty to get it created on demand
+        self.svg_lock = threading.RLock()
         self.svg_path = None
         self.svg_url = None
 
@@ -52,31 +54,34 @@ class Shape(ShapeConfiguration):
         return b3d_solid
 
     def show(self, show_object=None):
-        shape = self.get_wrapped()
-        if shape is not None:
-            if show_object is None:
-                ocp_vscode = importlib.import_module("ocp_vscode")
-                if ocp_vscode is None:
-                    logging.warn(
-                        'Failed to load "ocp_vscode". Giving up on connection to VS Code.'
-                    )
-                else:
-                    try:
-                        # ocp_vscode.config.status()
-                        logging.info('Visualizing in "OCP CAD Viewer"...')
-                        # logging.debug(self.shape)
-                        ocp_vscode.show(shape, progress=None)
-                    except Exception as e:
-                        logging.warning(e)
-                        logging.warning(
-                            'No VS Code or "OCP CAD Viewer" extension detected.'
-                        )
+        with pc_logging.Action("Show", self.project_name, self.name):
+            shape = self.get_wrapped()
+            if shape is not None:
+                if show_object is None:
+                    import importlib
 
-            if show_object is not None:
-                show_object(
-                    shape,
-                    options={},
-                )
+                    ocp_vscode = importlib.import_module("ocp_vscode")
+                    if ocp_vscode is None:
+                        pc_logging.warn(
+                            'Failed to load "ocp_vscode". Giving up on connection to VS Code.'
+                        )
+                    else:
+                        try:
+                            # ocp_vscode.config.status()
+                            pc_logging.info('Visualizing in "OCP CAD Viewer"...')
+                            # pc_logging.debug(self.shape)
+                            ocp_vscode.show(shape, progress=None)
+                        except Exception as e:
+                            pc_logging.warning(e)
+                            pc_logging.warning(
+                                'No VS Code or "OCP CAD Viewer" extension detected.'
+                            )
+
+                if show_object is not None:
+                    show_object(
+                        shape,
+                        options={},
+                    )
 
     def _finalize_real(self, show_object):
         if not show_object is None:
@@ -94,8 +99,9 @@ class Shape(ShapeConfiguration):
         self.svg_path = filepath
 
     def _get_svg_path(self, project):
-        if self.svg_path is None:
-            self.render_svg_somewhere(project, None)
+        with self.svg_lock:
+            if self.svg_path is None:
+                self.render_svg_somewhere(project, None)
         return self.svg_path
 
     def render_getopts(
@@ -134,7 +140,7 @@ class Shape(ShapeConfiguration):
                 elif not project is None:
                     filepath = os.path.join(project.config_dir, filepath)
 
-        logging.info("Rendering: %s" % filepath)
+        pc_logging.debug("Rendering: %s" % filepath)
 
         return opts, filepath
 
@@ -143,8 +149,13 @@ class Shape(ShapeConfiguration):
         project=None,
         filepath=None,
     ):
-        _, filepath = self.render_getopts("svg", ".svg", project, filepath)
-        self.render_svg_somewhere(project, filepath)
+        with pc_logging.Action("RenderSVG", project.name, self.name):
+            _, filepath = self.render_getopts("svg", ".svg", project, filepath)
+
+            # This creates a temporary file, but it allows to reuse the file
+            # with other consumers of self._get_svg_path()
+            svg_path = self._get_svg_path(project)
+            shutil.copyfile(svg_path, filepath)
 
     def render_png(
         self,
@@ -153,39 +164,43 @@ class Shape(ShapeConfiguration):
         width=None,
         height=None,
     ):
-        if not plugins.export_png.is_supported():
-            logging.error("Export to PNG is not supported")
-            return
+        with pc_logging.Action("RenderPNG", project.name, self.name):
+            if not plugins.export_png.is_supported():
+                pc_logging.error("Export to PNG is not supported")
+                return
 
-        png_opts, filepath = self.render_getopts("png", ".png", project, filepath)
+            png_opts, filepath = self.render_getopts("png", ".png", project, filepath)
 
-        if width is None:
-            if "width" in png_opts and not png_opts["width"] is None:
-                width = png_opts["width"]
-            else:
-                width = DEFAULT_RENDER_WIDTH
-        if height is None:
-            if "height" in png_opts and not png_opts["height"] is None:
-                height = png_opts["height"]
-            else:
-                height = DEFAULT_RENDER_HEIGHT
+            if width is None:
+                if "width" in png_opts and not png_opts["width"] is None:
+                    width = png_opts["width"]
+                else:
+                    width = DEFAULT_RENDER_WIDTH
+            if height is None:
+                if "height" in png_opts and not png_opts["height"] is None:
+                    height = png_opts["height"]
+                else:
+                    height = DEFAULT_RENDER_HEIGHT
 
-        # Render the vector image
-        svg_path = self._get_svg_path(project)
+            # Render the vector image
+            svg_path = self._get_svg_path(project)
 
-        plugins.export_png.export(project, svg_path, width, height, filepath)
+            plugins.export_png.export(project, svg_path, width, height, filepath)
 
     def render_step(
         self,
         project=None,
         filepath=None,
     ):
-        step_opts, filepath = self.render_getopts("step", ".step", project, filepath)
+        with pc_logging.Action("RenderSTEP", project.name, self.name):
+            step_opts, filepath = self.render_getopts(
+                "step", ".step", project, filepath
+            )
 
-        cq_obj = self.get_cadquery()
-        if not project is None:
-            project.ctx.ensure_dirs_for_file(filepath)
-        cq.exporters.export(cq_obj, filepath)
+            cq_obj = self.get_cadquery()
+            if not project is None:
+                project.ctx.ensure_dirs_for_file(filepath)
+            cq.exporters.export(cq_obj, filepath)
 
     def render_stl(
         self,
@@ -193,15 +208,16 @@ class Shape(ShapeConfiguration):
         filepath=None,
         tolerance=None,
     ):
-        stl_opts, filepath = self.render_getopts("stl", ".stl", project, filepath)
+        with pc_logging.Action("RenderSTL", project.name, self.name):
+            stl_opts, filepath = self.render_getopts("stl", ".stl", project, filepath)
 
-        cq_obj = self.get_cadquery()
-        if not project is None:
-            project.ctx.ensure_dirs_for_file(filepath)
-        cq.exporters.export(
-            cq_obj,
-            filepath,
-        )
+            cq_obj = self.get_cadquery()
+            if not project is None:
+                project.ctx.ensure_dirs_for_file(filepath)
+            cq.exporters.export(
+                cq_obj,
+                filepath,
+            )
 
     def render_3mf(
         self,
@@ -210,32 +226,38 @@ class Shape(ShapeConfiguration):
         tolerance=None,
         angularTolerance=None,
     ):
-        threemf_opts, filepath = self.render_getopts("3mf", ".3mf", project, filepath)
+        with pc_logging.Action("Render3MF", project.name, self.name):
+            threemf_opts, filepath = self.render_getopts(
+                "3mf", ".3mf", project, filepath
+            )
 
-        if tolerance is None:
-            if "tolerance" in threemf_opts and not threemf_opts["tolerance"] is None:
-                tolerance = threemf_opts["tolerance"]
-            else:
-                tolerance = 0.1
+            if tolerance is None:
+                if (
+                    "tolerance" in threemf_opts
+                    and not threemf_opts["tolerance"] is None
+                ):
+                    tolerance = threemf_opts["tolerance"]
+                else:
+                    tolerance = 0.1
 
-        if angularTolerance is None:
-            if (
-                "angularTolerance" in threemf_opts
-                and not threemf_opts["angularTolerance"] is None
-            ):
-                angularTolerance = threemf_opts["angularTolerance"]
-            else:
-                angularTolerance = 0.1
+            if angularTolerance is None:
+                if (
+                    "angularTolerance" in threemf_opts
+                    and not threemf_opts["angularTolerance"] is None
+                ):
+                    angularTolerance = threemf_opts["angularTolerance"]
+                else:
+                    angularTolerance = 0.1
 
-        cq_obj = self.get_cadquery()
-        if not project is None:
-            project.ctx.ensure_dirs_for_file(filepath)
-        cq.exporters.export(
-            cq_obj,
-            filepath,
-            tolerance=tolerance,
-            angularTolerance=angularTolerance,
-        )
+            cq_obj = self.get_cadquery()
+            if not project is None:
+                project.ctx.ensure_dirs_for_file(filepath)
+            cq.exporters.export(
+                cq_obj,
+                filepath,
+                tolerance=tolerance,
+                angularTolerance=angularTolerance,
+            )
 
     def render_threejs(
         self,
@@ -244,35 +266,39 @@ class Shape(ShapeConfiguration):
         tolerance=None,
         angularTolerance=None,
     ):
-        threejs_opts, filepath = self.render_getopts(
-            "threejs", ".json", project, filepath
-        )
+        with pc_logging.Action("RenderThreeJS", project.name, self.name):
+            threejs_opts, filepath = self.render_getopts(
+                "threejs", ".json", project, filepath
+            )
 
-        if tolerance is None:
-            if "tolerance" in threejs_opts and not threejs_opts["tolerance"] is None:
-                tolerance = threejs_opts["tolerance"]
-            else:
-                tolerance = 0.1
+            if tolerance is None:
+                if (
+                    "tolerance" in threejs_opts
+                    and not threejs_opts["tolerance"] is None
+                ):
+                    tolerance = threejs_opts["tolerance"]
+                else:
+                    tolerance = 0.1
 
-        if angularTolerance is None:
-            if (
-                "angularTolerance" in threejs_opts
-                and not threejs_opts["angularTolerance"] is None
-            ):
-                angularTolerance = threejs_opts["angularTolerance"]
-            else:
-                angularTolerance = 0.1
+            if angularTolerance is None:
+                if (
+                    "angularTolerance" in threejs_opts
+                    and not threejs_opts["angularTolerance"] is None
+                ):
+                    angularTolerance = threejs_opts["angularTolerance"]
+                else:
+                    angularTolerance = 0.1
 
-        cq_obj = self.get_cadquery()
-        if not project is None:
-            project.ctx.ensure_dirs_for_file(filepath)
-        cq.exporters.export(
-            cq_obj,
-            filepath,
-            tolerance=tolerance,
-            angularTolerance=angularTolerance,
-            exportType=cq.exporters.ExportTypes.TJS,
-        )
+            cq_obj = self.get_cadquery()
+            if not project is None:
+                project.ctx.ensure_dirs_for_file(filepath)
+            cq.exporters.export(
+                cq_obj,
+                filepath,
+                tolerance=tolerance,
+                angularTolerance=angularTolerance,
+                exportType=cq.exporters.ExportTypes.TJS,
+            )
 
     def render_obj(
         self,
@@ -281,69 +307,72 @@ class Shape(ShapeConfiguration):
         tolerance=None,
         angularTolerance=None,
     ):
-        obj_opts, filepath = self.render_getopts("obj", ".obj", project, filepath)
+        with pc_logging.Action("RenderOBJ", project.name, self.name):
+            obj_opts, filepath = self.render_getopts("obj", ".obj", project, filepath)
 
-        if tolerance is None:
-            if "tolerance" in obj_opts and not obj_opts["tolerance"] is None:
-                tolerance = obj_opts["tolerance"]
-            else:
-                tolerance = 0.1
+            if tolerance is None:
+                if "tolerance" in obj_opts and not obj_opts["tolerance"] is None:
+                    tolerance = obj_opts["tolerance"]
+                else:
+                    tolerance = 0.1
 
-        if angularTolerance is None:
-            if (
-                "angularTolerance" in obj_opts
-                and not obj_opts["angularTolerance"] is None
-            ):
-                angularTolerance = obj_opts["angularTolerance"]
-            else:
-                angularTolerance = 0.1
+            if angularTolerance is None:
+                if (
+                    "angularTolerance" in obj_opts
+                    and not obj_opts["angularTolerance"] is None
+                ):
+                    angularTolerance = obj_opts["angularTolerance"]
+                else:
+                    angularTolerance = 0.1
 
-        cq_obj = self.get_cadquery()
+            cq_obj = self.get_cadquery()
 
-        try:
-            vertices, triangles = cq_obj.tessellate(tolerance, angularTolerance)
+            try:
+                vertices, triangles = cq_obj.tessellate(tolerance, angularTolerance)
 
-            with open(filepath, "w") as f:
-                f.write("# OBJ file\n")
-                for v in vertices:
-                    f.write("v %.4f %.4f %.4f\n" % (v.x, v.y, v.z))
-                for p in triangles:
-                    f.write("f")
-                    for i in p:
-                        f.write(" %d" % (i + 1))
-                    f.write("\n")
-        except:
-            logging.error("Exception while exporting to " + filepath)
+                with open(filepath, "w") as f:
+                    f.write("# OBJ file\n")
+                    for v in vertices:
+                        f.write("v %.4f %.4f %.4f\n" % (v.x, v.y, v.z))
+                    for p in triangles:
+                        f.write("f")
+                        for i in p:
+                            f.write(" %d" % (i + 1))
+                        f.write("\n")
+            except:
+                pc_logging.error("Exception while exporting to " + filepath)
 
     def render_txt(self, project=None, filepath=None):
-        if filepath is None:
-            filepath = self.path + "/bom.txt"
+        with pc_logging.Action("RenderTXT", project.name, self.name):
+            if filepath is None:
+                filepath = self.path + "/bom.txt"
 
-        if not project is None:
-            project.ctx.ensure_dirs_for_file(filepath)
-        file = open(filepath, "w+")
-        file.write("BoM:\n")
-        self._render_txt_real(file)
-        file.close()
+            if not project is None:
+                project.ctx.ensure_dirs_for_file(filepath)
+            file = open(filepath, "w+")
+            file.write("BoM:\n")
+            self._render_txt_real(file)
+            file.close()
 
     def render_markdown(self, filepath):
-        if filepath is None:
-            filepath = self.path + "/README.md"
+        with pc_logging.Action("RenderMD", project.name, self.name):
+            if filepath is None:
+                filepath = self.path + "/README.md"
 
-        bom_file = open(filepath, "w+")
-        bom_file.write(
-            "# "
-            + self.name
-            + "\n"
-            + "## Bill of Materials\n"
-            + "| Part | Count* | Vendor | SKU | Preview |\n"
-            + "| -- | -- | -- | -- | -- |\n"
-        )
-        self._render_markdown_real(bom_file)
-        bom_file.write(
-            """
+            bom_file = open(filepath, "w+")
+            bom_file.write(
+                "# "
+                + self.name
+                + "\n"
+                + "## Bill of Materials\n"
+                + "| Part | Count* | Vendor | SKU | Preview |\n"
+                + "| -- | -- | -- | -- | -- |\n"
+            )
+            self._render_markdown_real(bom_file)
+            bom_file.write(
+                """
 (\\*) The `Count` field is the number of SKUs to be ordered.
 It already takes into account the number of items per SKU.
             """
-        )
-        bom_file.close()
+            )
+            bom_file.close()

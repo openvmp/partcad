@@ -26,6 +26,9 @@ class AssemblyFactory:
 
     def _create(self, assembly_config):
         self.assembly = assembly.Assembly(assembly_config)
+        self.assembly.project_name = (
+            self.project.name
+        )  # TODO(clairbee): pass it via the constructor
         # TODO(clairbee): Make the next line work for assembly_factory_file only
         if self.path:
             self.assembly.path = self.path

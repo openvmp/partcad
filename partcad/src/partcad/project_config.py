@@ -8,11 +8,12 @@
 
 from jinja2 import Environment, FileSystemLoader
 import json
-import logging
 import os
 from packaging.specifiers import SpecifierSet
 import sys
 import yaml
+
+from . import logging as pc_logging
 
 DEFAULT_CONFIG_FILENAME = "partcad.yaml"
 
@@ -32,7 +33,7 @@ class Configuration:
             self.config_dir = os.path.dirname(os.path.abspath(config_path))
 
         if not os.path.isfile(self.config_path):
-            logging.error(
+            pc_logging.error(
                 "PartCAD configuration file is not found: '%s'" % self.config_path
             )
             return

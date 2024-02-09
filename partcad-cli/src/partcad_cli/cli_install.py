@@ -7,8 +7,6 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import partcad as pc
-
 
 def cli_help_install(subparsers):
     parser_install = subparsers.add_parser(
@@ -17,8 +15,8 @@ def cli_help_install(subparsers):
     )
 
 
-def cli_install(args):
-    if not args.config_path is None:
-        pc.init(args.config_path)
-    else:
-        pc.init()
+def cli_install(args, ctx):
+    # No op.
+    # The context initialization that is done in cli.py is doing everything
+    # necessary already.
+    _ignore = True
