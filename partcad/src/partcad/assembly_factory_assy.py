@@ -123,14 +123,20 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
                 package_name = "this"
             if package_name == "this":
                 package_name = self.project.name
+
+            params = {}
+            if "params" in node:
+                for paramName in node["params"]:
+                    params[paramName] = node["params"][paramName]
+
             if "assembly" in node:
                 assy_name = node["assembly"]
-                item = self.ctx._get_assembly(assy_name, package_name)
+                item = self.ctx._get_assembly(assy_name, package_name, params)
                 if item is None:
                     raise Exception("Part not found")
             else:
                 part_name = node["part"]
-                item = self.ctx._get_part(part_name, package_name)
+                item = self.ctx._get_part(part_name, package_name, params)
                 if item is None:
                     raise Exception("Assembly not found")
 
