@@ -54,12 +54,36 @@ def get_assembly(assembly_name, project_name=consts.THIS, params=None) -> Assemb
         project_name = consts.THIS
     return init().get_assembly(assembly_name, project_name, params=params)
 
+def get_assembly_cadquery(assembly_name, project_name=consts.THIS, params=None) -> Assembly:
+    """Get the assembly from the given project"""
+    if project_name is None:
+        project_name = consts.THIS
+    return init().get_assembly_cadquery(assembly_name, project_name, params=params)
+
+def get_assembly_build123d(assembly_name, project_name=consts.THIS, params=None) -> Assembly:
+    """Get the assembly from the given project"""
+    if project_name is None:
+        project_name = consts.THIS
+    return init().get_assembly_build123d(assembly_name, project_name, params=params)
+
 
 def get_part(part_name, project_name=consts.THIS, params=None) -> Part:
     """Get the part from the given project"""
     if project_name is None:
         project_name = consts.THIS
     return init().get_part(part_name, project_name, params=params)
+
+def get_part_cadquery(part_name, project_name=consts.THIS, params=None) -> Part:
+    """Get the part from the given project"""
+    if project_name is None:
+        project_name = consts.THIS
+    return init().get_part_cadquery(part_name, project_name, params=params)
+
+def get_part_build123d(part_name, project_name=consts.THIS, params=None) -> Part:
+    """Get the part from the given project"""
+    if project_name is None:
+        project_name = consts.THIS
+    return init().get_part_build123d(part_name, project_name, params=params)
 
 
 def render(format=None, output_dir=None):
