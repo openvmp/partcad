@@ -169,7 +169,7 @@ class Project(project_config.Configuration):
                 config = self.get_part_config(part_name)
                 config = part_config.PartConfiguration.normalize(part_name, config)
                 self.init_part_by_config(config)
-            if not part_name in self.parts or self.parts[param_name] is None:
+            if not part_name in self.parts or self.parts[part_name] is None:
                 pc_logging.error(
                     "Failed to instantiate a non-parametrized part %s" % part_name
                 )
@@ -319,6 +319,10 @@ class Project(project_config.Configuration):
                     assembly_name, config
                 )
                 self.init_assembly_by_config(config)
+            if not assembly_name in self.assemblies or self.assemblies[assembly_name] is None:
+                pc_logging.error(
+                    "Failed to instantiate a non-parametrized assembly %s" % assembly_name
+                )
             return self.assemblies[assembly_name]
 
         if not base_assembly_name in self.assemblies:
