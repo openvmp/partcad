@@ -7,12 +7,13 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import asyncio
 import build123d as b3d
 from jinja2 import Environment, FileSystemLoader
 import os
 import yaml
 
-from .assembly import Assembly
+from .assembly import Assembly, AssemblyChild
 from . import assembly_factory_file as aff
 from . import logging as pc_logging
 
@@ -25,8 +26,23 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
             self._create(assembly_config)
 
     def instantiate(self, assembly):
-        with pc_logging.Action("ASSY", self.project.name, self.assembly_config["name"]):
-            self.assy = {}
+        # # This method is best executed on a thread but the current Python version
+        # # might not be good enough to do that.
+        # try:
+        #     # Try running on the current event loop if any.
+        #     loop = asyncio.get_running_loop()
+        #     # task = loop.create_task(self.instantiate_async(assembly))
+        #     # task.
+        #     f = asyncio.run_coroutine_threadsafe(self.instantiate_async(assembly), loop)
+        #     raise Exception("IT WORKS")
+        # except RuntimeError as e:
+        #     print(e)
+        #     # Running on a dedicated thread and there is no event loop here yet.
+        asyncio.run(self.instantiate_async(assembly))
+
+    async def instantiate_async(self, assembly):
+        with pc_logging.Action("ASSY", self.project.name, assembly.config["name"]):
+            assy = {}
             if os.path.exists(self.path):
                 # Read the body of the configuration file
                 fp = open(self.path, "r")
@@ -40,30 +56,43 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
                 config = template.render(
                     name=self.assembly_config["name"],
                 )
-                self.config_text = config
 
                 # Parse the resulting config
                 try:
-                    self.assy = yaml.safe_load(config)
+                    assy = yaml.safe_load(config)
                 except Exception as e:
                     pc_logging.error(
                         "ERROR: Failed to parse the assembly file %s" % self.path
                     )
-                if self.assy is None:
-                    self.assy = {}
+                if assy is None:
+                    assy = {}
             else:
                 pc_logging.error("ERROR: Assembly file not found: %s" % self.path)
 
-            if "links" in self.assy and not self.assy["links"] is None:
-                self.handle_node_list(assembly, self.assy["links"])
+            result = await self.handle_node(assembly, assy)
+            if not result is None:
+                assembly.children.append(AssemblyChild(result[0], result[1], result[2]))
+                # Keep part reference counter for bill-of-materials purposes
+                await result[0].ref_inc_async()
+            else:
+                raise Exception("Assembly is empty")
 
             self.ctx.stats_assemblies_instantiated += 1
 
-    def handle_node_list(self, assembly, node_list):
+    async def handle_node_list(self, assembly, node_list):
+        tasks = []
         for link in node_list:
-            self.handle_node(assembly, link)
+            tasks.append(self.handle_node(assembly, link))
 
-    def handle_node(self, assembly, node):
+        # TODO(clairbee): revisit whether non-determinism is acceptable here
+        for f in asyncio.as_completed(tasks):
+            result = await f
+            if not result is None:
+                assembly.children.append(AssemblyChild(result[0], result[1], result[2]))
+                # Keep part reference counter for bill-of-materials purposes
+                await result[0].ref_inc_async()
+
+    async def handle_node(self, assembly, node):
         # "name" is an optional parameter for both parts and assemblies
         if "name" in node:
             name = node["name"]
@@ -80,12 +109,12 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
             location = b3d.Location((0, 0, 0), (0, 0, 1), 0)
 
         # Check if this node is for an assembly
-        if "links" in node:
+        if "links" in node and not node["links"] is None:
             item = Assembly(
                 {"name": name}
             )  # TODO(clairbee): revisit why node["links"]) was used there
             item.instantiate = lambda x: True
-            self.handle_node_list(item, node["links"])
+            await self.handle_node_list(item, node["links"])
         else:
             # This is a node for a part
             if "package" in node:
@@ -96,12 +125,17 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
                 package_name = self.project.name
             if "assembly" in node:
                 assy_name = node["assembly"]
-                item = self.ctx.get_assembly(assy_name, package_name)
+                item = self.ctx._get_assembly(assy_name, package_name)
+                if item is None:
+                    raise Exception("Part not found")
             else:
                 part_name = node["part"]
-                item = self.ctx.get_part(part_name, package_name)
+                item = self.ctx._get_part(part_name, package_name)
+                if item is None:
+                    raise Exception("Assembly not found")
 
         if not item is None:
-            assembly.add(item, name, location)
+            return [item, name, location]
         else:
             pc_logging.error("Part not found: %s" % name)
+            return None

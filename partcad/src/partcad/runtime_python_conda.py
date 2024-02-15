@@ -11,6 +11,7 @@ import shutil
 import subprocess
 
 from . import runtime_python
+from . import logging as pc_logging
 
 
 class CondaPythonRuntime(runtime_python.PythonRuntime):
@@ -22,48 +23,49 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
     def run(self, cmd, stdin=""):
         with self.lock:
             if not self.initialized:
-                if self.conda_path is None:
-                    raise Exception(
-                        "ERROR: PartCAD is configured to use conda, but conda is missing"
-                    )
+                with pc_logging.Action("Conda", "create", self.version):
+                    if self.conda_path is None:
+                        raise Exception(
+                            "ERROR: PartCAD is configured to use conda, but conda is missing"
+                        )
 
-                try:
-                    os.makedirs(self.path)
-                    subprocess.run(
-                        [
-                            self.conda_path,
-                            "create",
-                            "-y",
-                            "-p",
-                            self.path,
-                            "python=%s" % self.version,
-                        ]
-                    )
-                    subprocess.run(
-                        [
-                            self.conda_path,
-                            "install",
-                            "-y",
-                            "-p",
-                            self.path,
-                            "pip",
-                        ]
-                    )
-                    self.initialized = True
-                except Exception as e:
-                    shutil.rmtree(self.path)
-                    raise e
+                    try:
+                        os.makedirs(self.path)
+                        subprocess.run(
+                            [
+                                self.conda_path,
+                                "create",
+                                "-y",
+                                "-p",
+                                self.path,
+                                "python=%s" % self.version,
+                            ]
+                        )
+                        subprocess.run(
+                            [
+                                self.conda_path,
+                                "install",
+                                "-y",
+                                "-p",
+                                self.path,
+                                "pip",
+                            ]
+                        )
+                        self.initialized = True
+                    except Exception as e:
+                        shutil.rmtree(self.path)
+                        raise e
 
-            return super().run(
-                [
-                    self.conda_path,
-                    "run",
-                    "--no-capture-output",
-                    "-p",
-                    self.path,
-                    "python",
-                    # "python%s" % self.version,  # This doesn't work on Windows
-                ]
-                + cmd,
-                stdin,
-            )
+        return super().run(
+            [
+                self.conda_path,
+                "run",
+                "--no-capture-output",
+                "-p",
+                self.path,
+                "python",
+                # "python%s" % self.version,  # This doesn't work on Windows
+            ]
+            + cmd,
+            stdin,
+        )

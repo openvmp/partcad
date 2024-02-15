@@ -8,6 +8,8 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import asyncio
+
 import partcad as pc
 
 
@@ -35,7 +37,7 @@ def test_ctx_stats2():
     assert ctx.stats_parts_instantiated == 0
     old_memory = ctx.stats_memory
 
-    cube = ctx.get_part("cube", "example_part_cadquery_primitive")
+    cube = ctx._get_part("cube", "example_part_cadquery_primitive")
     assert cube is not None
     assert ctx.stats_parts_instantiated == 0
     ctx.stats_recalc()
@@ -43,7 +45,8 @@ def test_ctx_stats2():
     assert new_memory > old_memory
 
     old_memory = ctx.stats_memory
-    cq_obj = cube.get_cadquery()
+    cq_obj = asyncio.run(cube.get_cadquery())
+    assert cq_obj is not None
     ctx.stats_recalc()
     assert ctx.stats_parts_instantiated == 1
     new_memory = ctx.stats_memory

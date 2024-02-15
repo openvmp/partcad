@@ -9,15 +9,16 @@
 import cadquery as cq
 import build123d as b3d
 
+import asyncio
 import os
 import shutil
 import tempfile
-import threading
 
 from .render import *
 from .plugins import *
 from .shape_config import ShapeConfiguration
 from . import logging as pc_logging
+from . import sync_threads as pc_thread
 
 
 class Shape(ShapeConfiguration):
@@ -33,29 +34,26 @@ class Shape(ShapeConfiguration):
         self.compound = None
 
         # Leave the svg path empty to get it created on demand
-        self.svg_lock = threading.RLock()
+        self.svg_lock = asyncio.Lock()
         self.svg_path = None
         self.svg_url = None
 
-    def set_shape(self, shape):
-        self.shape = shape
+    async def get_wrapped(self):
+        return await self.get_shape()
 
-    def get_wrapped(self):
-        return self.get_shape()
-
-    def get_cadquery(self) -> cq.Shape:
+    async def get_cadquery(self) -> cq.Shape:
         cq_solid = cq.Solid.makeBox(1, 1, 1)
-        cq_solid.wrapped = self.get_wrapped()
+        cq_solid.wrapped = await self.get_wrapped()
         return cq_solid
 
-    def get_build123d(self) -> b3d.Solid:
+    async def get_build123d(self) -> b3d.Solid:
         b3d_solid = b3d.Solid.make_box(1, 1, 1)
-        b3d_solid.wrapped = self.get_wrapped()
+        b3d_solid.wrapped = await self.get_wrapped()
         return b3d_solid
 
-    def show(self, show_object=None):
+    async def show_async(self, show_object=None):
         with pc_logging.Action("Show", self.project_name, self.name):
-            shape = self.get_wrapped()
+            shape = await self.get_wrapped()
             if shape is not None:
                 if show_object is None:
                     import importlib
@@ -83,26 +81,30 @@ class Shape(ShapeConfiguration):
                         options={},
                     )
 
-    def _finalize_real(self, show_object):
-        if not show_object is None:
-            self.show(show_object)
+    def show(self, show_object=None):
+        asyncio.run(self.show_async(show_object))
 
-    def render_svg_somewhere(self, project=None, filepath=None):
+    async def render_svg_somewhere(self, project=None, filepath=None):
         """Renders an SVG file somewhere and ignore the project settings"""
         if filepath is None:
             filepath = tempfile.mktemp(".svg")
 
-        cq_obj = self.get_cadquery()
-        cq_obj = cq_obj.rotate((0, 0, 0), (1, -1, 0.75), 180)
-        cq.exporters.export(cq_obj, filepath, opt=DEFAULT_RENDER_SVG_OPTS)
+        cq_obj = await self.get_cadquery()
+
+        def do_render_svg():
+            nonlocal cq_obj, filepath
+            cq_obj = cq_obj.rotate((0, 0, 0), (1, -1, 0.75), 180)
+            cq.exporters.export(cq_obj, filepath, opt=DEFAULT_RENDER_SVG_OPTS)
+
+        await pc_thread.run(do_render_svg)
 
         self.svg_path = filepath
 
-    def _get_svg_path(self, project):
-        with self.svg_lock:
+    async def _get_svg_path(self, project):
+        async with self.svg_lock:
             if self.svg_path is None:
-                self.render_svg_somewhere(project, None)
-        return self.svg_path
+                await self.render_svg_somewhere(project, None)
+            return self.svg_path
 
     def render_getopts(
         self,
@@ -144,27 +146,34 @@ class Shape(ShapeConfiguration):
 
         return opts, filepath
 
+    async def render_svg_async(
+        self,
+        project=None,
+        filepath=None,
+    ):
+        with pc_logging.Action("RenderSVG", self.project_name, self.name):
+            _, filepath = self.render_getopts("svg", ".svg", project, filepath)
+
+            # This creates a temporary file, but it allows to reuse the file
+            # with other consumers of self._get_svg_path()
+            svg_path = await self._get_svg_path(project)
+            shutil.copyfile(svg_path, filepath)
+
     def render_svg(
         self,
         project=None,
         filepath=None,
     ):
-        with pc_logging.Action("RenderSVG", project.name, self.name):
-            _, filepath = self.render_getopts("svg", ".svg", project, filepath)
+        asyncio.run(self.render_svg_async(project, filepath))
 
-            # This creates a temporary file, but it allows to reuse the file
-            # with other consumers of self._get_svg_path()
-            svg_path = self._get_svg_path(project)
-            shutil.copyfile(svg_path, filepath)
-
-    def render_png(
+    async def render_png_async(
         self,
         project=None,
         filepath=None,
         width=None,
         height=None,
     ):
-        with pc_logging.Action("RenderPNG", project.name, self.name):
+        with pc_logging.Action("RenderPNG", self.project_name, self.name):
             if not plugins.export_png.is_supported():
                 pc_logging.error("Export to PNG is not supported")
                 return
@@ -183,50 +192,109 @@ class Shape(ShapeConfiguration):
                     height = DEFAULT_RENDER_HEIGHT
 
             # Render the vector image
-            svg_path = self._get_svg_path(project)
+            svg_path = await self._get_svg_path(project)
 
-            plugins.export_png.export(project, svg_path, width, height, filepath)
+            def do_render_png():
+                nonlocal project, svg_path, width, height, filepath
+                plugins.export_png.export(project, svg_path, width, height, filepath)
+
+            await pc_thread.run(do_render_png)
+
+    def render_png(
+        self,
+        project=None,
+        filepath=None,
+        width=None,
+        height=None,
+    ):
+        asyncio.run(self.render_png_async(project, filepath, width, height))
+
+    async def render_step_async(
+        self,
+        project=None,
+        filepath=None,
+    ):
+        with pc_logging.Action("RenderSTEP", self.project_name, self.name):
+            step_opts, filepath = self.render_getopts(
+                "step", ".step", project, filepath
+            )
+
+            cq_obj = await self.get_cadquery()
+
+            def do_render_step():
+                nonlocal project, filepath, cq_obj
+                if not project is None:
+                    project.ctx.ensure_dirs_for_file(filepath)
+                cq.exporters.export(cq_obj, filepath)
+
+            await pc_thread.run(do_render_step)
 
     def render_step(
         self,
         project=None,
         filepath=None,
     ):
-        with pc_logging.Action("RenderSTEP", project.name, self.name):
-            step_opts, filepath = self.render_getopts(
-                "step", ".step", project, filepath
-            )
+        asyncio.run(self.render_step_async(project, filepath))
 
-            cq_obj = self.get_cadquery()
-            if not project is None:
-                project.ctx.ensure_dirs_for_file(filepath)
-            cq.exporters.export(cq_obj, filepath)
-
-    def render_stl(
-        self,
-        project=None,
-        filepath=None,
-        tolerance=None,
-    ):
-        with pc_logging.Action("RenderSTL", project.name, self.name):
-            stl_opts, filepath = self.render_getopts("stl", ".stl", project, filepath)
-
-            cq_obj = self.get_cadquery()
-            if not project is None:
-                project.ctx.ensure_dirs_for_file(filepath)
-            cq.exporters.export(
-                cq_obj,
-                filepath,
-            )
-
-    def render_3mf(
+    async def render_stl_async(
         self,
         project=None,
         filepath=None,
         tolerance=None,
         angularTolerance=None,
     ):
-        with pc_logging.Action("Render3MF", project.name, self.name):
+        with pc_logging.Action("RenderSTL", self.project_name, self.name):
+            stl_opts, filepath = self.render_getopts("stl", ".stl", project, filepath)
+
+            if tolerance is None:
+                if "tolerance" in stl_opts and not stl_opts["tolerance"] is None:
+                    tolerance = stl_opts["tolerance"]
+                else:
+                    tolerance = 0.1
+
+            if angularTolerance is None:
+                if (
+                    "angularTolerance" in stl_opts
+                    and not stl_opts["angularTolerance"] is None
+                ):
+                    angularTolerance = stl_opts["angularTolerance"]
+                else:
+                    angularTolerance = 0.1
+
+            cq_obj = await self.get_cadquery()
+
+            def do_render_stl():
+                nonlocal cq_obj, project, filepath, tolerance, angularTolerance
+                if not project is None:
+                    project.ctx.ensure_dirs_for_file(filepath)
+                cq.exporters.export(
+                    cq_obj,
+                    filepath,
+                    tolerance=tolerance,
+                    angularTolerance=angularTolerance,
+                )
+
+            await pc_thread.run(do_render_stl)
+
+    def render_stl(
+        self,
+        project=None,
+        filepath=None,
+        tolerance=None,
+        angularTolerance=None,
+    ):
+        asyncio.run(
+            self.render_stl_async(project, filepath, tolerance, angularTolerance)
+        )
+
+    async def render_3mf_async(
+        self,
+        project=None,
+        filepath=None,
+        tolerance=None,
+        angularTolerance=None,
+    ):
+        with pc_logging.Action("Render3MF", self.project_name, self.name):
             threemf_opts, filepath = self.render_getopts(
                 "3mf", ".3mf", project, filepath
             )
@@ -249,24 +317,40 @@ class Shape(ShapeConfiguration):
                 else:
                     angularTolerance = 0.1
 
-            cq_obj = self.get_cadquery()
-            if not project is None:
-                project.ctx.ensure_dirs_for_file(filepath)
-            cq.exporters.export(
-                cq_obj,
-                filepath,
-                tolerance=tolerance,
-                angularTolerance=angularTolerance,
-            )
+            cq_obj = await self.get_cadquery()
 
-    def render_threejs(
+            def do_render_3mf():
+                nonlocal cq_obj, project, filepath, tolerance, angularTolerance
+                if not project is None:
+                    project.ctx.ensure_dirs_for_file(filepath)
+                cq.exporters.export(
+                    cq_obj,
+                    filepath,
+                    tolerance=tolerance,
+                    angularTolerance=angularTolerance,
+                )
+
+            await pc_thread.run(do_render_3mf)
+
+    def render_3mf(
         self,
         project=None,
         filepath=None,
         tolerance=None,
         angularTolerance=None,
     ):
-        with pc_logging.Action("RenderThreeJS", project.name, self.name):
+        asyncio.run(
+            self.render_3mf_async(project, filepath, tolerance, angularTolerance)
+        )
+
+    async def render_threejs_async(
+        self,
+        project=None,
+        filepath=None,
+        tolerance=None,
+        angularTolerance=None,
+    ):
+        with pc_logging.Action("RenderThreeJS", self.project_name, self.name):
             threejs_opts, filepath = self.render_getopts(
                 "threejs", ".json", project, filepath
             )
@@ -289,25 +373,41 @@ class Shape(ShapeConfiguration):
                 else:
                     angularTolerance = 0.1
 
-            cq_obj = self.get_cadquery()
-            if not project is None:
-                project.ctx.ensure_dirs_for_file(filepath)
-            cq.exporters.export(
-                cq_obj,
-                filepath,
-                tolerance=tolerance,
-                angularTolerance=angularTolerance,
-                exportType=cq.exporters.ExportTypes.TJS,
-            )
+            cq_obj = await self.get_cadquery()
 
-    def render_obj(
+            def do_render_threejs():
+                nonlocal cq_obj, project, filepath, tolerance, angularTolerance
+                if not project is None:
+                    project.ctx.ensure_dirs_for_file(filepath)
+                cq.exporters.export(
+                    cq_obj,
+                    filepath,
+                    tolerance=tolerance,
+                    angularTolerance=angularTolerance,
+                    exportType=cq.exporters.ExportTypes.TJS,
+                )
+
+            await pc_thread.run(do_render_threejs)
+
+    def render_threejs(
         self,
         project=None,
         filepath=None,
         tolerance=None,
         angularTolerance=None,
     ):
-        with pc_logging.Action("RenderOBJ", project.name, self.name):
+        asyncio.run(
+            self.render_threejs_async(project, filepath, tolerance, angularTolerance)
+        )
+
+    async def render_obj_async(
+        self,
+        project=None,
+        filepath=None,
+        tolerance=None,
+        angularTolerance=None,
+    ):
+        with pc_logging.Action("RenderOBJ", self.project_name, self.name):
             obj_opts, filepath = self.render_getopts("obj", ".obj", project, filepath)
 
             if tolerance is None:
@@ -325,25 +425,40 @@ class Shape(ShapeConfiguration):
                 else:
                     angularTolerance = 0.1
 
-            cq_obj = self.get_cadquery()
+            cq_obj = await self.get_cadquery()
 
-            try:
-                vertices, triangles = cq_obj.tessellate(tolerance, angularTolerance)
+            def do_render_obj():
+                nonlocal cq_obj, project, filepath, tolerance, angularTolerance
+                try:
+                    vertices, triangles = cq_obj.tessellate(tolerance, angularTolerance)
 
-                with open(filepath, "w") as f:
-                    f.write("# OBJ file\n")
-                    for v in vertices:
-                        f.write("v %.4f %.4f %.4f\n" % (v.x, v.y, v.z))
-                    for p in triangles:
-                        f.write("f")
-                        for i in p:
-                            f.write(" %d" % (i + 1))
-                        f.write("\n")
-            except:
-                pc_logging.error("Exception while exporting to " + filepath)
+                    with open(filepath, "w") as f:
+                        f.write("# OBJ file\n")
+                        for v in vertices:
+                            f.write("v %.4f %.4f %.4f\n" % (v.x, v.y, v.z))
+                        for p in triangles:
+                            f.write("f")
+                            for i in p:
+                                f.write(" %d" % (i + 1))
+                            f.write("\n")
+                except:
+                    pc_logging.error("Exception while exporting to " + filepath)
 
-    def render_txt(self, project=None, filepath=None):
-        with pc_logging.Action("RenderTXT", project.name, self.name):
+            await pc_thread.run(do_render_obj)
+
+    def render_obj(
+        self,
+        project=None,
+        filepath=None,
+        tolerance=None,
+        angularTolerance=None,
+    ):
+        asyncio.run(
+            self.render_obj_async(project, filepath, tolerance, angularTolerance)
+        )
+
+    async def render_txt_async(self, project=None, filepath=None):
+        with pc_logging.Action("RenderTXT", self.project_name, self.name):
             if filepath is None:
                 filepath = self.path + "/bom.txt"
 
@@ -351,11 +466,14 @@ class Shape(ShapeConfiguration):
                 project.ctx.ensure_dirs_for_file(filepath)
             file = open(filepath, "w+")
             file.write("BoM:\n")
-            self._render_txt_real(file)
+            await self._render_txt_real(file)
             file.close()
 
-    def render_markdown(self, filepath):
-        with pc_logging.Action("RenderMD", project.name, self.name):
+    def render_txt(self, project=None, filepath=None):
+        asyncio.run(self.render_txt_async(project, filepath))
+
+    async def render_markdown_async(self, project=None, filepath=None):
+        with pc_logging.Action("RenderMD", self.project_name, self.name):
             if filepath is None:
                 filepath = self.path + "/README.md"
 
@@ -376,3 +494,6 @@ It already takes into account the number of items per SKU.
             """
             )
             bom_file.close()
+
+    def render_markdown(self, project=None, filepath=None):
+        asyncio.run(self.render_markdown_async(project, filepath))

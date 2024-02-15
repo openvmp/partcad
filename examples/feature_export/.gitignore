@@ -1,6 +1,7 @@
 *.svg
 *.png
 *.stl
+*.step
 *.3mf
 *.json
 *.obj

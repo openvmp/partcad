@@ -62,14 +62,6 @@ def get_part(part_name, project_name=consts.THIS, params=None) -> Part:
     return init().get_part(part_name, project_name, params=params)
 
 
-def finalize(shape, show_object_fn):
-    return init().finalize(shape, show_object_fn)
-
-
-def finalize_real():
-    return init()._finalize_real()
-
-
 def render(format=None, output_dir=None):
     return init().render(format, output_dir)
 

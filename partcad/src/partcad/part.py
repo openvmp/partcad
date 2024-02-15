@@ -7,11 +7,12 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import asyncio
 import math
-import threading
 import typing
 
 from . import shape
+from . import sync_threads as pc_thread
 
 
 class Part(shape.Shape):
@@ -21,7 +22,7 @@ class Part(shape.Shape):
         super().__init__(config)
 
         self.shape = shape
-        self.lock = threading.RLock()
+        self.lock = asyncio.Lock()
 
         self.desc = None
         if "desc" in config:
@@ -41,11 +42,14 @@ class Part(shape.Shape):
             self.count_per_sku = 1
         self.count = 0
 
-    def get_shape(self):
-        with self.lock:
+    async def get_shape(self):
+        async with self.lock:
             if self.shape is None:
-                self.instantiate(self)
+                self.shape = await pc_thread.run(self.instantiate, self)
             return self.shape
+
+    async def ref_inc_async(self):
+        self.count += 1
 
     def ref_inc(self):
         self.count += 1

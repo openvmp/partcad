@@ -9,6 +9,8 @@
 
 import argparse
 
+import partcad.logging as pc_logging
+
 
 def cli_help_render(subparsers: argparse.ArgumentParser):
     parser_render = subparsers.add_parser(

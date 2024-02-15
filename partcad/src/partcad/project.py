@@ -6,10 +6,12 @@
 #
 # Licensed under Apache License, Version 2.0.
 
+import asyncio
 import copy
 import os
+
+# from pprint import pformat
 import ruamel.yaml
-import threading
 import typing
 
 from . import logging as pc_logging
@@ -131,7 +133,7 @@ class Project(project_config.Configuration):
     def get_part(self, part_name, func_params=None) -> part.Part:
         if func_params is None or not func_params:
             # Quick check if it's already available
-            if part_name in self.parts:
+            if part_name in self.parts and not self.parts[part_name] is None:
                 return self.parts[part_name]
             has_func_params = False
         else:
@@ -167,6 +169,10 @@ class Project(project_config.Configuration):
                 config = self.get_part_config(part_name)
                 config = part_config.PartConfiguration.normalize(part_name, config)
                 self.init_part_by_config(config)
+            if not part_name in self.parts or self.parts[param_name] is None:
+                pc_logging.error(
+                    "Failed to instantiate a non-parametrized part %s" % part_name
+                )
             return self.parts[part_name]
 
         if not base_part_name in self.parts:
@@ -222,6 +228,11 @@ class Project(project_config.Configuration):
                     config["parameters"][param_name]["default"] = bool(param_value)
 
         # Now initialize the part
+        pc_logging.debug("Initializing a parametrized part: %s" % result_name)
+        # pc_logging.debug(
+        #     "Initializing a parametrized part using the following config: %s"
+        #     % pformat(config)
+        # )
         self.init_part_by_config(config)
 
         # See if it worked
@@ -267,7 +278,10 @@ class Project(project_config.Configuration):
     def get_assembly(self, assembly_name, func_params=None) -> assembly.Assembly:
         if func_params is None or not func_params:
             # Quick check if it's already available
-            if assembly_name in self.assemblies:
+            if (
+                assembly_name in self.assemblies
+                and not self.assemblies[assembly_name] is None
+            ):
                 return self.assemblies[assembly_name]
             has_func_params = False
         else:
@@ -475,9 +489,11 @@ class Project(project_config.Configuration):
         ext_by_kind = {}
         return self._add_component(kind, path, "assemblies", ext_by_kind)
 
-    def render(self, parts=None, assemblies=None, format=None, output_dir=None):
-        with pc_logging.Action("RenderPrj", self.name):
-
+    async def render_async(
+        self, parts=None, assemblies=None, format=None, output_dir=None
+    ):
+        with pc_logging.Action("RenderPkg", self.name):
+            loop = asyncio.get_running_loop()
             # Override the default output_dir.
             # TODO(clairbee): pass the preference downstream without making a
             # persistent change.
@@ -549,73 +565,43 @@ class Project(project_config.Configuration):
                 render_obj = False
 
             # Render
-            threads = []
+            tasks = []
             for part_name in parts:
                 part = self.get_part(part_name)
                 if not part is None:
                     if render_svg:
-                        threads.append(
-                            threading.Thread(target=part.render_svg, args=[self])
-                        )
+                        tasks.append(part.render_svg_async(self))
                     if render_png:
-                        threads.append(
-                            threading.Thread(target=part.render_png, args=[self])
-                        )
+                        tasks.append(part.render_png_async(self))
                     if render_step:
-                        threads.append(
-                            threading.Thread(target=part.render_step, args=[self])
-                        )
+                        tasks.append(part.render_step_async(self))
                     if render_stl:
-                        threads.append(
-                            threading.Thread(target=part.render_stl, args=[self])
-                        )
+                        tasks.append(part.render_stl_async(self))
                     if render_3mf:
-                        threads.append(
-                            threading.Thread(target=part.render_3mf, args=[self])
-                        )
+                        tasks.append(part.render_3mf_async(self))
                     if render_threejs:
-                        threads.append(
-                            threading.Thread(target=part.render_threejs, args=[self])
-                        )
+                        tasks.append(part.render_threejs_async(self))
                     if render_obj:
-                        threads.append(
-                            threading.Thread(target=part.render_obj, args=[self])
-                        )
+                        tasks.append(part.render_obj_async(self))
             for assembly_name in assemblies:
                 assembly = self.get_assembly(assembly_name)
                 if not assembly is None:
                     if render_svg:
-                        threads.append(
-                            threading.Thread(target=assembly.render_svg, args=[self])
-                        )
+                        tasks.append(assembly.render_svg_async(self))
                     if render_png:
-                        threads.append(
-                            threading.Thread(target=assembly.render_png, args=[self])
-                        )
+                        tasks.append(assembly.render_png_async(self))
                     if render_step:
-                        threads.append(
-                            threading.Thread(target=assembly.render_step, args=[self])
-                        )
+                        tasks.append(assembly.render_step_async(self))
                     if render_stl:
-                        threads.append(
-                            threading.Thread(target=assembly.render_stl, args=[self])
-                        )
+                        tasks.append(assembly.render_stl_async(self))
                     if render_3mf:
-                        threads.append(
-                            threading.Thread(target=assembly.render_3mf, args=[self])
-                        )
+                        tasks.append(assembly.render_3mf_async(self))
                     if render_threejs:
-                        threads.append(
-                            threading.Thread(
-                                target=assembly.render_threejs, args=[self]
-                            )
-                        )
+                        tasks.append(assembly.render_threejs_async(self))
                     if render_obj:
-                        threads.append(
-                            threading.Thread(target=assembly.render_obj, args=[self])
-                        )
+                        tasks.append(assembly.render_obj_async(self))
 
-            for thread in threads:
-                thread.start()
-            for thread in threads:
-                thread.join()
+            await asyncio.gather(*tasks)
+
+    def render(self, parts=None, assemblies=None, format=None, output_dir=None):
+        asyncio.run(self.render_async(parts, assemblies, format, output_dir))

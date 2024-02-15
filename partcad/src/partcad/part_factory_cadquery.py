@@ -30,7 +30,7 @@ class PartFactoryCadquery(pfp.PartFactoryPython):
             self._create(part_config)
 
     def instantiate(self, part):
-        with pc_logging.Action("CadQuery", self.project.name, self.part_config["name"]):
+        with pc_logging.Action("CadQuery", part.project_name, part.name):
             wrapper_path = wrapper.get("cadquery.py")
 
             request = {"build_parameters": {}}
@@ -55,11 +55,10 @@ class PartFactoryCadquery(pfp.PartFactoryPython):
             response = base64.b64decode(response_serialized)
             result = pickle.loads(response)
 
-            if result["success"]:
-                shape = result["shape"]
-                part.set_shape(shape)
-            else:
+            if not result["success"]:
                 pc_logging.error(result["exception"])
                 raise Exception(result["exception"])
 
             self.ctx.stats_parts_instantiated += 1
+
+            return result["shape"]

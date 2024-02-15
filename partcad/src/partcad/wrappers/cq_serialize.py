@@ -105,6 +105,20 @@ def _reduce_solid(compound: OCP.TopoDS.TopoDS_Solid):
         return _inflate_solid, (stream.getvalue(),)
 
 
+def _inflate_shell(data: bytes):
+    with BytesIO(data) as bio:
+        shape = OCP.TopoDS.TopoDS_Shell()
+        builder = OCP.BRep.BRep_Builder()
+        OCP.BRepTools.BRepTools.Read_s(shape, bio, builder)
+        return shape
+
+
+def _reduce_shell(compound: OCP.TopoDS.TopoDS_Shell):
+    with BytesIO() as stream:
+        OCP.BRepTools.BRepTools.Write_s(compound, stream)
+        return _inflate_shell, (stream.getvalue(),)
+
+
 def _inflate_ax3(*values: float):
     ax3 = OCP.gp.gp_Ax3()
     ax3.SetLocation(values[0])
@@ -174,3 +188,4 @@ def register():
     )
     copyreg.pickle(OCP.TopoDS.TopoDS_Compound, _reduce_compound)
     copyreg.pickle(OCP.TopoDS.TopoDS_Solid, _reduce_solid)
+    copyreg.pickle(OCP.TopoDS.TopoDS_Shell, _reduce_shell)

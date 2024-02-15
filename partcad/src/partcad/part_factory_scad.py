@@ -28,7 +28,7 @@ class PartFactoryScad(pff.PartFactoryFile):
             self.project_dir = project.config_dir
 
     def instantiate(self, part):
-        with pc_logging.Action("OpenSCAD", self.project.name, self.part_config["name"]):
+        with pc_logging.Action("OpenSCAD", part.project_name, part.name):
             scad_path = shutil.which("openscad")
             if scad_path is None:
                 raise Exception(
@@ -44,6 +44,6 @@ class PartFactoryScad(pff.PartFactoryFile):
             shape = b3d.Mesher().read(stl_path)[0].wrapped
             os.unlink(stl_path)
 
-            part.set_shape(shape)
-
             self.ctx.stats_parts_instantiated += 1
+
+            return shape

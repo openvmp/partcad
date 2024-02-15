@@ -7,6 +7,8 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import time
+
 import partcad as pc
 
 
@@ -69,22 +71,42 @@ def cli_help_list(subparsers):
         required=False,
     )
 
+    parser_list_parts.add_argument(
+        "package",
+        help="Package to retrieve the object from",
+        type=str,
+        nargs="?",
+    )
+    parser_list_assemblies.add_argument(
+        "package",
+        help="Package to retrieve the object from",
+        type=str,
+        nargs="?",
+    )
+
 
 def cli_list(args, ctx):
     pkg_count = 0
 
+    projects = ctx.get_packages()
+
+    # TODO(clairbee): remove the following workaround after replacing 'print'
+    # with corresponding logging calls
+    time.sleep(2)
+
     print("PartCAD dependencies:")
-    for project_name in ctx.projects:
+    for project in projects:
+        project_name = project["name"]
         if project_name == pc.THIS or project_name.startswith("partcad-"):
+            # Omit partcad-index's internal intermediate packages
             continue
 
-        project = ctx.projects[project_name]
         line = "\t%s" % project_name
         padding_size = 40 - len(project_name)
         if padding_size < 4:
             padding_size = 4
         line += " " * padding_size
-        line += "%s" % project.desc
+        line += "%s" % project["desc"]
         print(line)
         pkg_count = pkg_count + 1
 
@@ -100,9 +122,16 @@ def cli_list_parts(args, ctx):
         print("Instantiating %s..." % args.used_by)
         pc.get_assembly(args.used_by)
 
+    # TODO(clairbee): remove the following workaround after replacing 'print'
+    # with corresponding logging calls
+    time.sleep(2)
+
     print("PartCAD parts:")
     for project_name in ctx.projects:
-        if project_name != pc.THIS and not args.recursive:
+        if not args.package is None and args.package != project_name:
+            continue
+
+        if project_name != pc.THIS and (not args.recursive and args.package is None):
             continue
         if project_name.startswith("partcad-"):
             continue
@@ -146,7 +175,10 @@ def cli_list_assemblies(args, ctx):
 
     print("PartCAD assemblies:")
     for project_name in ctx.projects:
-        if project_name != pc.THIS and not args.recursive:
+        if not args.package is None and args.package != project_name:
+            continue
+
+        if project_name != pc.THIS and (not args.recursive and args.package is None):
             continue
         if project_name.startswith("partcad-"):
             continue

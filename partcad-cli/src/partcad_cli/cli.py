@@ -105,7 +105,7 @@ def main():
 
     elif args.command == "install":
         with pc_logging.Process("Install", "this"):
-            cli_install(args)
+            cli_install(args, ctx)
 
     elif args.command == "list":
         with pc_logging.Process("List", "this"):

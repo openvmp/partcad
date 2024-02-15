@@ -42,5 +42,5 @@ def test_project_config_template():
     )
     # In this test case, the template is used to name the part the same name as
     # the package is called.
-    part = ctx.get_part("that", "that")
+    part = ctx._get_part("that", "that")
     assert not part is None

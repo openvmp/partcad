@@ -110,7 +110,7 @@ $ pc render -p -t step -a <assembly> [<package>]
 ```
 
 If you want to use these models in a CAD-as-code framework, find below the
-example how to do it in CadQuery. More examples are
+example how to do it in CadQuery. Examples for other frameworks are
 [also available](./examples/README.md).
 
 ```python
@@ -118,12 +118,12 @@ example how to do it in CadQuery. More examples are
 import cadquery as cq
 import partcad as pc
 ...
-part = pc.get_part(
+part = pc.get_part_cadquery(
      # Part name
-     "fastener/screw-buttonhead",
+     "fastener/hexhead-iso4014",
      # Package name
-     "standard-metric-cqwarehouse",
-).get_cadquery()
+     "pc-std-metric-cqwarehouse",
+)
 ...
 show_object(part)
 ```
@@ -135,12 +135,12 @@ show_object(part)
 import partcad as pc
 part = pc.get_part(
      # Part name
-     "fastener/screw-buttonhead",
+     "fastener/hexhead-iso4014",
      # Package name
-     "standard-metric-cqwarehouse",
-).get_build123d()
+     "pc-std-metric-cqwarehouse",
+)
 ...
-pc.finalize(part)</code>
+part.show()</code>
 </td>
 -->
 </tr>
@@ -295,7 +295,7 @@ mkdir /tmp/test_show && cd /tmp/test_show
 pc init
 
 # Show the part in 'OCP CAD Viewer'
-pc show fastener/screw-buttonhead standard-metric-cqwarehouse
+pc show fastener/hexhead-iso4014 pc-std-metric-cqwarehouse
 ```
 
 ### Render your project
@@ -430,8 +430,7 @@ tracking layer on top of both [CadQuery]/[build123d] and traditional CAD tools t
 enable version control and other features required for effective collaboration. 
 
 This framework currently uses [build123d] and, thus, [OpenCASCADE] under the hood.
-However this may change in the future, if the python C bindings for [OpenCASCADE]
-remain a blocker for unlocking multithreaded performance.
+However this may change in the future.
 
 [CadQuery]: https://github.com/CadQuery/cadquery
 [build123d]: https://github.com/gumyr/build123d

@@ -21,8 +21,9 @@ class PartFactoryStl(pff.PartFactoryFile):
             self._create(part_config)
 
     def instantiate(self, part):
-        with pc_logging.Action("STL", self.project.name, self.part_config["name"]):
+        with pc_logging.Action("STL", part.project_name, part.name):
             shape = b3d.Mesher().read(self.path)[0].wrapped
-            part.set_shape(shape)
 
             self.ctx.stats_parts_instantiated += 1
+
+            return shape

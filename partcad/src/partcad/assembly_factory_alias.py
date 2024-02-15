@@ -27,7 +27,7 @@ class AssemblyFactoryAlias(pf.AssemblyFactory):
             if "project" in assembly_config:
                 self.target_project = assembly_config["project"]
             else:
-                self.target_project = None
+                self.target_project = project.name
 
             pc_logging.debug(
                 "Initializing an alias to %s:%s"
@@ -47,14 +47,8 @@ class AssemblyFactoryAlias(pf.AssemblyFactory):
         with pc_logging.Action(
             "Alias", self.project.name, self.assembly_config["name"]
         ):
-            # TODO(clairbee): resolve the absolute package path?
-            if self.target_project is None:
-                target = self.project.get_assembly(self.target_assembly)
-            else:
-                target = self.project.ctx.get_assembly(
-                    self.target_assembly, self.target_project
-                )
-
-            assembly.set_shape(target.get_shape())
-
             self.ctx.stats_assemblies_instantiated += 1
+
+            # TODO(clairbee): resolve the absolute package path?
+            target = self.ctx._get_assembly(self.target_assembly, self.target_project)
+            target.instantiate(assembly)
