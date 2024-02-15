@@ -9,3 +9,4 @@ PartCAD documentation
    installation.rst
    use_cases.rst
    design.rst
+   implementation_details.rst

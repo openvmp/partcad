@@ -1,3 +1,10 @@
+######################
+Implementation details
+######################
+
+Parallelism
+===========
+
 1. Asynchronous at heart
 
   PartCAD is designed to run most of its logic as coroutines in the asyncio's event loop.
@@ -18,4 +25,3 @@
 
   To make it apparent to external users, all externally visible coroutines have names that end with "_async".
   Each such coroutine is accompanied by a synchronous wrapper (which does not have "_async" in its name).
-
