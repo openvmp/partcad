@@ -31,26 +31,45 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
 
                     try:
                         os.makedirs(self.path)
-                        subprocess.run(
+
+                        # Install new conda environment with the preferred Python version
+                        p = subprocess.Popen(
                             [
                                 self.conda_path,
                                 "create",
                                 "-y",
+                                "-q",
+                                "--json",
                                 "-p",
                                 self.path,
                                 "python=%s" % self.version,
-                            ]
+                            ],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
                         )
-                        subprocess.run(
+                        _, stderr = p.communicate()
+                        if not stderr is None and stderr != b"":
+                            pc_logging.error("conda env install error: %s" % stderr)
+
+                        # Install pip into the newly created conda environment
+                        p = subprocess.Popen(
                             [
                                 self.conda_path,
                                 "install",
                                 "-y",
+                                "-q",
+                                "--json",
                                 "-p",
                                 self.path,
                                 "pip",
-                            ]
+                            ],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
                         )
+                        _, stderr = p.communicate()
+                        if not stderr is None and stderr != b"":
+                            pc_logging.error("conda pip install error: %s" % stderr)
+
                         self.initialized = True
                     except Exception as e:
                         shutil.rmtree(self.path)
