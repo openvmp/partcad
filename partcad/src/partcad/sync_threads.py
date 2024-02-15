@@ -30,4 +30,5 @@ async def run(method, *args):
         # Python 3.9 and lower has a buggy '.run_in_executor()'.
         # It crashes with:
         # `got Future <Future pending> attached to a different loop`
+        # TODO(clairbee): consider simply spawning a thread and waiting for completion
         return method(*args)
