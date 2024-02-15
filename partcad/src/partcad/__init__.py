@@ -43,4 +43,4 @@ __all__ = [
     "plugins",
 ]
 
-__version__: str = "0.3.90"
+__version__: str = "0.3.91"
