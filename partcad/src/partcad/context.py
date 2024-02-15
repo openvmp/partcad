@@ -6,8 +6,10 @@
 #
 # Licensed under Apache License, Version 2.0.
 
+import asyncio
 import atexit
 import os
+import threading
 
 from . import consts
 from . import logging as pc_logging
@@ -36,6 +38,10 @@ class Context(project_config.Configuration):
     def __init__(self, config_path="."):
         """Initializes the context and imports the root project."""
         super().__init__(consts.THIS, config_path)
+
+        # Protect the critical sections from access in different threads
+        self.lock = threading.Lock()
+
         self.option_create_dirs = False
         self.runtimes_python = {}
 
@@ -56,7 +62,6 @@ class Context(project_config.Configuration):
         # self.projects contains all projects known to this context
         self.projects = {}
         self._projects_being_loaded = {}
-        self._last_to_finalize = None
 
         with pc_logging.Process("ImportDeps", self.config_dir):
             self.import_project(
@@ -67,8 +72,6 @@ class Context(project_config.Configuration):
                     "path": config_path,
                 },
             )
-
-        atexit.register(Context._finalize_real, self)
 
     def stats_recalc(self, verbose=False):
         self.stats_memory = total_size(self, verbose)
@@ -142,28 +145,70 @@ class Context(project_config.Configuration):
 
             return imported_project
 
-    def get_part(self, part_name, project_name, params=None):
+    def get_packages(self):
+        return map(
+            lambda pkg: {"name": pkg.name, "desc": pkg.desc}, self.projects.values()
+        )
+
+    def _get_part(self, part_name, project_name, params=None):
         prj = self.get_project(project_name)
         if prj is None:
+            pc_logging.error("Package %s not found" % project_name)
             # Don't print anything as self.get_project is expected to report errors
             return None
+        pc_logging.debug("Retriving %s from %s" % (part_name, project_name))
         return prj.get_part(part_name, params)
 
-    def get_assembly(self, assembly_name, project_name, params=None):
+    def get_part(self, part_name, project_name, params=None):
+        with self.lock:
+            return self._get_part(part_name, project_name, params)
+
+    def get_part_shape(self, part_name, project_name, params=None):
+        with self.lock:
+            return asyncio.run(
+                self._get_part(part_name, project_name, params).get_shape()
+            )
+
+    def get_part_cadquery(self, part_name, project_name, params=None):
+        with self.lock:
+            return asyncio.run(
+                self._get_part(part_name, project_name, params).get_cadquery()
+            )
+
+    def get_part_build123d(self, part_name, project_name, params=None):
+        with self.lock:
+            return asyncio.run(
+                self._get_part(part_name, project_name, params).get_build123d()
+            )
+
+    def _get_assembly(self, assembly_name, project_name, params=None):
         prj = self.get_project(project_name)
         if prj is None:
             # Don't print anything as self.get_project is expected to report errors
             return None
         return prj.get_assembly(assembly_name, params)
 
-    def finalize(self, shape, show_object_fn):
-        self._last_to_finalize = shape
-        self._show_object_fn = show_object_fn
+    def get_assembly(self, assembly_name, project_name, params=None):
+        with self.lock:
+            return self._get_assembly(assembly_name, project_name, params)
 
-    def _finalize_real(self):
-        if self._last_to_finalize is not None:
-            self._last_to_finalize._finalize_real(self._show_object_fn)
-        self._last_to_finalize = None
+    def get_assembly_shape(self, assembly_name, project_name, params=None):
+        with self.lock:
+            return asyncio.run(
+                self._get_assembly(assembly_name, project_name, params).get_shape()
+            )
+
+    def get_assembly_cadquery(self, assembly_name, project_name, params=None):
+        with self.lock:
+            return asyncio.run(
+                self._get_assembly(assembly_name, project_name, params).get_cadquery()
+            )
+
+    def get_assembly_build123d(self, assembly_name, project_name, params=None):
+        with self.lock:
+            return asyncio.run(
+                self._get_assembly(assembly_name, project_name, params).get_build123d()
+            )
 
     def render(self, format=None, output_dir=None):
         prj = self.get_project(consts.THIS)

@@ -6,6 +6,7 @@
 #
 # Licensed under Apache License, Version 2.0.
 
+import asyncio
 import atexit
 import logging
 from logging.handlers import QueueHandler, QueueListener
@@ -46,11 +47,11 @@ def ansi_action_end(op: str, package: str, item: str = None):
     )
 
 
-class AnsiTerminalProgressHandler(QueueHandler):
+class AnsiTerminalProgressHandler(logging.Handler):
     MAX_LINES = 8
 
-    def __init__(self, queue, stream=False) -> None:
-        super().__init__(queue)
+    def __init__(self, stream=sys.stdout) -> None:
+        super().__init__()
         self.thread_lock = threading.Lock()
         if not stream is None:
             self.stream = stream
@@ -100,7 +101,7 @@ class AnsiTerminalProgressHandler(QueueHandler):
                     self.actions_total = 0
 
                     if not self.thread is None:
-                        self.lock.release()
+                        self.thread_lock.release()
                         raise Exception("nested processes")
                     self.thread = threading.Thread(
                         target=self.run_thread,
@@ -201,7 +202,10 @@ queue_handler: AnsiTerminalProgressHandler = None
 
 
 def fini():
-    listener.stop()
+    global listener
+    if not listener is None:
+        listener.stop()
+        listener = None
 
 
 def init(stream=None):
@@ -209,15 +213,16 @@ def init(stream=None):
     global ops
 
     log_queue = queue.Queue(-1)
-    queue_handler = AnsiTerminalProgressHandler(log_queue, stream=stream)
+    queue_handler = QueueHandler(log_queue)
+    output_handler = AnsiTerminalProgressHandler(stream=stream)
 
-    logger = logging.getLogger()
+    logger = logging.getLogger("partcad")
     handlers = logger.handlers
     for handler in handlers:
         logger.removeHandler(handler)
     logger.addHandler(queue_handler)
 
-    listener = QueueListener(log_queue)
+    listener = QueueListener(log_queue, output_handler)
     listener.start()
     atexit.register(fini)
 

@@ -8,9 +8,11 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import partcad as pc
+import asyncio
 import pytest
 import shutil
+
+import partcad as pc
 
 test_config_local = {
     "name": "primitive_local",
@@ -38,25 +40,31 @@ def test_part_get_step_1():
 def test_part_get_step_2():
     """Load a STEP part from the context by the project and part names"""
     ctx = pc.Context("examples/produce_part_step")
-    bolt = ctx.get_part("bolt", "this")
+    bolt = ctx._get_part("bolt", "this")
     assert bolt is not None
-    assert bolt.get_wrapped() is not None
+
+    wrapped = asyncio.run(bolt.get_wrapped())
+    assert wrapped is not None
 
 
 def test_part_get_stl():
     """Load a STL part"""
     ctx = pc.Context("examples/produce_part_stl")
-    part = ctx.get_part("cube", "this")
+    part = ctx._get_part("cube", "this")
     assert part is not None
-    assert part.get_wrapped() is not None
+
+    wrapped = asyncio.run(part.get_wrapped())
+    assert wrapped is not None
 
 
 def test_part_get_3mf():
     """Load a 3MF part"""
     ctx = pc.Context("examples/produce_part_3mf")
-    part = ctx.get_part("cube", "this")
+    part = ctx._get_part("cube", "this")
     assert part is not None
-    assert part.get_wrapped() is not None
+
+    wrapped = asyncio.run(part.get_wrapped())
+    assert wrapped is not None
 
 
 def test_part_get_scad():
@@ -64,9 +72,11 @@ def test_part_get_scad():
     scad_path = shutil.which("openscad")
     if not scad_path is None:
         ctx = pc.Context("examples/produce_part_scad")
-        part = ctx.get_part("cube", "this")
+        part = ctx._get_part("cube", "this")
         assert part is not None
-        assert part.get_wrapped() is not None
+
+        wrapped = asyncio.run(part.get_wrapped())
+        assert wrapped is not None
     else:
         pytest.skip("No OpenSCAD installed")
 
@@ -75,7 +85,7 @@ def test_part_get_3():
     """Instantiate a project by a local import config and load a part"""
     ctx = pc.Context()  # Empty config
     _ = pc.ProjectFactoryLocal(ctx, None, test_config_local)
-    cylinder = ctx.get_part("cylinder", "primitive_local")
+    cylinder = ctx._get_part("cylinder", "primitive_local")
     assert cylinder is not None
     assert cylinder.get_wrapped() is not None
 
@@ -90,16 +100,20 @@ def test_part_get_4():
     assert factory.project.path.endswith(test_config_git["relPath"])
     cube = factory.project.get_part("cube")
     assert cube is not None
-    assert cube.get_wrapped() is not None
+
+    wrapped = asyncio.run(cube.get_wrapped())
+    assert wrapped is not None
 
 
 def test_part_lazy_loading():
     """Test for lazy loading of geometry data"""
     ctx = pc.Context()  # Empty config
     _ = pc.ProjectFactoryLocal(ctx, None, test_config_local)
-    cylinder = ctx.get_part("cylinder", "primitive_local")
+    cylinder = ctx._get_part("cylinder", "primitive_local")
     assert cylinder.shape is None
-    assert cylinder.get_wrapped() is not None
+
+    wrapped = asyncio.run(cylinder.get_wrapped())
+    assert wrapped is not None
 
 
 def test_part_aliases():
@@ -107,34 +121,43 @@ def test_part_aliases():
     ctx = pc.Context()  # Empty config
     _ = pc.ProjectFactoryLocal(ctx, None, test_config_local)
     # "box" is an alias for "cube"
-    box = ctx.get_part("box", "primitive_local")
+    box = ctx._get_part("box", "primitive_local")
+    assert box is not None
     assert box.shape is None
-    assert box.get_wrapped() is not None
+
+    wrapped = asyncio.run(box.get_wrapped())
+    assert wrapped is not None
 
 
 def test_part_example_cadquery_primitive():
     """Instantiate all parts from the example: part_cadquery_primitive"""
     ctx = pc.init("partcad/tests/partcad-examples.yaml")
-    cube = ctx.get_part("cube", "example_part_cadquery_primitive")
+    cube = ctx._get_part("cube", "example_part_cadquery_primitive")
     assert cube is not None
-    cylinder = ctx.get_part("cylinder", "example_part_cadquery_primitive")
+    cylinder = ctx._get_part("cylinder", "example_part_cadquery_primitive")
     assert cylinder is not None
-    assert cylinder.get_wrapped() is not None
+
+    wrapped = asyncio.run(cylinder.get_wrapped())
+    assert wrapped is not None
 
 
 def test_part_example_cadquery_logo():
     """Instantiate all parts from the example: part_cadquery_logo"""
     ctx = pc.init("partcad/tests/partcad-examples.yaml")
-    bone = ctx.get_part("bone", "example_part_cadquery_logo")
+    bone = ctx._get_part("bone", "example_part_cadquery_logo")
     assert bone is not None
-    head_half = ctx.get_part("head_half", "example_part_cadquery_logo")
+    head_half = ctx._get_part("head_half", "example_part_cadquery_logo")
     assert head_half is not None
-    assert head_half.get_wrapped() is not None
+
+    wrapped = asyncio.run(head_half.get_wrapped())
+    assert wrapped is not None
 
 
 def test_part_example_build123d_primitive():
     """Instantiate all parts from the example: part_build123d_primitive"""
     ctx = pc.init("partcad/tests/partcad-examples.yaml")
-    cube = ctx.get_part("cube", "example_part_build123d_primitive")
+    cube = ctx._get_part("cube", "example_part_build123d_primitive")
     assert cube is not None
-    assert cube.get_wrapped() is not None
+
+    wrapped = ctx.get_part_shape("cube", "example_part_build123d_primitive")
+    assert wrapped is not None

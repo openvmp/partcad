@@ -6,8 +6,6 @@ from .globals import (
     create_package,
     get_part,
     get_assembly,
-    finalize,
-    finalize_real,
     _partcad_context,
     render,
 )

@@ -30,9 +30,7 @@ class PartFactoryBuild123d(pfp.PartFactoryPython):
             self._create(part_config)
 
     def instantiate(self, part):
-        with pc_logging.Action(
-            "Build123d", self.project.name, self.part_config["name"]
-        ):
+        with pc_logging.Action("Build123d", part.project_name, part.name):
             wrapper_path = wrapper.get("build123d.py")
 
             request = {"build_parameters": {}}
@@ -48,11 +46,10 @@ class PartFactoryBuild123d(pfp.PartFactoryPython):
             response = base64.b64decode(response_serialized)
             result = pickle.loads(response)
 
-            if result["success"]:
-                shape = result["shape"]
-                part.set_shape(shape)
-            else:
+            if not result["success"]:
                 pc_logging.error(result["exception"])
                 raise Exception(result["exception"])
 
             self.ctx.stats_parts_instantiated += 1
+
+            return result["shape"]

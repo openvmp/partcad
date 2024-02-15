@@ -41,12 +41,12 @@ Python: CadQuery
     # part.py
     import cadquery as cq
     import partcad as pc
-    part = pc.get_part(
+    part = pc.get_part_cadquery(
          # Part name
          "fastener/screw-buttonhead",
          # Package name
          "standard-metric-cqwarehouse",
-    ).get_cadquery()
+    )
     ...
     show_object(part)<
 
@@ -55,12 +55,12 @@ Python: CadQuery
     # assembly.py
     import cadquery as cq
     import partcad as pc
-    assembly = pc.get_assembly(
+    assembly = pc.get_assembly_cadquery(
          # Assembly name
          "my_assembly",
          # Package name
          "my_package",
-    ).get_cadquery()
+    )
     ...
     show_object(assembly)<
 
@@ -72,12 +72,12 @@ Python: build123d
     # part.py
     import build123d as b3d
     import partcad as pc
-    part = pc.get_part(
+    part = pc.get_part_build123d(
          # Part name
          "fastener/screw-buttonhead",
          # Package name
          "standard-metric-cqwarehouse",
-    ).get_build123d()
+    )
     ...
     show_object(part)
 
@@ -86,12 +86,12 @@ Python: build123d
     # assembly.py
     import build123d as b3d
     import partcad as pc
-    assembly = pc.get_assembly(
+    assembly = pc.get_assembly_build123d(
          # Assembly name
          "my_assembly",
          # Package name
          "my_package",
-    ).get_build123d()
+    )
     ...
     show_object(assembly)
 
@@ -104,24 +104,18 @@ Python
     # part.py
     import partcad as pc
 
-    if __name__ != "__cqgi__":
-        from cq_server.ui import ui, show_object
-
     part = pc.get_part(
         # Part name
-        "fastener/screw-buttonhead",
+        "fastener/hexhead-iso4014",
         # Package name
-        "standard-metric-cqwarehouse",
+        "pc-std-metric-cqwarehouse",
     )
-    pc.finalize(part, show_object)
+    part.show()
 
 .. code-block:: python
 
     # assembly.py
     import partcad as pc
-
-    if __name__ != "__cqgi__":
-        from cq_server.ui import ui, show_object
 
     assembly = pc.get_assembly(
         # Assembly name
@@ -129,7 +123,7 @@ Python
          # Package name
          "my_package",
     )
-    pc.finalize(assembly, show_object)
+    assembly.show()
 
 
 shell

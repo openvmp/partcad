@@ -50,7 +50,6 @@ class Configuration:
         config = template.render(
             package_name=name,
         )
-        self.config_text = config
 
         # Parse the config
         if self.config_path.endswith(".yaml"):

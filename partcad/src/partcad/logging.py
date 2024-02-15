@@ -27,11 +27,9 @@ critical = lambda *args, **kwargs: logging.getLogger("partcad").critical(
 
 def default_process_start(self_ops, op: str, package: str, item: str = None):
     if item is None:
-        logging.getLogger("partcad").info("Starting process: %s: %s" % (op, package))
+        info("Starting process: %s: %s" % (op, package))
     else:
-        logging.getLogger("partcad").info(
-            "Starting process: %s: %s: %s" % (op, package, item)
-        )
+        info("Starting process: %s: %s: %s" % (op, package, item))
 
 
 def default_process_end(self_ops, op: str, package: str, item: str = None):
@@ -40,11 +38,9 @@ def default_process_end(self_ops, op: str, package: str, item: str = None):
 
 def default_action_start(self_ops, op: str, package: str, item: str = None):
     if item is None:
-        logging.getLogger("partcad").info("Starting action: %s: %s" % (op, package))
+        info("Starting action: %s: %s" % (op, package))
     else:
-        logging.getLogger("partcad").info(
-            "Starting action: %s: %s: %s" % (op, package, item)
-        )
+        info("Starting action: %s: %s: %s" % (op, package, item))
 
 
 def default_action_end(self_ops, op: str, package: str, item: str = None):
@@ -72,8 +68,11 @@ class Process(object):
         self.op = op
         self.package = package
         self.item = item
-        self.succeeded = True
+        self.succeeded = False
         self.start = 0.0
+
+    async def __aenter__(self):
+        self.__enter__()
 
     def __enter__(self):
         global process_lock
@@ -81,8 +80,13 @@ class Process(object):
         if process_lock.acquire():
             self.start = time.time()
             ops.process_start(self.op, self.package, self.item)
+            self.succeeded = True
         else:
+            error("Nested process is detected. Status reporting is invalid.")
             self.succeeded = False
+
+    async def __aexit__(self, *args):
+        self.__exit__(*args)
 
     def __exit__(self, *_args):
         global process_lock
@@ -108,8 +112,14 @@ class Action(object):
         self.package = package
         self.item = item
 
+    async def __aenter__(self):
+        self.__enter__()
+
     def __enter__(self):
         ops.action_start(self.op, self.package, self.item)
+
+    async def __aexit__(self, *args):
+        self.__exit__(*args)
 
     def __exit__(self, *_args):
         ops.action_end(self.op, self.package, self.item)
