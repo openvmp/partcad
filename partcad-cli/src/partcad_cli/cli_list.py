@@ -128,11 +128,17 @@ def cli_list_parts(args, ctx):
 
     print("PartCAD parts:")
     for project_name in ctx.projects:
-        if not args.package is None and args.package != project_name:
+        if (
+            hasattr(args, "package")
+            and not args.package is None
+            and args.package != project_name
+        ):
             continue
 
         if project_name != pc.THIS and (
-            not args.recursive and args.package is None
+            not args.recursive
+            and hasattr(args, "package")
+            and args.package is None
         ):
             continue
         if project_name.startswith("partcad-"):
@@ -181,11 +187,17 @@ def cli_list_assemblies(args, ctx):
 
     print("PartCAD assemblies:")
     for project_name in ctx.projects:
-        if not args.package is None and args.package != project_name:
+        if (
+            hasattr(args, "package")
+            and not args.package is None
+            and args.package != project_name
+        ):
             continue
 
         if project_name != pc.THIS and (
-            not args.recursive and args.package is None
+            not args.recursive
+            and hasattr(args, "package")
+            and args.package is None
         ):
             continue
         if project_name.startswith("partcad-"):
