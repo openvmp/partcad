@@ -29,16 +29,19 @@ class PartFactoryStep(pff.PartFactoryFile):
     # How big of a STEP file is needed to consider launching a sub-process.
     MIN_SUBPROCESS_FILE_SIZE = 64 * 1024
 
+    # lock is used to protect changes to the static class members
+    lock = threading.Lock()
+    # How many of the current instances are in which mode?
+    count_inflight_simple = 0
+    count_inflight_subprocess = 0
+
     def __init__(self, ctx, project, part_config):
         with pc_logging.Action("InitSTEP", project.name, part_config["name"]):
             super().__init__(ctx, project, part_config, extension=".step")
             # Complement the config object here if necessary
             self._create(part_config)
 
-            self.lock = threading.Lock()
             self.runtime = None
-            self.count_inflight_simple = 0
-            self.count_inflight_subprocess = 0
 
     def instantiate(self, part):
         with pc_logging.Action("STEP", part.project_name, part.name):
@@ -46,15 +49,16 @@ class PartFactoryStep(pff.PartFactoryFile):
 
             file_size = os.path.getsize(self.path)
 
-            with self.lock:
+            with PartFactoryStep.lock:
                 if (
-                    self.count_inflight_simple < self.MIN_SIMPLE_INFLIGHT
-                    or file_size < self.MIN_SUBPROCESS_FILE_SIZE
+                    PartFactoryStep.count_inflight_simple
+                    < PartFactoryStep.MIN_SIMPLE_INFLIGHT
+                    or file_size < PartFactoryStep.MIN_SUBPROCESS_FILE_SIZE
                 ):
-                    self.count_inflight_simple += 1
+                    PartFactoryStep.count_inflight_simple += 1
                 else:
                     do_subprocess = True
-                    self.count_inflight_subprocess += 1
+                    PartFactoryStep.count_inflight_subprocess += 1
                     if self.runtime == None:
                         self.runtime = self.ctx.get_python_runtime(
                             self.project.python_version
@@ -115,11 +119,11 @@ class PartFactoryStep(pff.PartFactoryFile):
 
                 shape = cq.importers.importStep(self.path).val().wrapped
 
-            with self.lock:
+            with PartFactoryStep.lock:
                 if do_subprocess:
-                    self.count_inflight_subprocess -= 1
+                    PartFactoryStep.count_inflight_subprocess -= 1
                 else:
-                    self.count_inflight_simple -= 1
+                    PartFactoryStep.count_inflight_simple -= 1
 
             self.ctx.stats_parts_instantiated += 1
 

@@ -20,7 +20,9 @@ from . import logging as pc_logging
 
 class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
     def __init__(self, ctx, project, assembly_config):
-        with pc_logging.Action("InitASSY", project.name, assembly_config["name"]):
+        with pc_logging.Action(
+            "InitASSY", project.name, assembly_config["name"]
+        ):
             super().__init__(ctx, project, assembly_config, extension=".assy")
             # Complement the config object here if necessary
             self._create(assembly_config)
@@ -41,9 +43,17 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
         asyncio.run(self.instantiate_async(assembly))
 
     async def instantiate_async(self, assembly):
-        with pc_logging.Action("ASSY", self.project.name, assembly.config["name"]):
+        with pc_logging.Action("ASSY", assembly.project_name, assembly.name):
             assy = {}
             if os.path.exists(self.path):
+                params = {}
+                if "parameters" in self.assembly_config:
+                    for param_name, param in self.assembly_config[
+                        "parameters"
+                    ].items():
+                        params["param_" + param_name] = param["default"]
+                params["name"] = self.assembly_config["name"]
+
                 # Read the body of the configuration file
                 fp = open(self.path, "r")
                 config = fp.read()
@@ -51,29 +61,34 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
 
                 # Resolve Jinja templates
                 template = Environment(
-                    loader=FileSystemLoader(os.path.dirname(self.path) + os.path.sep)
+                    loader=FileSystemLoader(
+                        os.path.dirname(self.path) + os.path.sep
+                    )
                 ).from_string(config)
-                config = template.render(
-                    name=self.assembly_config["name"],
-                )
+                config = template.render(params)
 
                 # Parse the resulting config
                 try:
                     assy = yaml.safe_load(config)
                 except Exception as e:
                     pc_logging.error(
-                        "ERROR: Failed to parse the assembly file %s" % self.path
+                        "ERROR: Failed to parse the assembly file %s"
+                        % self.path
                     )
                 if assy is None:
                     assy = {}
             else:
-                pc_logging.error("ERROR: Assembly file not found: %s" % self.path)
+                pc_logging.error(
+                    "ERROR: Assembly file not found: %s" % self.path
+                )
 
             result = await self.handle_node(assembly, assy)
             if not result is None:
-                assembly.children.append(AssemblyChild(result[0], result[1], result[2]))
+                assembly.children.append(
+                    AssemblyChild(result[0], result[1], result[2])
+                )
                 # Keep part reference counter for bill-of-materials purposes
-                await result[0].ref_inc_async()
+                result[0].ref_inc()
             else:
                 raise Exception("Assembly is empty")
 
@@ -88,9 +103,11 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
         for f in asyncio.as_completed(tasks):
             result = await f
             if not result is None:
-                assembly.children.append(AssemblyChild(result[0], result[1], result[2]))
+                assembly.children.append(
+                    AssemblyChild(result[0], result[1], result[2])
+                )
                 # Keep part reference counter for bill-of-materials purposes
-                await result[0].ref_inc_async()
+                result[0].ref_inc()
 
     async def handle_node(self, assembly, node):
         # "name" is an optional parameter for both parts and assemblies

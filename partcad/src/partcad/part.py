@@ -48,10 +48,8 @@ class Part(shape.Shape):
                 self.shape = await pc_thread.run(self.instantiate, self)
             return self.shape
 
-    async def ref_inc_async(self):
-        self.count += 1
-
     def ref_inc(self):
+        # TODO(clairbee): add a thread lock here
         self.count += 1
 
     def clone(self):

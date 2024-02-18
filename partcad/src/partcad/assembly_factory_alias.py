@@ -18,7 +18,9 @@ class AssemblyFactoryAlias(pf.AssemblyFactory):
     target_project: typing.Optional[str]
 
     def __init__(self, ctx, project, assembly_config):
-        with pc_logging.Action("InitAlias", project.name, assembly_config["name"]):
+        with pc_logging.Action(
+            "InitAlias", project.name, assembly_config["name"]
+        ):
             super().__init__(ctx, project, assembly_config)
             # Complement the config object here if necessary
             self._create(assembly_config)
@@ -44,11 +46,18 @@ class AssemblyFactoryAlias(pf.AssemblyFactory):
                 )
 
     def instantiate(self, assembly):
-        with pc_logging.Action(
-            "Alias", self.project.name, self.assembly_config["name"]
-        ):
+        with pc_logging.Action("Alias", assembly.project_name, assembly.name):
+            # TODO(clairbee): resolve the absolute package path?
+
+            target = self.ctx._get_assembly(
+                self.target_assembly, self.target_project
+            )
+            shape = target.shape
+            if not shape is None:
+                assembly.shape = shape
+                return
+
             self.ctx.stats_assemblies_instantiated += 1
 
-            # TODO(clairbee): resolve the absolute package path?
-            target = self.ctx._get_assembly(self.target_assembly, self.target_project)
+            # return target.instantiate(assembly)
             target.instantiate(assembly)
