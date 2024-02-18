@@ -65,12 +65,6 @@ class Assembly(shape.Shape):
 
         self.shape = None  # Invalidate if any
 
-    async def ref_inc_async(self):
-        async with self.lock:
-            for child in self.children:
-                await child.item.ref_inc_async()
-
-    # add is a non-thread-safe method for self.add
     def ref_inc(self):
         for child in self.children:
             child.item.ref_inc()

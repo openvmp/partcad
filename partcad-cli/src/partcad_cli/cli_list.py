@@ -131,7 +131,9 @@ def cli_list_parts(args, ctx):
         if not args.package is None and args.package != project_name:
             continue
 
-        if project_name != pc.THIS and (not args.recursive and args.package is None):
+        if project_name != pc.THIS and (
+            not args.recursive and args.package is None
+        ):
             continue
         if project_name.startswith("partcad-"):
             continue
@@ -173,12 +175,18 @@ def cli_list_assemblies(args, ctx):
         # TODO(clairbee): do not call it twice in 'list-all'
         pc.get_assembly(args.used_by)
 
+    # TODO(clairbee): remove the following workaround after replacing 'print'
+    # with corresponding logging calls
+    time.sleep(2)
+
     print("PartCAD assemblies:")
     for project_name in ctx.projects:
         if not args.package is None and args.package != project_name:
             continue
 
-        if project_name != pc.THIS and (not args.recursive and args.package is None):
+        if project_name != pc.THIS and (
+            not args.recursive and args.package is None
+        ):
             continue
         if project_name.startswith("partcad-"):
             continue

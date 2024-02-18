@@ -12,6 +12,7 @@ import os
 
 # from pprint import pformat
 import ruamel.yaml
+import threading
 import typing
 
 from . import logging as pc_logging
@@ -30,12 +31,41 @@ from . import assembly
 from . import assembly_config
 from . import assembly_factory_alias as afalias
 from . import assembly_factory_assy as afa
+from .render import render_cfg_merge
 
 
 class Project(project_config.Configuration):
+
+    class PartLock(object):
+        def __init__(self, prj, part_name: str):
+            if not part_name in prj.part_locks:
+                prj.part_locks[part_name] = threading.Lock()
+            self.lock = prj.part_locks[part_name]
+
+        def __enter__(self, *_args):
+            self.lock.acquire()
+
+        def __exit__(self, *_args):
+            self.lock.release()
+
+    class AssemblyLock(object):
+        def __init__(self, prj, assembly_name: str):
+            if not assembly_name in prj.assembly_locks:
+                prj.assembly_locks[assembly_name] = threading.Lock()
+            self.lock = prj.assembly_locks[assembly_name]
+
+        def __enter__(self, *_args):
+            self.lock.acquire()
+
+        def __exit__(self, *_args):
+            self.lock.release()
+
     def __init__(self, ctx, name, path):
         super().__init__(name, path)
         self.ctx = ctx
+
+        # Protect the critical sections from access in different threads
+        self.lock = threading.Lock()
 
         # The 'path' parameter is the config filename or the directory
         # where 'partcad.yaml' is present.
@@ -52,6 +82,7 @@ class Project(project_config.Configuration):
             self.part_configs = {}
         # self.parts contains all the initialized parts in this project
         self.parts = {}
+        self.part_locks = {}
 
         # self.assembly_configs contains the configs of all the assemblies in this project
         if (
@@ -63,8 +94,11 @@ class Project(project_config.Configuration):
             self.assembly_configs = {}
         # self.assemblies contains all the initialized assemblies in this project
         self.assemblies = {}
+        self.assembly_locks = {}
 
-        if "desc" in self.config_obj and isinstance(self.config_obj["desc"], str):
+        if "desc" in self.config_obj and isinstance(
+            self.config_obj["desc"], str
+        ):
             self.desc = self.config_obj["desc"]
         else:
             self.desc = ""
@@ -91,7 +125,8 @@ class Project(project_config.Configuration):
 
         if not "type" in config:
             raise Exception(
-                "ERROR: Part type is not specified: %s: %s" % (part_name, config)
+                "ERROR: Part type is not specified: %s: %s"
+                % (part_name, config)
             )
         elif config["type"] == "cadquery":
             pfc.PartFactoryCadquery(self.ctx, self, config)
@@ -132,9 +167,6 @@ class Project(project_config.Configuration):
 
     def get_part(self, part_name, func_params=None) -> part.Part:
         if func_params is None or not func_params:
-            # Quick check if it's already available
-            if part_name in self.parts and not self.parts[part_name] is None:
-                return self.parts[part_name]
             has_func_params = False
         else:
             has_func_params = True
@@ -157,8 +189,28 @@ class Project(project_config.Configuration):
             has_name_params = True
 
         if not has_name_params:
-            # This is just a regular part name, no params
-            if not part_name in self.parts:
+            result_name = part_name
+        else:
+            # Determine the name we want this parameterized part to have
+            result_name = base_part_name + ":"
+            result_name += ",".join(
+                map(lambda n: n + "=" + str(params[n]), sorted(params))
+            )
+
+        self.lock.acquire()
+
+        # See if it's already available
+        if result_name in self.parts and not self.parts[result_name] is None:
+            p = self.parts[result_name]
+            self.lock.release()
+            return p
+
+        with Project.PartLock(self, result_name):
+            # Release the project lock, and continue with holding the part lock only
+            self.lock.release()
+
+            if not has_name_params:
+                # This is just a regular part name, no params (part_name == result_name)
                 if not part_name in self.part_configs:
                     # We don't know anything about such a part
                     pc_logging.error(
@@ -167,84 +219,99 @@ class Project(project_config.Configuration):
                     return None
                 # This is not yet created (invalidated?)
                 config = self.get_part_config(part_name)
-                config = part_config.PartConfiguration.normalize(part_name, config)
-                self.init_part_by_config(config)
-            if not part_name in self.parts or self.parts[part_name] is None:
-                pc_logging.error(
-                    "Failed to instantiate a non-parametrized part %s" % part_name
+                config = part_config.PartConfiguration.normalize(
+                    part_name, config
                 )
-            return self.parts[part_name]
+                self.init_part_by_config(config)
 
-        if not base_part_name in self.parts:
-            pc_logging.error(
-                "Base part '%s' not found in '%s'", base_part_name, self.name
+                if not part_name in self.parts or self.parts[part_name] is None:
+                    pc_logging.error(
+                        "Failed to instantiate a non-parametrized part %s"
+                        % part_name
+                    )
+                return self.parts[part_name]
+
+            # This part has params (part_name != result_name)
+            if not base_part_name in self.parts:
+                pc_logging.error(
+                    "Base part '%s' not found in '%s'",
+                    base_part_name,
+                    self.name,
+                )
+                return None
+            pc_logging.info("Found the base part: %s" % base_part_name)
+
+            # Now we have the original part name and the complete set of parameters
+            config = self.part_configs[base_part_name]
+            if config is None:
+                pc_logging.error(
+                    "The config for the base part '%s' is not found in '%s'",
+                    base_part_name,
+                    self.name,
+                )
+                return None
+
+            config = copy.deepcopy(config)
+            if not "parameters" in config or config["parameters"] is None:
+                pc_logging.error(
+                    "Attempt to parametrize '%s' of '%s' which has no parameters",
+                    base_part_name,
+                    self.name,
+                )
+                return None
+
+            # Expand the config object so that the parameter values can be set
+            config = part_config.PartConfiguration.normalize(
+                result_name, config
             )
-            return None
-        pc_logging.info("Found the base part: %s" % base_part_name)
+            config["orig_name"] = base_part_name
 
-        # Now we have the original part name and the complete set of parameters
-        config = self.part_configs[base_part_name]
-        if config is None:
-            pc_logging.error(
-                "The config for the base part '%s' is not found in '%s'",
-                base_part_name,
-                self.name,
-            )
-            return None
-
-        config = copy.deepcopy(config)
-        if not "parameters" in config or config["parameters"] is None:
-            pc_logging.error(
-                "Attempt to parametrize '%s' of '%s' which has no parameters",
-                base_part_name,
-                self.name,
-            )
-            return None
-
-        # Determine the name we want this parameterized part to have
-        result_name = base_part_name + ":"
-        result_name += ",".join(map(lambda n: n + "=" + str(params[n]), sorted(params)))
-
-        # Expand the config object so that the parameter values can be set
-        config = part_config.PartConfiguration.normalize(result_name, config)
-        config["orig_name"] = base_part_name
-
-        # Fill in the parameter values
-        param_name: str
-        for param_name, param_value in params.items():
-            if config["parameters"][param_name]["type"] == "string":
-                config["parameters"][param_name]["default"] = str(param_value)
-            elif config["parameters"][param_name]["type"] == "int":
-                config["parameters"][param_name]["default"] = int(param_value)
-            elif config["parameters"][param_name]["type"] == "float":
-                config["parameters"][param_name]["default"] = float(param_value)
-            elif config["parameters"][param_name]["type"] == "bool":
-                if isinstance(param_value, str):
-                    if param_value.lower() == "true":
-                        config["parameters"][param_name]["default"] = True
+            # Fill in the parameter values
+            param_name: str
+            for param_name, param_value in params.items():
+                if config["parameters"][param_name]["type"] == "string":
+                    config["parameters"][param_name]["default"] = str(
+                        param_value
+                    )
+                elif config["parameters"][param_name]["type"] == "int":
+                    config["parameters"][param_name]["default"] = int(
+                        param_value
+                    )
+                elif config["parameters"][param_name]["type"] == "float":
+                    config["parameters"][param_name]["default"] = float(
+                        param_value
+                    )
+                elif config["parameters"][param_name]["type"] == "bool":
+                    if isinstance(param_value, str):
+                        if param_value.lower() == "true":
+                            config["parameters"][param_name]["default"] = True
+                        else:
+                            config["parameters"][param_name]["default"] = False
                     else:
-                        config["parameters"][param_name]["default"] = False
-                else:
-                    config["parameters"][param_name]["default"] = bool(param_value)
+                        config["parameters"][param_name]["default"] = bool(
+                            param_value
+                        )
 
-        # Now initialize the part
-        pc_logging.debug("Initializing a parametrized part: %s" % result_name)
-        # pc_logging.debug(
-        #     "Initializing a parametrized part using the following config: %s"
-        #     % pformat(config)
-        # )
-        self.init_part_by_config(config)
-
-        # See if it worked
-        if not result_name in self.parts:
-            pc_logging.error(
-                "Failed to instantiate parameterized part '%s' in '%s'",
-                result_name,
-                self.name,
+            # Now initialize the part
+            pc_logging.debug(
+                "Initializing a parametrized part: %s" % result_name
             )
-            return None
+            # pc_logging.debug(
+            #     "Initializing a parametrized part using the following config: %s"
+            #     % pformat(config)
+            # )
+            self.init_part_by_config(config)
 
-        return self.parts[result_name]
+            # See if it worked
+            if not result_name in self.parts:
+                pc_logging.error(
+                    "Failed to instantiate parameterized part '%s' in '%s'",
+                    result_name,
+                    self.name,
+                )
+                return None
+
+            return self.parts[result_name]
 
     def get_assembly_config(self, assembly_name):
         if not assembly_name in self.assembly_configs:
@@ -271,18 +338,15 @@ class Project(project_config.Configuration):
             afalias.AssemblyFactoryAlias(self.ctx, self, config)
         else:
             pc_logging.error(
-                "Invalid assembly type encountered: %s: %s" % (assembly_name, config)
+                "Invalid assembly type encountered: %s: %s"
+                % (assembly_name, config)
             )
             return None
 
-    def get_assembly(self, assembly_name, func_params=None) -> assembly.Assembly:
+    def get_assembly(
+        self, assembly_name, func_params=None
+    ) -> assembly.Assembly:
         if func_params is None or not func_params:
-            # Quick check if it's already available
-            if (
-                assembly_name in self.assemblies
-                and not self.assemblies[assembly_name] is None
-            ):
-                return self.assemblies[assembly_name]
             has_func_params = False
         else:
             has_func_params = True
@@ -305,12 +369,37 @@ class Project(project_config.Configuration):
             has_name_params = True
 
         if not has_name_params:
-            # This is just a regular assembly name, no params
-            if not assembly_name in self.assemblies:
+            result_name = assembly_name
+        else:
+            # Determine the name we want this parameterized assembly to have
+            result_name = base_assembly_name + ":"
+            result_name += ",".join(
+                map(lambda n: n + "=" + str(params[n]), sorted(params))
+            )
+
+        self.lock.acquire()
+
+        # See if it's already available
+        if (
+            result_name in self.assemblies
+            and not self.assemblies[result_name] is None
+        ):
+            p = self.assemblies[result_name]
+            self.lock.release()
+            return p
+
+        with Project.AssemblyLock(self, result_name):
+            # Release the project lock, and continue with holding the part lock only
+            self.lock.release()
+
+            if not has_name_params:
+                # This is just a regular assembly name, no params (assembly_name == result_name)
                 if not assembly_name in self.assembly_configs:
-                    # We don't know anything about such a assembly
+                    # We don't know anything about such an assembly
                     pc_logging.error(
-                        "Assembly '%s' not found in '%s'", assembly_name, self.name
+                        "Assembly '%s' not found in '%s'",
+                        assembly_name,
+                        self.name,
                     )
                     return None
                 # This is not yet created (invalidated?)
@@ -319,77 +408,98 @@ class Project(project_config.Configuration):
                     assembly_name, config
                 )
                 self.init_assembly_by_config(config)
-            if not assembly_name in self.assemblies or self.assemblies[assembly_name] is None:
+
+                if (
+                    not assembly_name in self.assemblies
+                    or self.assemblies[assembly_name] is None
+                ):
+                    pc_logging.error(
+                        "Failed to instantiate a non-parametrized assembly %s"
+                        % assembly_name
+                    )
+                return self.assemblies[assembly_name]
+
+            # This assembly has params (part_name != result_name)
+            if not base_assembly_name in self.assemblies:
                 pc_logging.error(
-                    "Failed to instantiate a non-parametrized assembly %s" % assembly_name
+                    "Base assembly '%s' not found in '%s'",
+                    base_assembly_name,
+                    self.name,
                 )
-            return self.assemblies[assembly_name]
+                return None
+            pc_logging.info("Found the base assembly: %s" % base_assembly_name)
 
-        if not base_assembly_name in self.assemblies:
-            pc_logging.error(
-                "Base assembly '%s' not found in '%s'", base_assembly_name, self.name
+            # Now we have the original assembly name and the complete set of parameters
+            config = self.assembly_configs[base_assembly_name]
+            if config is None:
+                pc_logging.error(
+                    "The config for the base assembly '%s' is not found in '%s'",
+                    base_assembly_name,
+                    self.name,
+                )
+                return None
+
+            config = copy.deepcopy(config)
+            if not "parameters" in config or config["parameters"] is None:
+                pc_logging.error(
+                    "Attempt to parametrize '%s' of '%s' which has no parameters",
+                    base_assembly_name,
+                    self.name,
+                )
+                return None
+
+            # Expand the config object so that the parameter values can be set
+            config = assembly_config.AssemblyConfiguration.normalize(
+                result_name, config
             )
-            return None
-        pc_logging.info("Found the base assembly: %s" % base_assembly_name)
+            config["orig_name"] = base_assembly_name
 
-        # Now we have the original assembly name and the complete set of parameters
-        config = self.assembly_configs[base_assembly_name]
-        if config is None:
-            pc_logging.error(
-                "The config for the base assembly '%s' is not found in '%s'",
-                base_assembly_name,
-                self.name,
-            )
-            return None
-
-        config = copy.deepcopy(config)
-        if not "parameters" in config or config["parameters"] is None:
-            pc_logging.error(
-                "Attempt to parametrize '%s' of '%s' which has no parameters",
-                base_assembly_name,
-                self.name,
-            )
-            return None
-
-        # Determine the name we want this parameterized assembly to have
-        result_name = base_assembly_name + ":"
-        result_name += ",".join(map(lambda n: n + "=" + str(params[n]), sorted(params)))
-
-        # Expand the config object so that the parameter values can be set
-        config = assembly_config.AssemblyConfiguration.normalize(result_name, config)
-        config["orig_name"] = base_assembly_name
-
-        # Fill in the parameter values
-        param_name: str
-        for param_name, param_value in params.items():
-            if config["parameters"][param_name]["type"] == "string":
-                config["parameters"][param_name]["default"] = str(param_value)
-            elif config["parameters"][param_name]["type"] == "int":
-                config["parameters"][param_name]["default"] = int(param_value)
-            elif config["parameters"][param_name]["type"] == "float":
-                config["parameters"][param_name]["default"] = float(param_value)
-            elif config["parameters"][param_name]["type"] == "bool":
-                if isinstance(param_value, str):
-                    if param_value.lower() == "true":
-                        config["parameters"][param_name]["default"] = True
+            # Fill in the parameter values
+            param_name: str
+            for param_name, param_value in params.items():
+                if config["parameters"][param_name]["type"] == "string":
+                    config["parameters"][param_name]["default"] = str(
+                        param_value
+                    )
+                elif config["parameters"][param_name]["type"] == "int":
+                    config["parameters"][param_name]["default"] = int(
+                        param_value
+                    )
+                elif config["parameters"][param_name]["type"] == "float":
+                    config["parameters"][param_name]["default"] = float(
+                        param_value
+                    )
+                elif config["parameters"][param_name]["type"] == "bool":
+                    if isinstance(param_value, str):
+                        if param_value.lower() == "true":
+                            config["parameters"][param_name]["default"] = True
+                        else:
+                            config["parameters"][param_name]["default"] = False
                     else:
-                        config["parameters"][param_name]["default"] = False
-                else:
-                    config["parameters"][param_name]["default"] = bool(param_value)
+                        config["parameters"][param_name]["default"] = bool(
+                            param_value
+                        )
 
-        # Now initialize the assembly
-        self.init_assembly_by_config(config)
-
-        # See if it worked
-        if not result_name in self.assemblies:
-            pc_logging.error(
-                "Failed to instantiate parameterized assembly '%s' in '%s'",
-                result_name,
-                self.name,
+            # Now initialize the assembly
+            pc_logging.debug(
+                "Initializing a parametrized assembly: %s" % result_name
             )
-            return None
+            # pc_logging.debug(
+            #     "Initializing a parametrized assembly using the following config: %s"
+            #     % pformat(config)
+            # )
+            self.init_assembly_by_config(config)
 
-        return self.assemblies[result_name]
+            # See if it worked
+            if not result_name in self.assemblies:
+                pc_logging.error(
+                    "Failed to instantiate parameterized assembly '%s' in '%s'",
+                    result_name,
+                    self.name,
+                )
+                return None
+
+            return self.assemblies[result_name]
 
     def add_import(self, alias, location):
         if ":" in location:
@@ -441,7 +551,9 @@ class Project(project_config.Configuration):
 
         return True, path, name
 
-    def _add_component(self, kind: str, path: str, section: str, ext_by_kind) -> bool:
+    def _add_component(
+        self, kind: str, path: str, section: str, ext_by_kind
+    ) -> bool:
         if kind in ext_by_kind:
             ext = ext_by_kind[kind]
         else:
@@ -497,13 +609,19 @@ class Project(project_config.Configuration):
         self, parts=None, assemblies=None, format=None, output_dir=None
     ):
         with pc_logging.Action("RenderPkg", self.name):
-            loop = asyncio.get_running_loop()
             # Override the default output_dir.
             # TODO(clairbee): pass the preference downstream without making a
             # persistent change.
             if not output_dir is None:
                 self.config_obj["render"]["output_dir"] = output_dir
-            render = self.config_obj["render"]
+
+            if (
+                "render" in self.config_obj
+                and not self.config_obj["render"] is None
+            ):
+                render = self.config_obj["render"]
+            else:
+                render = {}
 
             # Enumerating all parts and assemblies
             if parts is None:
@@ -515,64 +633,73 @@ class Project(project_config.Configuration):
                 if "assemblies" in self.config_obj:
                     assemblies = self.config_obj["assemblies"].keys()
 
-            # Determine which formats need to be rendered.
-            # The format needs to be rendered either if it's mentioned in the config
-            # or if it's explicitly requested in the params (e.g. comes from the
-            # command line).
-            if format is None and "svg" in render:
-                render_svg = True
-            elif not format is None and format == "svg":
-                render_svg = True
-            else:
-                render_svg = False
-
-            if format is None and "png" in render:
-                render_png = True
-            elif not format is None and format == "png":
-                render_png = True
-            else:
-                render_png = False
-
-            if format is None and "step" in render:
-                render_step = True
-            elif not format is None and format == "step":
-                render_step = True
-            else:
-                render_step = False
-
-            if format is None and "stl" in render:
-                render_stl = True
-            elif not format is None and format == "stl":
-                render_stl = True
-            else:
-                render_stl = False
-
-            if format is None and "3mf" in render:
-                render_3mf = True
-            elif not format is None and format == "3mf":
-                render_3mf = True
-            else:
-                render_3mf = False
-
-            if format is None and "threejs" in render:
-                render_threejs = True
-            elif not format is None and format == "threejs":
-                render_threejs = True
-            else:
-                render_threejs = False
-
-            if format is None and "obj" in render:
-                render_obj = True
-            elif not format is None and format == "obj":
-                render_obj = True
-            else:
-                render_obj = False
-
             # Render
             tasks = []
             for part_name in parts:
                 part = self.get_part(part_name)
                 if not part is None:
+                    part_render = render
+                    if (
+                        "render" in part.config
+                        and not part.config["render"] is None
+                    ):
+                        part_render = render_cfg_merge(
+                            part_render, part.config["render"]
+                        )
+
+                    # Determine which formats need to be rendered.
+                    # The format needs to be rendered either if it's mentioned in the config
+                    # or if it's explicitly requested in the params (e.g. comes from the
+                    # command line).
+                    if format is None and "svg" in part_render:
+                        render_svg = True
+                    elif not format is None and format == "svg":
+                        render_svg = True
+                    else:
+                        render_svg = False
+
+                    if format is None and "png" in part_render:
+                        render_png = True
+                    elif not format is None and format == "png":
+                        render_png = True
+                    else:
+                        render_png = False
+
+                    if format is None and "step" in part_render:
+                        render_step = True
+                    elif not format is None and format == "step":
+                        render_step = True
+                    else:
+                        render_step = False
+
+                    if format is None and "stl" in part_render:
+                        render_stl = True
+                    elif not format is None and format == "stl":
+                        render_stl = True
+                    else:
+                        render_stl = False
+
+                    if format is None and "3mf" in part_render:
+                        render_3mf = True
+                    elif not format is None and format == "3mf":
+                        render_3mf = True
+                    else:
+                        render_3mf = False
+
+                    if format is None and "threejs" in part_render:
+                        render_threejs = True
+                    elif not format is None and format == "threejs":
+                        render_threejs = True
+                    else:
+                        render_threejs = False
+
+                    if format is None and "obj" in part_render:
+                        render_obj = True
+                    elif not format is None and format == "obj":
+                        render_obj = True
+                    else:
+                        render_obj = False
+
                     if render_svg:
                         tasks.append(part.render_svg_async(self))
                     if render_png:
@@ -587,9 +714,72 @@ class Project(project_config.Configuration):
                         tasks.append(part.render_threejs_async(self))
                     if render_obj:
                         tasks.append(part.render_obj_async(self))
+
             for assembly_name in assemblies:
                 assembly = self.get_assembly(assembly_name)
                 if not assembly is None:
+                    assy_render = render
+                    if (
+                        "render" in assembly.config
+                        and not assembly.config["render"] is None
+                    ):
+                        assy_render = render_cfg_merge(
+                            assy_render, assembly.config["render"]
+                        )
+
+                    # Determine which formats need to be rendered.
+                    # The format needs to be rendered either if it's mentioned in the config
+                    # or if it's explicitly requested in the params (e.g. comes from the
+                    # command line).
+                    if format is None and "svg" in assy_render:
+                        render_svg = True
+                    elif not format is None and format == "svg":
+                        render_svg = True
+                    else:
+                        render_svg = False
+
+                    if format is None and "png" in assy_render:
+                        render_png = True
+                    elif not format is None and format == "png":
+                        render_png = True
+                    else:
+                        render_png = False
+
+                    if format is None and "step" in assy_render:
+                        render_step = True
+                    elif not format is None and format == "step":
+                        render_step = True
+                    else:
+                        render_step = False
+
+                    if format is None and "stl" in assy_render:
+                        render_stl = True
+                    elif not format is None and format == "stl":
+                        render_stl = True
+                    else:
+                        render_stl = False
+
+                    if format is None and "3mf" in assy_render:
+                        render_3mf = True
+                    elif not format is None and format == "3mf":
+                        render_3mf = True
+                    else:
+                        render_3mf = False
+
+                    if format is None and "threejs" in assy_render:
+                        render_threejs = True
+                    elif not format is None and format == "threejs":
+                        render_threejs = True
+                    else:
+                        render_threejs = False
+
+                    if format is None and "obj" in assy_render:
+                        render_obj = True
+                    elif not format is None and format == "obj":
+                        render_obj = True
+                    else:
+                        render_obj = False
+
                     if render_svg:
                         tasks.append(assembly.render_svg_async(self))
                     if render_png:

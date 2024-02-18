@@ -54,26 +54,32 @@ class PythonRuntime(runtime.Runtime):
         return stdout, stderr
 
     def ensure(self, python_package):
+        guard_path = os.path.join(
+            self.path, ".partcad.installed." + python_package
+        )
         with self.lock:
-            guard_path = os.path.join(self.path, ".partcad.installed." + python_package)
             if not os.path.exists(guard_path):
                 with pc_logging.Action("PipInst", self.version, python_package):
                     self.run(["-m", "pip", "install", python_package])
                 pathlib.Path(guard_path).touch()
 
     def prepare_for_package(self, project):
-        with self.lock:
-            # Check if this project has python requirements
-            requirements_path = os.path.join(project.path, "requirements.txt")
-            if os.path.exists(requirements_path):
-                # See if it was already prepared once
-                project_hash = hashlib.sha256(project.path.encode()).hexdigest()
-                flag_filename = ".partcad.project." + project_hash
-                flag_path = os.path.join(self.path, flag_filename)
+        # Check if this project has python requirements
+        requirements_path = os.path.join(project.path, "requirements.txt")
+        if os.path.exists(requirements_path):
+            # See if it was already prepared once
+            project_hash = hashlib.sha256(project.path.encode()).hexdigest()
+            flag_filename = ".partcad.project." + project_hash
+            flag_path = os.path.join(self.path, flag_filename)
+            with self.lock:
                 if not os.path.exists(flag_path) or os.path.getmtime(
                     requirements_path
                 ) > os.path.getmtime(flag_path):
                     # Install requirements and remember when we did that
-                    with pc_logging.Action("PipReqs", self.version, project.name):
-                        self.run(["-m", "pip", "install", "-r", requirements_path])
+                    with pc_logging.Action(
+                        "PipReqs", self.version, project.name
+                    ):
+                        self.run(
+                            ["-m", "pip", "install", "-r", requirements_path]
+                        )
                     pathlib.Path(flag_path).touch()

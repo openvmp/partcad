@@ -66,7 +66,9 @@ class Shape(ShapeConfiguration):
                     else:
                         try:
                             # ocp_vscode.config.status()
-                            pc_logging.info('Visualizing in "OCP CAD Viewer"...')
+                            pc_logging.info(
+                                'Visualizing in "OCP CAD Viewer"...'
+                            )
                             # pc_logging.debug(self.shape)
                             ocp_vscode.show(shape, progress=None)
                         except Exception as e:
@@ -91,10 +93,20 @@ class Shape(ShapeConfiguration):
 
         cq_obj = await self.get_cadquery()
 
+        opts = DEFAULT_RENDER_SVG_OPTS
+        bb = cq_obj.BoundingBox()
+        xlen = bb.xlen
+        ylen = bb.ylen
+        zlen = bb.zlen
+        len = max(xlen, ylen, zlen)
+        if len > 300.0:
+            len = 300.0
+        opts["strokeWidth"] = len / 150.0
+
         def do_render_svg():
-            nonlocal cq_obj, filepath
+            nonlocal cq_obj, filepath, opts
             cq_obj = cq_obj.rotate((0, 0, 0), (1, -1, 0.75), 180)
-            cq.exporters.export(cq_obj, filepath, opt=DEFAULT_RENDER_SVG_OPTS)
+            cq.exporters.export(cq_obj, filepath, opt=opts)
 
         await pc_thread.run(do_render_svg)
 
@@ -118,6 +130,9 @@ class Shape(ShapeConfiguration):
         else:
             render_opts = {}
 
+        if "render" in self.config and not self.config["render"] is None:
+            render_opts = render_cfg_merge(render_opts, self.config["render"])
+
         if kind in render_opts and not render_opts[kind] is None:
             if isinstance(render_opts[kind], str):
                 opts = {"prefix": render_opts[kind]}
@@ -128,10 +143,12 @@ class Shape(ShapeConfiguration):
 
         # Using the project's config defaults if any
         if filepath is None:
-            if "prefix" in opts and not opts["prefix"] is None:
-                filepath = os.path.join(opts["prefix"], self.name + extension)
+            if "path" in opts and not opts["path"] is None:
+                filepath = opts["path"]
+            elif "prefix" in opts and not opts["prefix"] is None:
+                filepath = opts["prefix"]
             else:
-                filepath = self.name + extension
+                filepath = "."
 
             # Check if the format specific section of the config (e.g. "png")
             # provides a relative path and there is output dir in cmd line or
@@ -141,6 +158,9 @@ class Shape(ShapeConfiguration):
                     filepath = os.path.join(render_opts["output_dir"], filepath)
                 elif not project is None:
                     filepath = os.path.join(project.config_dir, filepath)
+
+            if os.path.isdir(filepath):
+                filepath = os.path.join(filepath, self.name + extension)
 
         pc_logging.debug("Rendering: %s" % filepath)
 
@@ -178,7 +198,9 @@ class Shape(ShapeConfiguration):
                 pc_logging.error("Export to PNG is not supported")
                 return
 
-            png_opts, filepath = self.render_getopts("png", ".png", project, filepath)
+            png_opts, filepath = self.render_getopts(
+                "png", ".png", project, filepath
+            )
 
             if width is None:
                 if "width" in png_opts and not png_opts["width"] is None:
@@ -196,7 +218,9 @@ class Shape(ShapeConfiguration):
 
             def do_render_png():
                 nonlocal project, svg_path, width, height, filepath
-                plugins.export_png.export(project, svg_path, width, height, filepath)
+                plugins.export_png.export(
+                    project, svg_path, width, height, filepath
+                )
 
             await pc_thread.run(do_render_png)
 
@@ -244,10 +268,15 @@ class Shape(ShapeConfiguration):
         angularTolerance=None,
     ):
         with pc_logging.Action("RenderSTL", self.project_name, self.name):
-            stl_opts, filepath = self.render_getopts("stl", ".stl", project, filepath)
+            stl_opts, filepath = self.render_getopts(
+                "stl", ".stl", project, filepath
+            )
 
             if tolerance is None:
-                if "tolerance" in stl_opts and not stl_opts["tolerance"] is None:
+                if (
+                    "tolerance" in stl_opts
+                    and not stl_opts["tolerance"] is None
+                ):
                     tolerance = stl_opts["tolerance"]
                 else:
                     tolerance = 0.1
@@ -284,7 +313,9 @@ class Shape(ShapeConfiguration):
         angularTolerance=None,
     ):
         asyncio.run(
-            self.render_stl_async(project, filepath, tolerance, angularTolerance)
+            self.render_stl_async(
+                project, filepath, tolerance, angularTolerance
+            )
         )
 
     async def render_3mf_async(
@@ -340,7 +371,9 @@ class Shape(ShapeConfiguration):
         angularTolerance=None,
     ):
         asyncio.run(
-            self.render_3mf_async(project, filepath, tolerance, angularTolerance)
+            self.render_3mf_async(
+                project, filepath, tolerance, angularTolerance
+            )
         )
 
     async def render_threejs_async(
@@ -397,7 +430,9 @@ class Shape(ShapeConfiguration):
         angularTolerance=None,
     ):
         asyncio.run(
-            self.render_threejs_async(project, filepath, tolerance, angularTolerance)
+            self.render_threejs_async(
+                project, filepath, tolerance, angularTolerance
+            )
         )
 
     async def render_obj_async(
@@ -408,10 +443,15 @@ class Shape(ShapeConfiguration):
         angularTolerance=None,
     ):
         with pc_logging.Action("RenderOBJ", self.project_name, self.name):
-            obj_opts, filepath = self.render_getopts("obj", ".obj", project, filepath)
+            obj_opts, filepath = self.render_getopts(
+                "obj", ".obj", project, filepath
+            )
 
             if tolerance is None:
-                if "tolerance" in obj_opts and not obj_opts["tolerance"] is None:
+                if (
+                    "tolerance" in obj_opts
+                    and not obj_opts["tolerance"] is None
+                ):
                     tolerance = obj_opts["tolerance"]
                 else:
                     tolerance = 0.1
@@ -430,7 +470,9 @@ class Shape(ShapeConfiguration):
             def do_render_obj():
                 nonlocal cq_obj, project, filepath, tolerance, angularTolerance
                 try:
-                    vertices, triangles = cq_obj.tessellate(tolerance, angularTolerance)
+                    vertices, triangles = cq_obj.tessellate(
+                        tolerance, angularTolerance
+                    )
 
                     with open(filepath, "w") as f:
                         f.write("# OBJ file\n")
@@ -454,7 +496,9 @@ class Shape(ShapeConfiguration):
         angularTolerance=None,
     ):
         asyncio.run(
-            self.render_obj_async(project, filepath, tolerance, angularTolerance)
+            self.render_obj_async(
+                project, filepath, tolerance, angularTolerance
+            )
         )
 
     async def render_txt_async(self, project=None, filepath=None):

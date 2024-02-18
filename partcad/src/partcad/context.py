@@ -86,9 +86,13 @@ class Context(project_config.Configuration):
         return config
 
     def import_project(self, parent, project_import_config):
-        if not "name" in project_import_config or not "type" in project_import_config:
+        if (
+            not "name" in project_import_config
+            or not "type" in project_import_config
+        ):
             pc_logging.error(
-                "Invalid project configuration found: %s" % project_import_config
+                "Invalid project configuration found: %s"
+                % project_import_config
             )
             return None
 
@@ -147,7 +151,8 @@ class Context(project_config.Configuration):
 
     def get_packages(self):
         return map(
-            lambda pkg: {"name": pkg.name, "desc": pkg.desc}, self.projects.values()
+            lambda pkg: {"name": pkg.name, "desc": pkg.desc},
+            self.projects.values(),
         )
 
     def _get_part(self, part_name, project_name, params=None):
@@ -160,26 +165,22 @@ class Context(project_config.Configuration):
         return prj.get_part(part_name, params)
 
     def get_part(self, part_name, project_name, params=None):
-        with self.lock:
-            return self._get_part(part_name, project_name, params)
+        return self._get_part(part_name, project_name, params)
 
     def get_part_shape(self, part_name, project_name, params=None):
-        with self.lock:
-            return asyncio.run(
-                self._get_part(part_name, project_name, params).get_shape()
-            )
+        return asyncio.run(
+            self._get_part(part_name, project_name, params).get_shape()
+        )
 
     def get_part_cadquery(self, part_name, project_name, params=None):
-        with self.lock:
-            return asyncio.run(
-                self._get_part(part_name, project_name, params).get_cadquery()
-            )
+        return asyncio.run(
+            self._get_part(part_name, project_name, params).get_cadquery()
+        )
 
     def get_part_build123d(self, part_name, project_name, params=None):
-        with self.lock:
-            return asyncio.run(
-                self._get_part(part_name, project_name, params).get_build123d()
-            )
+        return asyncio.run(
+            self._get_part(part_name, project_name, params).get_build123d()
+        )
 
     def _get_assembly(self, assembly_name, project_name, params=None):
         prj = self.get_project(project_name)
@@ -189,26 +190,26 @@ class Context(project_config.Configuration):
         return prj.get_assembly(assembly_name, params)
 
     def get_assembly(self, assembly_name, project_name, params=None):
-        with self.lock:
-            return self._get_assembly(assembly_name, project_name, params)
+        return self._get_assembly(assembly_name, project_name, params)
 
     def get_assembly_shape(self, assembly_name, project_name, params=None):
-        with self.lock:
-            return asyncio.run(
-                self._get_assembly(assembly_name, project_name, params).get_shape()
-            )
+        return asyncio.run(
+            self._get_assembly(assembly_name, project_name, params).get_shape()
+        )
 
     def get_assembly_cadquery(self, assembly_name, project_name, params=None):
-        with self.lock:
-            return asyncio.run(
-                self._get_assembly(assembly_name, project_name, params).get_cadquery()
-            )
+        return asyncio.run(
+            self._get_assembly(
+                assembly_name, project_name, params
+            ).get_cadquery()
+        )
 
     def get_assembly_build123d(self, assembly_name, project_name, params=None):
-        with self.lock:
-            return asyncio.run(
-                self._get_assembly(assembly_name, project_name, params).get_build123d()
-            )
+        return asyncio.run(
+            self._get_assembly(
+                assembly_name, project_name, params
+            ).get_build123d()
+        )
 
     def render(self, format=None, output_dir=None):
         prj = self.get_project(consts.THIS)
