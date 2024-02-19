@@ -48,4 +48,4 @@ __all__ = [
     "user_config",
 ]
 
-__version__: str = "0.4.6"
+__version__: str = "0.4.7"
