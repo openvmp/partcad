@@ -13,6 +13,7 @@ import logging
 
 import partcad as pc
 import partcad.logging as pc_logging
+from partcad.user_config import user_config
 
 from .cli_add import *
 from .cli_init import *
@@ -85,6 +86,9 @@ def main():
         cli_status(args)
         return
 
+    if args.command == "install" or args.command == "update":
+        user_config.force_update = True
+
     # Initialize the context
     if not args.config_path is None:
         ctx = pc.init(args.config_path)
@@ -108,7 +112,7 @@ def main():
         with pc_logging.Process("Info", "this"):
             cli_info(args, ctx)
 
-    elif args.command == "install":
+    elif args.command == "install" or args.command == "update":
         with pc_logging.Process("Install", "this"):
             cli_install(args, ctx)
 

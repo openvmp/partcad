@@ -13,6 +13,10 @@ def cli_help_install(subparsers):
         "install",
         help="Download and prepare all imported packages",
     )
+    parser_update = subparsers.add_parser(
+        "update",
+        help="Update all imported packages",
+    )
 
 
 def cli_install(args, ctx):

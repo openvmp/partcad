@@ -7,7 +7,6 @@
 # Licensed under Apache License, Version 2.0.
 
 import asyncio
-import atexit
 import os
 import threading
 
