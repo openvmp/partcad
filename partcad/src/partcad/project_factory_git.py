@@ -69,13 +69,13 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
                 origin = repo.remote("origin")
                 before = repo.active_branch.commit
                 if self.import_revision is None:
-                    if time.time() - os.path.getmtime(guard_path) < 24 * 3600:
+                    if time.time() - os.path.getmtime(guard_path) > 24 * 3600:
                         origin.pull()
                 else:
                     if (
                         before != self.import_revision
                         or time.time() - os.path.getmtime(guard_path)
-                        < 24 * 3600
+                        > 24 * 3600
                     ):
                         # Need to check for updates
                         origin.fetch()
