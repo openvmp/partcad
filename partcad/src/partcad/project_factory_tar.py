@@ -14,6 +14,7 @@ import requests
 import tarfile
 
 from . import project_factory as pf
+from .user_config import user_config
 
 
 class TarImportConfiguration:
@@ -56,7 +57,7 @@ class ProjectFactoryTar(pf.ProjectFactory, TarImportConfiguration):
         """
 
         if cache_dir is None:
-            cache_dir = os.getenv("HOME", "/tmp") + "/.partcad/tar"
+            cache_dir = os.path.join(user_config.internal_state_dir, "tar")
 
         # Generate a unique identifier for the file based on its URL.
         url_hash = hashlib.sha256(tarball_url.encode()).hexdigest()

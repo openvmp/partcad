@@ -21,6 +21,7 @@ from .cli_install import *
 from .cli_list import *
 from .cli_render import *
 from .cli_show import *
+from .cli_status import *
 
 
 # Initialize plugins that are not enabled by default
@@ -60,6 +61,7 @@ def main():
     cli_help_list(subparsers)
     cli_help_render(subparsers)
     cli_help_show(subparsers)
+    cli_help_status(subparsers)
 
     args = parser.parse_args()
 
@@ -78,6 +80,9 @@ def main():
     # in their own way
     if args.command == "init":
         cli_init(args)
+        return
+    elif args.command == "status":
+        cli_status(args)
         return
 
     # Initialize the context

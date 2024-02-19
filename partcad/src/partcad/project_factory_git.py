@@ -15,6 +15,7 @@ import time
 
 from . import project_factory as pf
 from . import logging as pc_logging
+from .user_config import user_config
 
 
 class GitImportConfiguration:
@@ -51,7 +52,7 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
         """
 
         if cache_dir is None:
-            cache_dir = os.getenv("HOME", "/tmp") + "/.partcad/git"
+            cache_dir = os.path.join(user_config.internal_state_dir, "git")
 
         # Generate a unique identifier for the repository based on its URL.
         repo_hash = hashlib.sha256(repo_url.encode()).hexdigest()
@@ -73,21 +74,26 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
                 else:
                     if (
                         before != self.import_revision
-                        or time.time() - os.path.getmtime(guard_path) < 24 * 3600
+                        or time.time() - os.path.getmtime(guard_path)
+                        < 24 * 3600
                     ):
                         # Need to check for updates
                         origin.fetch()
                         repo.git.checkout(self.import_revision, force=True)
                 after = repo.active_branch.commit
                 if before != after:
-                    pc_logging.info("Updated the GIT repo: %s" % self.import_config_url)
+                    pc_logging.info(
+                        "Updated the GIT repo: %s" % self.import_config_url
+                    )
             except Exception as e:
                 pc_logging.error("Exception: %s" % e)
                 # Fall back to using the previous copy
         else:
             # Clone the repository if not cached.
             try:
-                pc_logging.info("Cloning the GIT repo: %s" % self.import_config_url)
+                pc_logging.info(
+                    "Cloning the GIT repo: %s" % self.import_config_url
+                )
                 repo = Repo.clone_from(repo_url, cache_path)
                 if not self.import_revision is None:
                     repo.git.checkout(self.import_revision, force=True)
