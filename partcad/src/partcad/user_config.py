@@ -44,10 +44,23 @@ class UserConfig:
         if "pythonSandbox" in self.config_obj:
             self.python_runtime = self.config_obj["pythonSandbox"]
 
+        # option: internalStateDir
+        # description: folder to store all temporary files
+        # values: <path>
+        # default: '.partcad' folder in the home directory
         if "internalStateDir" in self.config_obj:
             self.internal_state_dir = self.config_obj["internalStateDir"]
         else:
             self.internal_state_dir = UserConfig.get_config_dir()
+
+        # option: forceUpdate
+        # description: update all repositories even if they are fresh
+        # values: [True | False]
+        # default: False
+        if "forceUpdate" in self.config_obj:
+            self.force_update = self.config_obj["forceUpdate"]
+        else:
+            self.force_update = False
 
 
 user_config = UserConfig()
