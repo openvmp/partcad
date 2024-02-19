@@ -45,6 +45,7 @@ __all__ = [
     "scene",
     "main_cli",
     "plugins",
+    "user_config",
 ]
 
 __version__: str = "0.4.5"
