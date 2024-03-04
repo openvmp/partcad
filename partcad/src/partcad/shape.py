@@ -71,7 +71,7 @@ class Shape(ShapeConfiguration):
 
                     ocp_vscode = importlib.import_module("ocp_vscode")
                     if ocp_vscode is None:
-                        pc_logging.warn(
+                        pc_logging.warning(
                             'Failed to load "ocp_vscode". Giving up on connection to VS Code.'
                         )
                     else:

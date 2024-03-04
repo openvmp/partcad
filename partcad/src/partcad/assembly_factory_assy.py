@@ -91,7 +91,7 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
                 # Keep part reference counter for bill-of-materials purposes
                 result[0].ref_inc()
             else:
-                raise Exception("Assembly is empty")
+                pc_logging.warning("Assembly is empty")
 
             self.ctx.stats_assemblies_instantiated += 1
 
@@ -148,8 +148,9 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
                     assy_name = ":" + assy_name
                 item = self.ctx._get_assembly(assy_name, params)
                 if item is None:
+                    pc_logging.error("Assembly not found: %s" % name)
                     raise Exception("Part not found")
-            else:
+            elif "part" in node:
                 part_name = node["part"]
                 if "package" in node:
                     part_name = node["package"] + ":" + part_name
@@ -157,10 +158,12 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
                     part_name = ":" + part_name
                 item = self.ctx._get_part(part_name, params)
                 if item is None:
+                    pc_logging.error("Part not found: %s" % name)
                     raise Exception("Assembly not found")
+            else:
+                item = None
 
         if not item is None:
             return [item, name, location]
         else:
-            pc_logging.error("Part not found: %s" % name)
             return None

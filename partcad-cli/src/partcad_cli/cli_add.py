@@ -47,7 +47,7 @@ def cli_help_add(subparsers):
 
     parser_add_assembly = subparsers.add_parser(
         "add-assembly",
-        help="Add a assembly",
+        help="Add an assembly",
     )
     parser_add_assembly.add_argument(
         "kind",
