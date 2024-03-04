@@ -153,7 +153,7 @@ class Context(project_config.Configuration):
 
         if not project_path.endswith("/"):
             project_path += "/"
-        return project_path + rel_project_path
+        return os.path.abspath(project_path + rel_project_path)
 
     def get_project(self, rel_project_path: str):
         project_path = self.get_project_abs_path(rel_project_path)
