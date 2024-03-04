@@ -28,7 +28,7 @@ factory.register("assembly", "assy", AssemblyFactoryAssy)
 factory.register("assembly", "alias", AssemblyFactoryAlias)
 
 
-def init(config_path=None) -> Context:
+def init(config_path=None, search_root=True) -> Context:
     """Initialize the default context explicitly using the desired path."""
     global _partcad_context
     global _partcad_context_path
@@ -37,13 +37,13 @@ def init(config_path=None) -> Context:
     with _partcad_context_lock:
         if _partcad_context is None:
             _partcad_context_path = config_path
-            _partcad_context = Context(config_path)
+            _partcad_context = Context(config_path, search_root=search_root)
             return _partcad_context
 
     if _partcad_context_path == config_path:
         return _partcad_context
 
-    return Context(config_path)
+    return Context(config_path, search_root=search_root)
 
 
 def fini():
