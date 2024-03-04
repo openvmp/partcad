@@ -14,6 +14,7 @@ import build123d as b3d
 
 from . import shape
 from . import sync_threads as pc_thread
+from . import logging as pc_logging
 
 
 class AssemblyChild:
@@ -48,8 +49,8 @@ class Assembly(shape.Shape):
             if len(self.children) == 0:
                 self.shape = None  # Invalidate if any
                 await pc_thread.run(self.instantiate, self)
-                if self.shape is None and len(self.children) == 0:
-                    raise Exception("The assembly is empty")
+                if len(self.children) == 0:
+                    pc_logging.warning("The assembly is empty")
 
     # add is a non-thread-safe method for end users to create custom Assemblies
     def add(
@@ -85,7 +86,7 @@ class Assembly(shape.Shape):
                     return item
 
                 if len(self.children) == 0:
-                    raise Exception("The assembly is empty")
+                    pc_logging.warning("The assembly is empty")
                 for child in self.children:
                     tasks.append(per_child(child))
 
@@ -101,7 +102,7 @@ class Assembly(shape.Shape):
                     compound.locate(self.location)
                 self.shape = compound.wrapped
             if self.shape is None:
-                raise Exception("The shape is none")
+                pc_logging.warning("The shape is None")
             return self.shape
             # return copy.copy(
             #     self.shape
