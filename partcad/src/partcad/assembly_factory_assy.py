@@ -149,7 +149,7 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
                 item = self.ctx._get_assembly(assy_name, params)
                 if item is None:
                     pc_logging.error("Assembly not found: %s" % name)
-                    raise Exception("Part not found")
+                    raise Exception("Assembly not found")
             elif "part" in node:
                 part_name = node["part"]
                 if "package" in node:
@@ -159,7 +159,7 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
                 item = self.ctx._get_part(part_name, params)
                 if item is None:
                     pc_logging.error("Part not found: %s" % name)
-                    raise Exception("Assembly not found")
+                    raise Exception("Part not found")
             else:
                 item = None
 
