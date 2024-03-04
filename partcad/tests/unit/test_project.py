@@ -16,6 +16,7 @@ test_config_import_git = {
     "name": "/part_step",
     "type": "git",
     "url": "https://github.com/openvmp/partcad",
+    "revision": "devel",
     "relPath": "examples/produce_part_step",
 }
 test_config_import_tar = {

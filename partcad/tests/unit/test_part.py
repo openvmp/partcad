@@ -24,6 +24,7 @@ test_config_git = {
     "name": "/primitive_git",
     "type": "git",
     "url": "https://github.com/openvmp/partcad",
+    "revision": "devel",
     "relPath": "examples/produce_part_cadquery_primitive",
 }
 
