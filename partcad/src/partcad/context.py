@@ -35,18 +35,23 @@ class Context(project_config.Configuration):
 
     def __init__(self, root_path=None):
         """Initializes the context and imports the root project."""
+        root_file = ""
         if root_path is None:
             # Find the top folder containing "partcad.yaml"
-            initial_root_path = "."
             root_path = "."
         else:
-            initial_root_path = root_path
+            if os.path.isfile(root_path):
+                root_file = os.path.basename(root_path)
+                root_path = os.path.dirname(root_path)
+        initial_root_path = os.path.abspath(root_path)
         while os.path.exists(os.path.join(root_path, "..", "partcad.yaml")):
             root_path = os.path.join(root_path, "..")
         self.root_path = os.path.abspath(root_path)
+        if self.root_path == initial_root_path and root_file != "":
+            self.root_path = os.path.join(self.root_path, root_file)
         self.current_project_path = "/" + os.path.relpath(
             initial_root_path,
-            self.root_path,
+            root_path,
         )
         if self.current_project_path == "/.":
             self.current_project_path = "/"
