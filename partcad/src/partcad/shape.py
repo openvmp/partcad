@@ -39,7 +39,18 @@ class Shape(ShapeConfiguration):
         self.svg_url = None
 
     async def get_wrapped(self):
-        return await self.get_shape()
+        shape = await self.get_shape()
+        if "offset" in self.config:
+            b3d_solid = b3d.Solid.make_box(1, 1, 1)
+            b3d_solid.wrapped = shape
+            b3d_solid.relocate(b3d.Location(*self.config["offset"]))
+            shape = b3d_solid.wrapped
+        if "scale" in self.config:
+            b3d_solid = b3d.Solid.make_box(1, 1, 1)
+            b3d_solid.wrapped = shape
+            b3d_solid = b3d_solid.scale(self.config["scale"])
+            shape = b3d_solid.wrapped
+        return shape
 
     async def get_cadquery(self) -> cq.Shape:
         cq_solid = cq.Solid.makeBox(1, 1, 1)
@@ -70,7 +81,15 @@ class Shape(ShapeConfiguration):
                                 'Visualizing in "OCP CAD Viewer"...'
                             )
                             # pc_logging.debug(self.shape)
-                            ocp_vscode.show(shape, progress=None)
+                            ocp_vscode.show(
+                                shape,
+                                progress=None,
+                                # TODO(clairbee): make showing (and the connection
+                                # to ocp_vscode) a part of the context, and memorize
+                                # which part was displayed last. Keep the camera
+                                # if the part has not changed.
+                                # reset_camera=ocp_vscode.Camera.KEEP,
+                            )
                         except Exception as e:
                             pc_logging.warning(e)
                             pc_logging.warning(

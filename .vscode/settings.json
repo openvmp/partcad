@@ -58,5 +58,6 @@
   "python.terminal.launchArgs": [],
   // TODO(clairbee): "python.analysis.typeCheckingMode": "basic",
   "OcpCadViewer.advanced.autostart": false,
-  "yaml.format.bracketSpacing": false // prevent YAML formatter from breaking Jinja2 templates
+  "yaml.format.bracketSpacing": false,
+  "esbonio.sphinx.confDir": "" // prevent YAML formatter from breaking Jinja2 templates
 }

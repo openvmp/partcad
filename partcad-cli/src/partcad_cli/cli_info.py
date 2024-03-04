@@ -19,6 +19,16 @@ def cli_help_info(subparsers):
         "info",
         help="Show detailed info a part, assembly or scene",
     )
+
+    parser_info.add_argument(
+        "-P",
+        "--package",
+        help="Package to retrieve the object from",
+        type=str,
+        dest="package",
+        default=None,
+    )
+
     group_type = parser_info.add_mutually_exclusive_group(required=False)
     group_type.add_argument(
         "-a",
@@ -34,6 +44,12 @@ def cli_help_info(subparsers):
     )
 
     parser_info.add_argument(
+        "object",
+        help="Part (default), assembly or scene to show",
+        type=str,
+    )
+
+    parser_info.add_argument(
         "-p",
         "--param",
         metavar="<param_name>=<param_value>",
@@ -42,47 +58,41 @@ def cli_help_info(subparsers):
         action="append",
     )
 
-    parser_info.add_argument(
-        "object",
-        help="Part (default), assembly or scene to show",
-        type=str,
-    )
-    parser_info.add_argument(
-        "package",
-        help="Package to retrieve the object from",
-        type=str,
-        nargs="?",
-    )
-
 
 def cli_info(args, ctx):
-    if args.package is None:
-        package = "this"
-    else:
-        package = args.package
-
     params = {}
     if not args.params is None:
         for kv in args.params:
             k, v = kv.split("=")
             params[k] = v
 
-    if args.assembly:
-        obj = ctx.get_assembly(args.object, package, params=params)
+    if args.package is None:
+        if ":" in args.object:
+            path = args.object
+        else:
+            path = ":" + args.object
     else:
-        obj = ctx.get_part(args.object, package, params=params)
+        path = args.package + ":" + args.object
+
+    if args.assembly:
+        obj = ctx.get_assembly(path, params=params)
+    else:
+        obj = ctx.get_part(path, params=params)
 
     if obj is None:
         if args.package is None:
             pc_logging.error("Object %s not found" % args.object)
         else:
             pc_logging.error(
-                "Object %s not found in package %s" % (args.object, args.package)
+                "Object %s not found in package %s"
+                % (args.object, args.package)
             )
     else:
         pc_logging.info("CONFIGURATION: %s" % pformat(obj.config))
-        asyncio.run(obj.get_shape())
+        asyncio.run(obj.get_wrapped())
         pc_logging.info(
             "RUNTIME PROPERTIES: %s"
-            % pformat({"Memory": "%.02f KB" % ((total_size(obj) + 1023) / 1024)})
+            % pformat(
+                {"Memory": "%.02f KB" % ((total_size(obj) + 1023) / 1024)}
+            )
         )

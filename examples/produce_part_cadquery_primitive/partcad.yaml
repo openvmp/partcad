@@ -12,7 +12,7 @@ parts:
     aliases: ["box"]
   brick:
     type: enrich
-    target: cube
+    source: cube
     with:
       width: 20.0
       length: 10.0
@@ -20,12 +20,12 @@ parts:
   # TODO(clairbee): add support for the below two
   #brick2:
   #  type: enrich
-  #  target: cube:width=20.0,height=20.0
+  #  source: cube:width=20.0,height=20.0
   #  with:
   #    length: 10.0
   #brick_alias:
   #  type: alias
-  #   target: cube:width=20.0,height=20.0,length=7.5
+  #   source: cube:width=20.0,height=20.0,length=7.5
   cylinder:
     type: cadquery
     path: cylinder.py

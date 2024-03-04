@@ -1,0 +1,12 @@
+desc: Demonstrates how to create a monorepo with multiple packages in it
+
+import:
+  pub:
+    type: git
+    url: https://github.com/openvmp/partcad-index.git
+
+parts:
+  # This is a degenerate case pointing inside a child package, for testing purposes only.
+  package-a/cube:
+    type: cadquery
+    desc: This is a cube from examples

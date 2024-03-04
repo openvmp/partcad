@@ -8,7 +8,7 @@ parts:
   screw: bolt
   fastener:
     type: alias
-    target: bolt
+    source: bolt
 render:
   svg:
     prefix: ./

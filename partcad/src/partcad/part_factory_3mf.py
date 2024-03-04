@@ -14,9 +14,17 @@ from . import logging as pc_logging
 
 
 class PartFactory3mf(pff.PartFactoryFile):
-    def __init__(self, ctx, project, part_config):
-        with pc_logging.Action("Init3MF", project.name, part_config["name"]):
-            super().__init__(ctx, project, part_config, extension=".3mf")
+    def __init__(self, ctx, source_project, target_project, part_config):
+        with pc_logging.Action(
+            "Init3MF", target_project.name, part_config["name"]
+        ):
+            super().__init__(
+                ctx,
+                source_project,
+                target_project,
+                part_config,
+                extension=".3mf",
+            )
             # Complement the config object here if necessary
             self._create(part_config)
 

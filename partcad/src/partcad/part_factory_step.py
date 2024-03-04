@@ -35,9 +35,17 @@ class PartFactoryStep(pff.PartFactoryFile):
     count_inflight_simple = 0
     count_inflight_subprocess = 0
 
-    def __init__(self, ctx, project, part_config):
-        with pc_logging.Action("InitSTEP", project.name, part_config["name"]):
-            super().__init__(ctx, project, part_config, extension=".step")
+    def __init__(self, ctx, source_project, target_project, part_config):
+        with pc_logging.Action(
+            "InitSTEP", target_project.name, part_config["name"]
+        ):
+            super().__init__(
+                ctx,
+                source_project,
+                target_project,
+                part_config,
+                extension=".step",
+            )
             # Complement the config object here if necessary
             self._create(part_config)
 

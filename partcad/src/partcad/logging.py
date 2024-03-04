@@ -15,12 +15,25 @@ setLevel = lambda *args, **kwargs: logging.getLogger("partcad").setLevel(
     *args, **kwargs
 )
 log = lambda *args, **kwargs: logging.getLogger("partcad").log(*args, **kwargs)
-debug = lambda *args, **kwargs: logging.getLogger("partcad").debug(*args, **kwargs)
-info = lambda *args, **kwargs: logging.getLogger("partcad").info(*args, **kwargs)
-warn = lambda *args, **kwargs: logging.getLogger("partcad").warn(*args, **kwargs)
-warning = lambda *args, **kwargs: logging.getLogger("partcad").warning(*args, **kwargs)
-error = lambda *args, **kwargs: logging.getLogger("partcad").error(*args, **kwargs)
+debug = lambda *args, **kwargs: logging.getLogger("partcad").debug(
+    *args, **kwargs
+)
+info = lambda *args, **kwargs: logging.getLogger("partcad").info(
+    *args, **kwargs
+)
+warn = lambda *args, **kwargs: logging.getLogger("partcad").warn(
+    *args, **kwargs
+)
+warning = lambda *args, **kwargs: logging.getLogger("partcad").warning(
+    *args, **kwargs
+)
+error = lambda *args, **kwargs: logging.getLogger("partcad").error(
+    *args, **kwargs
+)
 critical = lambda *args, **kwargs: logging.getLogger("partcad").critical(
+    *args, **kwargs
+)
+exception = lambda *args, **kwargs: logging.getLogger("partcad").exception(
     *args, **kwargs
 )
 

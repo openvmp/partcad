@@ -64,16 +64,22 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
         # Check if the repository is already cached.
         if os.path.exists(cache_path):
             try:
+                before = None
+
                 # Try to open the existing repository and update it.
-                repo = Repo(cache_path)
-                origin = repo.remote("origin")
-                before = repo.active_branch.commit
                 if self.import_revision is None:
                     if user_config.force_update or (
                         time.time() - os.path.getmtime(guard_path) > 24 * 3600
                     ):
+                        repo = Repo(cache_path)
+                        origin = repo.remote("origin")
+                        before = repo.active_branch.commit
                         origin.pull()
+                        pathlib.Path(guard_path).touch()
                 else:
+                    repo = Repo(cache_path)
+                    origin = repo.remote("origin")
+                    before = repo.active_branch.commit
                     if user_config.force_update or (
                         before != self.import_revision
                         or (
@@ -84,11 +90,15 @@ class ProjectFactoryGit(pf.ProjectFactory, GitImportConfiguration):
                         # Need to check for updates
                         origin.fetch()
                         repo.git.checkout(self.import_revision, force=True)
-                after = repo.active_branch.commit
-                if before != after:
-                    pc_logging.info(
-                        "Updated the GIT repo: %s" % self.import_config_url
-                    )
+                        pathlib.Path(guard_path).touch()
+
+                if not before is None:
+                    # Update was performed
+                    after = repo.active_branch.commit
+                    if before != after:
+                        pc_logging.info(
+                            "Updated the GIT repo: %s" % self.import_config_url
+                        )
             except Exception as e:
                 pc_logging.error("Exception: %s" % e)
                 # Fall back to using the previous copy

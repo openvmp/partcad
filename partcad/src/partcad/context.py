@@ -13,13 +13,12 @@ import threading
 from . import consts
 from . import logging as pc_logging
 from . import project_config
-from . import project
 from . import runtime_python_all
 from . import project_factory_local as rfl
 from . import project_factory_git as rfg
 from . import project_factory_tar as rft
 from .user_config import user_config
-from .utils import total_size
+from .utils import *
 
 
 # Context
@@ -34,12 +33,27 @@ class Context(project_config.Configuration):
     stats_assemblies_instantiated: int
     stats_memory: int
 
-    def __init__(self, config_path="."):
+    def __init__(self, root_path=None):
         """Initializes the context and imports the root project."""
-        super().__init__(consts.THIS, config_path)
+        if root_path is None:
+            # Find the top folder containing "partcad.yaml"
+            initial_root_path = "."
+            root_path = "."
+        else:
+            initial_root_path = root_path
+        while os.path.exists(os.path.join(root_path, "..", "partcad.yaml")):
+            root_path = os.path.join(root_path, "..")
+        self.root_path = os.path.abspath(root_path)
+        self.current_project_path = "/" + os.path.relpath(
+            initial_root_path,
+            self.root_path,
+        )
+        if self.current_project_path == "/.":
+            self.current_project_path = "/"
+        super().__init__(consts.ROOT, self.root_path)
 
         # Protect the critical sections from access in different threads
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
 
         self.option_create_dirs = False
         self.runtimes_python = {}
@@ -52,37 +66,26 @@ class Context(project_config.Configuration):
         self.stats_assemblies_instantiated = 0
         self.stats_memory = 0
 
-        if os.path.isdir(config_path):
-            config_path = "."
-        else:
-            # TODO(clairbee): Add support for config files not at the top level
-            config_path = os.path.basename(config_path)
-
         # self.projects contains all projects known to this context
         self.projects = {}
         self._projects_being_loaded = {}
 
-        with pc_logging.Process("ImportDeps", self.config_dir):
+        with pc_logging.Process("InitCtx", self.config_dir):
             self.import_project(
                 None,  # parent
                 {
-                    "name": consts.THIS,
+                    "name": consts.ROOT,
                     "type": "local",
-                    "path": config_path,
+                    "path": self.config_path,
+                    "maybeEmpty": True,
                 },
             )
 
     def stats_recalc(self, verbose=False):
         self.stats_memory = total_size(self, verbose)
 
-    def get_project(self, project_name) -> project.Project:
-        if not project_name in self.projects:
-            pc_logging.error("The project '%s' is not found." % project_name)
-            pc_logging.error("%s" % self.projects)
-            return None
-
-        config = self.projects[project_name]
-        return config
+    def get_current_project_path(self):
+        return self.current_project_path
 
     def import_project(self, parent, project_import_config):
         if (
@@ -102,6 +105,7 @@ class Context(project_config.Configuration):
                     "Recursive project loading detected (%s), aborting." % name
                 )
                 return None
+            self._projects_being_loaded[name] = True
 
             # Depending on the project type, use different factories
             if (
@@ -117,6 +121,7 @@ class Context(project_config.Configuration):
                     rft.ProjectFactoryTar(self, parent, project_import_config)
             else:
                 pc_logging.error("Invalid project type found: %s." % name)
+                del self._projects_being_loaded[name]
                 return None
 
             # Check whether the factory was able to successfully add the project
@@ -124,6 +129,7 @@ class Context(project_config.Configuration):
                 pc_logging.error(
                     "Failed to create the project: %s" % project_import_config
                 )
+                del self._projects_being_loaded[name]
                 return None
 
             self.stats_packages += 1
@@ -131,87 +137,237 @@ class Context(project_config.Configuration):
 
             imported_project = self.projects[name]
 
-            # Load the dependencies recursively
-            # while preventing circular dependencies
-            self._projects_being_loaded[name] = True
-            # pc_logging.debug("Imported config: %s..." % imported_project.config_obj)
-            if (
-                "import" in imported_project.config_obj
-                and not imported_project.config_obj["import"] is None
-            ):
-                for prj_name in imported_project.config_obj["import"]:
-                    # pc_logging.debug("Importing: %s..." % prj_name)
-                    prj_conf = imported_project.config_obj["import"][prj_name]
-                    prj_conf["name"] = prj_name
-                    self.import_project(imported_project, prj_conf)
             del self._projects_being_loaded[name]
-
             return imported_project
+
+    def get_project_abs_path(self, rel_project_path: str):
+        if rel_project_path.startswith("/"):
+            return rel_project_path
+
+        project_path = self.current_project_path
+
+        if rel_project_path == ".":
+            rel_project_path = ""
+        if rel_project_path == "":
+            return project_path
+
+        if not project_path.endswith("/"):
+            project_path += "/"
+        return project_path + rel_project_path
+
+    def get_project(self, rel_project_path: str):
+        project_path = self.get_project_abs_path(rel_project_path)
+
+        with self.lock:
+            # Strip the first '/' (absolute path always starts with a '/'``)
+            project_path = project_path[1:]
+
+            project = self.projects[consts.ROOT]
+
+            if project_path == "":
+                return project
+            else:
+                import_list = project_path.split("/")
+
+            return self._get_project_recursive(project, import_list)
+
+    def _get_project_recursive(self, project, import_list: list[str]):
+        """Load the dependencies recursively"""
+        if len(import_list) == 0:
+            # Found what we are looking for
+            return project
+
+        # next_import is the next of the import we need to load now
+        next_import = import_list[0]
+        # import_list is reduced to contain only the items that will remain to
+        # bt loaded after this import
+        import_list = import_list[1:]
+
+        # next_project will reference the project we are importing now
+        next_project = None
+        # next_project_path is the full path of the project we are importing now
+        next_project_path = get_child_project_path(project.name, next_import)
+
+        # see if the wanted project is already initialized
+        if next_project_path in self.projects:
+            return self._get_project_recursive(
+                self.projects[next_project_path], import_list
+            )
+
+        # Check if there is a matching subfolder
+        subfolders = [
+            f.name for f in os.scandir(project.config_dir) if f.is_dir()
+        ]
+        if next_import in list(subfolders):
+            if os.path.exists(
+                os.path.join(
+                    project.config_dir,
+                    next_import,
+                    consts.DEFAULT_PACKAGE_CONFIG,
+                )
+            ):
+                pc_logging.debug(
+                    "Importing a subfolder: %s..." % next_project_path
+                )
+                prj_conf = {
+                    "name": next_project_path,
+                    "type": "local",
+                    "path": next_import,
+                }
+                next_project = self.import_project(project, prj_conf)
+                if not next_project is None:
+                    result = self._get_project_recursive(
+                        next_project, import_list
+                    )
+                    return result
+        else:
+            # Otherwise, iterate all subfolders and check if any of them are packages
+            if (
+                "import" in project.config_obj
+                and not project.config_obj["import"] is None
+            ):
+                for prj_name in project.config_obj["import"]:
+                    pc_logging.debug("Checking the import: %s..." % prj_name)
+                    if prj_name != next_import:
+                        continue
+                    pc_logging.debug("Importing: %s..." % next_project_path)
+                    prj_conf = project.config_obj["import"][prj_name]
+                    if "name" in prj_conf:
+                        prj_conf["orig_name"] = prj_conf["name"]
+                    prj_conf["name"] = next_project_path
+                    next_project = self.import_project(project, prj_conf)
+                    if not next_project is None:
+                        result = self._get_project_recursive(
+                            next_project, import_list
+                        )
+                        return result
+                    break
+
+        return next_project
+
+    def import_all(self):
+        self._import_all_recursive(self.projects[consts.ROOT])
+
+    def _import_all_recursive(self, project):
+        # First, iterate all explicitly mentioned "import"s.
+        # Do it before iterating subdirectories, as it may kick off a long
+        # background task.
+        if (
+            "import" in project.config_obj
+            and not project.config_obj["import"] is None
+        ):
+            for prj_name in project.config_obj["import"]:
+                next_project_path = get_child_project_path(
+                    project.name, prj_name
+                )
+
+                pc_logging.debug("Importing: %s..." % next_project_path)
+                prj_conf = project.config_obj["import"][prj_name]
+                if "name" in prj_conf:
+                    prj_conf["orig_name"] = prj_conf["name"]
+                prj_conf["name"] = next_project_path
+                next_project = self.import_project(project, prj_conf)
+                self._import_all_recursive(next_project)
+
+        # Second, iterate over all subfolder and check for packages
+        subfolders = [
+            f.name for f in os.scandir(project.config_dir) if f.is_dir()
+        ]
+        for subdir in list(subfolders):
+            if os.path.exists(
+                os.path.join(
+                    project.config_dir,
+                    subdir,
+                    consts.DEFAULT_PACKAGE_CONFIG,
+                )
+            ):
+                next_project_path = get_child_project_path(project.name, subdir)
+                pc_logging.debug(
+                    "Importing a subfolder: %s..." % next_project_path
+                )
+                prj_conf = {
+                    "name": next_project_path,
+                    "type": "local",
+                    "path": subdir,
+                }
+                next_project = self.import_project(project, prj_conf)
+                self._import_all_recursive(next_project)
+
+    def get_all_packages(self):
+        self.import_all()
+        return self.get_packages()
 
     def get_packages(self):
         return map(
             lambda pkg: {"name": pkg.name, "desc": pkg.desc},
-            self.projects.values(),
+            filter(
+                lambda x: len(x.parts) + len(x.assemblies) > 0,
+                self.projects.values(),
+            ),
         )
 
-    def _get_part(self, part_name, project_name, params=None):
+    def _get_part(self, part_spec, params=None):
+        project_name, part_name = resolve_resource_path(
+            self.current_project_path,
+            part_spec,
+        )
         prj = self.get_project(project_name)
         if prj is None:
             pc_logging.error("Package %s not found" % project_name)
-            # Don't print anything as self.get_project is expected to report errors
+            pc_logging.error("Packages found: %s" % str(self.projects))
             return None
-        pc_logging.debug("Retriving %s from %s" % (part_name, project_name))
+        pc_logging.debug("Retrieving %s from %s" % (part_name, project_name))
         return prj.get_part(part_name, params)
 
-    def get_part(self, part_name, project_name, params=None):
-        return self._get_part(part_name, project_name, params)
+    def get_part(self, part_spec, params=None):
+        return self._get_part(part_spec, params)
 
-    def get_part_shape(self, part_name, project_name, params=None):
-        return asyncio.run(
-            self._get_part(part_name, project_name, params).get_shape()
+    def get_part_shape(self, part_spec, params=None):
+        return asyncio.run(self._get_part(part_spec, params).get_wrapped())
+
+    def get_part_cadquery(self, part_spec, params=None):
+        return asyncio.run(self._get_part(part_spec, params).get_cadquery())
+
+    def get_part_build123d(self, part_spec, params=None):
+        return asyncio.run(self._get_part(part_spec, params).get_build123d())
+
+    def _get_assembly(self, assembly_spec, params=None):
+        project_name, assembly_name = resolve_resource_path(
+            self.current_project_path,
+            assembly_spec,
         )
-
-    def get_part_cadquery(self, part_name, project_name, params=None):
-        return asyncio.run(
-            self._get_part(part_name, project_name, params).get_cadquery()
-        )
-
-    def get_part_build123d(self, part_name, project_name, params=None):
-        return asyncio.run(
-            self._get_part(part_name, project_name, params).get_build123d()
-        )
-
-    def _get_assembly(self, assembly_name, project_name, params=None):
         prj = self.get_project(project_name)
         if prj is None:
-            # Don't print anything as self.get_project is expected to report errors
+            pc_logging.error("Package %s not found" % project_name)
             return None
+        pc_logging.debug(
+            "Retrieving %s from %s" % (assembly_name, project_name)
+        )
         return prj.get_assembly(assembly_name, params)
 
-    def get_assembly(self, assembly_name, project_name, params=None):
-        return self._get_assembly(assembly_name, project_name, params)
+    def get_assembly(self, assembly_spec, params=None):
+        return self._get_assembly(assembly_spec, params)
 
-    def get_assembly_shape(self, assembly_name, project_name, params=None):
+    def get_assembly_shape(self, assembly_spec, params=None):
         return asyncio.run(
-            self._get_assembly(assembly_name, project_name, params).get_shape()
+            self._get_assembly(assembly_spec, params).get_wrapped()
         )
 
-    def get_assembly_cadquery(self, assembly_name, project_name, params=None):
+    def get_assembly_cadquery(self, assembly_spec, params=None):
         return asyncio.run(
-            self._get_assembly(
-                assembly_name, project_name, params
-            ).get_cadquery()
+            self._get_assembly(assembly_spec, params).get_cadquery()
         )
 
-    def get_assembly_build123d(self, assembly_name, project_name, params=None):
+    def get_assembly_build123d(self, assembly_spec, params=None):
         return asyncio.run(
-            self._get_assembly(
-                assembly_name, project_name, params
-            ).get_build123d()
+            self._get_assembly(assembly_spec, params).get_build123d()
         )
 
     def render(self, format=None, output_dir=None):
-        prj = self.get_project(consts.THIS)
+        path = self.get_current_project_path()
+        pc_logging.debug("Rendering %s..." % path)
+        prj = self.get_project(path)
+        # prj = self.projects[path]
         prj.render(format=format, output_dir=output_dir)
 
     def get_python_runtime(self, version, python_runtime=None):

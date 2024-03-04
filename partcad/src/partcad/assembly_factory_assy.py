@@ -16,6 +16,7 @@ import yaml
 from .assembly import Assembly, AssemblyChild
 from . import assembly_factory_file as aff
 from . import logging as pc_logging
+from .utils import resolve_resource_path
 
 
 class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
@@ -133,14 +134,7 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
             item.instantiate = lambda x: True
             await self.handle_node_list(item, node["links"])
         else:
-            # This is a node for a part
-            if "package" in node:
-                package_name = node["package"]
-            else:
-                package_name = "this"
-            if package_name == "this":
-                package_name = self.project.name
-
+            # This is a node for a part or an assembly
             params = {}
             if "params" in node:
                 for paramName in node["params"]:
@@ -148,12 +142,20 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
 
             if "assembly" in node:
                 assy_name = node["assembly"]
-                item = self.ctx._get_assembly(assy_name, package_name, params)
+                if "package" in node:
+                    assy_name = node["package"] + ":" + assy_name
+                elif not ":" in assy_name:
+                    assy_name = ":" + assy_name
+                item = self.ctx._get_assembly(assy_name, params)
                 if item is None:
                     raise Exception("Part not found")
             else:
                 part_name = node["part"]
-                item = self.ctx._get_part(part_name, package_name, params)
+                if "package" in node:
+                    part_name = node["package"] + ":" + part_name
+                elif not ":" in part_name:
+                    part_name = ":" + part_name
+                item = self.ctx._get_part(part_name, params)
                 if item is None:
                     raise Exception("Assembly not found")
 

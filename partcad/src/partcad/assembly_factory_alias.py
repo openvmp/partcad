@@ -11,11 +11,13 @@ import typing
 
 from . import assembly_factory as pf
 from . import logging as pc_logging
+from .utils import resolve_resource_path
 
 
 class AssemblyFactoryAlias(pf.AssemblyFactory):
-    target_assembly: str
-    target_project: typing.Optional[str]
+    source_assembly_name: str
+    source_project_name: typing.Optional[str]
+    source: str
 
     def __init__(self, ctx, project, assembly_config):
         with pc_logging.Action(
@@ -25,39 +27,55 @@ class AssemblyFactoryAlias(pf.AssemblyFactory):
             # Complement the config object here if necessary
             self._create(assembly_config)
 
-            self.target_assembly = assembly_config["target"]
-            if "project" in assembly_config:
-                self.target_project = assembly_config["project"]
+            if "source" in assembly_config:
+                self.source_assembly_name = assembly_config["source"]
             else:
-                self.target_project = project.name
+                self.source_assembly_name = assembly_config["name"]
+                if not "project" in assembly_config:
+                    raise Exception(
+                        "Alias needs either the source part name or the source project name"
+                    )
 
-            pc_logging.debug(
-                "Initializing an alias to %s:%s"
-                % (self.target_project, self.target_assembly)
+            if "project" in assembly_config:
+                self.source_project_name = assembly_config["project"]
+                if (
+                    self.source_project_name == "this"
+                    or self.source_project_name == ""
+                ):
+                    self.source_project_name = project.name
+            else:
+                if ":" in self.source_assembly_name:
+                    self.source_project_name, self.source_assembly_name = (
+                        resolve_resource_path(
+                            project.name,
+                            self.source_assembly_name,
+                        )
+                    )
+                else:
+                    self.source_project_name = project.name
+            self.source = (
+                self.source_project_name + ":" + self.source_assembly_name
             )
 
-            # Get the config of the assembly the alias points to
-            if self.target_project is None:
-                self.assembly.desc = "Alias to %s" % self.target_assembly
+            if self.source_project_name == project.name:
+                self.assembly.desc = "Alias to %s" % self.source_assembly_name
             else:
                 self.assembly.desc = "Alias to %s from %s" % (
-                    self.target_assembly,
-                    self.target_project,
+                    self.source_assembly_name,
+                    self.source_project_name,
                 )
+
+            pc_logging.debug("Initializing an alias to %s" % self.source)
 
     def instantiate(self, assembly):
         with pc_logging.Action("Alias", assembly.project_name, assembly.name):
-            # TODO(clairbee): resolve the absolute package path?
 
-            target = self.ctx._get_assembly(
-                self.target_assembly, self.target_project
-            )
-            shape = target.shape
+            source = self.ctx._get_assembly(self.source)
+            shape = source.shape
             if not shape is None:
                 assembly.shape = shape
                 return
 
             self.ctx.stats_assemblies_instantiated += 1
 
-            # return target.instantiate(assembly)
-            target.instantiate(assembly)
+            source.instantiate(assembly)

@@ -1,5 +1,6 @@
+#####################
 PartCAD documentation
-=====================
+#####################
 
 .. toctree::
    :maxdepth: 2
@@ -7,6 +8,9 @@ PartCAD documentation
 
    intro.rst
    installation.rst
-   use_cases.rst
+   tutorial.rst
    design.rst
+   use_cases.rst
+   features.rst
+   troubleshooting.rst
    implementation_details.rst

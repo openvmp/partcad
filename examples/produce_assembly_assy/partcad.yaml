@@ -1,14 +1,3 @@
-import:
-  example_part_step:
-    type: local
-    path: ../produce_part_step
-  example_part_cadquery_logo:
-    type: local
-    path: ../produce_part_cadquery_logo
-  example_part_cadquery_primitive:
-    type: local
-    path: ../produce_part_cadquery_primitive
-
 assemblies:
   primitive:
     type: assy
@@ -18,7 +7,7 @@ assemblies:
     type: assy
   partcad_logo:
     type: alias
-    target: logo
+    source: logo
   partcad_logo_short: logo
 
 render:

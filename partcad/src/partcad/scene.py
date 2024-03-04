@@ -12,4 +12,4 @@ from .. import partcad as pc
 
 class Scene(pc.Assembly):
     def __init__(self):
-        super.__init__(self)
+        super().__init__()

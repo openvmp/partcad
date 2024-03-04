@@ -15,6 +15,7 @@ import ruamel.yaml
 import threading
 import typing
 
+from . import factory
 from . import logging as pc_logging
 from . import project_config
 from . import part
@@ -120,7 +121,10 @@ class Project(project_config.Configuration):
             config = part_config.PartConfiguration.normalize(part_name, config)
             self.init_part_by_config(config)
 
-    def init_part_by_config(self, config):
+    def init_part_by_config(self, config, source_project=None):
+        if source_project is None:
+            source_project = self
+
         part_name: str = config["name"]
 
         if not "type" in config:
@@ -129,21 +133,21 @@ class Project(project_config.Configuration):
                 % (part_name, config)
             )
         elif config["type"] == "cadquery":
-            pfc.PartFactoryCadquery(self.ctx, self, config)
+            pfc.PartFactoryCadquery(self.ctx, source_project, self, config)
         elif config["type"] == "build123d":
-            pfb.PartFactoryBuild123d(self.ctx, self, config)
+            pfb.PartFactoryBuild123d(self.ctx, source_project, self, config)
         elif config["type"] == "step":
-            pfs.PartFactoryStep(self.ctx, self, config)
+            pfs.PartFactoryStep(self.ctx, source_project, self, config)
         elif config["type"] == "stl":
-            pfstl.PartFactoryStl(self.ctx, self, config)
+            pfstl.PartFactoryStl(self.ctx, source_project, self, config)
         elif config["type"] == "3mf":
-            pf3.PartFactory3mf(self.ctx, self, config)
+            pf3.PartFactory3mf(self.ctx, source_project, self, config)
         elif config["type"] == "scad":
-            pfscad.PartFactoryScad(self.ctx, self, config)
+            pfscad.PartFactoryScad(self.ctx, source_project, self, config)
         elif config["type"] == "alias":
-            pfa.PartFactoryAlias(self.ctx, self, config)
+            pfa.PartFactoryAlias(self.ctx, source_project, self, config)
         elif config["type"] == "enrich":
-            pfe.PartFactoryEnrich(self.ctx, self, config)
+            pfe.PartFactoryEnrich(self.ctx, source_project, self, config)
         else:
             pc_logging.error(
                 "Invalid part type encountered: %s: %s" % (part_name, config)
@@ -153,17 +157,20 @@ class Project(project_config.Configuration):
         # Initialize aliases if they are declared implicitly
         if "aliases" in config and not config["aliases"] is None:
             for alias in config["aliases"]:
-                if ":" in part_name:
-                    alias += part_name[part_name.index(":") :]
+                if ";" in part_name:
+                    # Copy parameters
+                    alias += part_name[part_name.index(";") :]
                 alias_part_config = {
                     "type": "alias",
                     "name": alias,
-                    "target": part_name,
+                    "source": ":" + part_name,
                 }
                 alias_part_config = part_config.PartConfiguration.normalize(
                     alias, alias_part_config
                 )
-                pfa.PartFactoryAlias(self.ctx, self, alias_part_config)
+                pfa.PartFactoryAlias(
+                    self.ctx, source_project, self, alias_part_config
+                )
 
     def get_part(self, part_name, func_params=None) -> part.Part:
         if func_params is None or not func_params:
@@ -172,10 +179,10 @@ class Project(project_config.Configuration):
             has_func_params = True
 
         params: {str: typing.Any} = {}
-        if ":" in part_name:
+        if ";" in part_name:
             has_name_params = True
-            base_part_name = part_name.splt(":")[0]
-            part_name_params_string = part_name.split(":")[1]
+            base_part_name = part_name.split(";")[0]
+            part_name_params_string = part_name.split(";")[1]
 
             for kv in part_name_params_string.split[","]:
                 k, v = kv.split("")
@@ -192,7 +199,7 @@ class Project(project_config.Configuration):
             result_name = part_name
         else:
             # Determine the name we want this parameterized part to have
-            result_name = base_part_name + ":"
+            result_name = base_part_name + ";"
             result_name += ",".join(
                 map(lambda n: n + "=" + str(params[n]), sorted(params))
             )
@@ -239,7 +246,7 @@ class Project(project_config.Configuration):
                     self.name,
                 )
                 return None
-            pc_logging.info("Found the base part: %s" % base_part_name)
+            pc_logging.debug("Found the base part: %s" % base_part_name)
 
             # Now we have the original part name and the complete set of parameters
             config = self.part_configs[base_part_name]
@@ -252,11 +259,14 @@ class Project(project_config.Configuration):
                 return None
 
             config = copy.deepcopy(config)
-            if not "parameters" in config or config["parameters"] is None:
+            if (
+                not "parameters" in config or config["parameters"] is None
+            ) and (config["type"] != "enrich"):
                 pc_logging.error(
-                    "Attempt to parametrize '%s' of '%s' which has no parameters",
+                    "Attempt to parametrize '%s' of '%s' which has no parameters: %s",
                     base_part_name,
                     self.name,
+                    str(config),
                 )
                 return None
 
@@ -268,29 +278,41 @@ class Project(project_config.Configuration):
 
             # Fill in the parameter values
             param_name: str
-            for param_name, param_value in params.items():
-                if config["parameters"][param_name]["type"] == "string":
-                    config["parameters"][param_name]["default"] = str(
-                        param_value
-                    )
-                elif config["parameters"][param_name]["type"] == "int":
-                    config["parameters"][param_name]["default"] = int(
-                        param_value
-                    )
-                elif config["parameters"][param_name]["type"] == "float":
-                    config["parameters"][param_name]["default"] = float(
-                        param_value
-                    )
-                elif config["parameters"][param_name]["type"] == "bool":
-                    if isinstance(param_value, str):
-                        if param_value.lower() == "true":
-                            config["parameters"][param_name]["default"] = True
-                        else:
-                            config["parameters"][param_name]["default"] = False
-                    else:
-                        config["parameters"][param_name]["default"] = bool(
+            if "parameters" in config and not config["parameters"] is None:
+                # Filling "parameters"
+                for param_name, param_value in params.items():
+                    if config["parameters"][param_name]["type"] == "string":
+                        config["parameters"][param_name]["default"] = str(
                             param_value
                         )
+                    elif config["parameters"][param_name]["type"] == "int":
+                        config["parameters"][param_name]["default"] = int(
+                            param_value
+                        )
+                    elif config["parameters"][param_name]["type"] == "float":
+                        config["parameters"][param_name]["default"] = float(
+                            param_value
+                        )
+                    elif config["parameters"][param_name]["type"] == "bool":
+                        if isinstance(param_value, str):
+                            if param_value.lower() == "true":
+                                config["parameters"][param_name][
+                                    "default"
+                                ] = True
+                            else:
+                                config["parameters"][param_name][
+                                    "default"
+                                ] = False
+                        else:
+                            config["parameters"][param_name]["default"] = bool(
+                                param_value
+                            )
+            else:
+                # Filling "with"
+                if not "with" in config:
+                    config["with"] = {}
+                for param_name, param_value in params.items():
+                    config["with"][param_name] = param_value
 
             # Now initialize the part
             pc_logging.debug(
@@ -327,21 +349,7 @@ class Project(project_config.Configuration):
             config = assembly_config.AssemblyConfiguration.normalize(
                 assembly_name, config
             )
-            self.init_assembly_by_config(config)
-
-    def init_assembly_by_config(self, config):
-        assembly_name: str = config["name"]
-
-        if config["type"] == "assy":
-            afa.AssemblyFactoryAssy(self.ctx, self, config)
-        elif config["type"] == "alias":
-            afalias.AssemblyFactoryAlias(self.ctx, self, config)
-        else:
-            pc_logging.error(
-                "Invalid assembly type encountered: %s: %s"
-                % (assembly_name, config)
-            )
-            return None
+            factory.instantiate("assembly", self.ctx, self, config)
 
     def get_assembly(
         self, assembly_name, func_params=None
@@ -352,10 +360,10 @@ class Project(project_config.Configuration):
             has_func_params = True
 
         params: {str: typing.Any} = {}
-        if ":" in assembly_name:
+        if ";" in assembly_name:
             has_name_params = True
-            base_assembly_name = assembly_name.splt(":")[0]
-            assembly_name_params_string = assembly_name.split(":")[1]
+            base_assembly_name = assembly_name.split(";")[0]
+            assembly_name_params_string = assembly_name.split(";")[1]
 
             for kv in assembly_name_params_string.split[","]:
                 k, v = kv.split("")
@@ -372,7 +380,7 @@ class Project(project_config.Configuration):
             result_name = assembly_name
         else:
             # Determine the name we want this parameterized assembly to have
-            result_name = base_assembly_name + ":"
+            result_name = base_assembly_name + ";"
             result_name += ",".join(
                 map(lambda n: n + "=" + str(params[n]), sorted(params))
             )
@@ -407,7 +415,7 @@ class Project(project_config.Configuration):
                 config = assembly_config.AssemblyConfiguration.normalize(
                     assembly_name, config
                 )
-                self.init_assembly_by_config(config)
+                factory.instantiate("assembly", self.ctx, self, config)
 
                 if (
                     not assembly_name in self.assemblies
@@ -427,7 +435,7 @@ class Project(project_config.Configuration):
                     self.name,
                 )
                 return None
-            pc_logging.info("Found the base assembly: %s" % base_assembly_name)
+            pc_logging.debug("Found the base assembly: %s" % base_assembly_name)
 
             # Now we have the original assembly name and the complete set of parameters
             config = self.assembly_configs[base_assembly_name]
@@ -440,11 +448,14 @@ class Project(project_config.Configuration):
                 return None
 
             config = copy.deepcopy(config)
-            if not "parameters" in config or config["parameters"] is None:
+            if (
+                not "parameters" in config or config["parameters"] is None
+            ) and (config["type"] != "enrich"):
                 pc_logging.error(
-                    "Attempt to parametrize '%s' of '%s' which has no parameters",
+                    "Attempt to parametrize '%s' of '%s' which has no parameters: %s",
                     base_assembly_name,
                     self.name,
+                    str(config),
                 )
                 return None
 
@@ -456,29 +467,41 @@ class Project(project_config.Configuration):
 
             # Fill in the parameter values
             param_name: str
-            for param_name, param_value in params.items():
-                if config["parameters"][param_name]["type"] == "string":
-                    config["parameters"][param_name]["default"] = str(
-                        param_value
-                    )
-                elif config["parameters"][param_name]["type"] == "int":
-                    config["parameters"][param_name]["default"] = int(
-                        param_value
-                    )
-                elif config["parameters"][param_name]["type"] == "float":
-                    config["parameters"][param_name]["default"] = float(
-                        param_value
-                    )
-                elif config["parameters"][param_name]["type"] == "bool":
-                    if isinstance(param_value, str):
-                        if param_value.lower() == "true":
-                            config["parameters"][param_name]["default"] = True
-                        else:
-                            config["parameters"][param_name]["default"] = False
-                    else:
-                        config["parameters"][param_name]["default"] = bool(
+            if "parameters" in config and not config["parameters"] is None:
+                # Filling "parameters"
+                for param_name, param_value in params.items():
+                    if config["parameters"][param_name]["type"] == "string":
+                        config["parameters"][param_name]["default"] = str(
                             param_value
                         )
+                    elif config["parameters"][param_name]["type"] == "int":
+                        config["parameters"][param_name]["default"] = int(
+                            param_value
+                        )
+                    elif config["parameters"][param_name]["type"] == "float":
+                        config["parameters"][param_name]["default"] = float(
+                            param_value
+                        )
+                    elif config["parameters"][param_name]["type"] == "bool":
+                        if isinstance(param_value, str):
+                            if param_value.lower() == "true":
+                                config["parameters"][param_name][
+                                    "default"
+                                ] = True
+                            else:
+                                config["parameters"][param_name][
+                                    "default"
+                                ] = False
+                        else:
+                            config["parameters"][param_name]["default"] = bool(
+                                param_value
+                            )
+            else:
+                # Filling "with"
+                if not "with" in config:
+                    config["with"] = {}
+                for param_name, param_value in params.items():
+                    config["with"][param_name] = param_value
 
             # Now initialize the assembly
             pc_logging.debug(
@@ -488,7 +511,7 @@ class Project(project_config.Configuration):
             #     "Initializing a parametrized assembly using the following config: %s"
             #     % pformat(config)
             # )
-            self.init_assembly_by_config(config)
+            factory.instantiate("assembly", self.ctx, self, config)
 
             # See if it worked
             if not result_name in self.assemblies:

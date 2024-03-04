@@ -11,47 +11,68 @@ import typing
 
 from . import part_factory as pf
 from . import logging as pc_logging
+from .utils import resolve_resource_path
 
 
 class PartFactoryAlias(pf.PartFactory):
-    target_part: str
-    target_project: typing.Optional[str]
+    source_part_name: str
+    source_project_name: typing.Optional[str]
+    source: str
 
-    def __init__(self, ctx, project, part_config):
-        with pc_logging.Action("InitAlias", project.name, part_config["name"]):
-            super().__init__(ctx, project, part_config)
+    def __init__(self, ctx, source_project, target_project, part_config):
+        with pc_logging.Action(
+            "InitAlias", target_project.name, part_config["name"]
+        ):
+            super().__init__(ctx, source_project, target_project, part_config)
             # Complement the config object here if necessary
             self._create(part_config)
 
-            self.target_part = part_config["target"]
-            if "project" in part_config:
-                self.target_project = part_config["project"]
+            if "source" in part_config:
+                self.source_part_name = part_config["source"]
             else:
-                self.target_project = project.name
+                self.source_assembly_name = part_config["name"]
+                if not "project" in part_config:
+                    raise Exception(
+                        "Alias needs either the source part name or the source project name"
+                    )
 
-            pc_logging.debug(
-                "Initializing an alias to %s:%s"
-                % (self.target_project, self.target_part)
-            )
+            if "project" in part_config:
+                self.source_project_name = part_config["project"]
+                if (
+                    self.source_project_name == "this"
+                    or self.source_project_name == ""
+                ):
+                    self.source_project_name = source_project.name
+            else:
+                if ":" in self.source_part_name:
+                    self.source_project_name, self.source_part_name = (
+                        resolve_resource_path(
+                            source_project.name,
+                            self.source_part_name,
+                        )
+                    )
+                else:
+                    self.source_project_name = source_project.name
+            self.source = self.source_project_name + ":" + self.source_part_name
 
-            # Get the config of the part the alias points to
-            if self.target_project == "this":
-                self.part.desc = "Alias to %s" % self.target_part
+            if self.source_project_name == target_project.name:
+                self.part.desc = "Alias to %s" % self.source_part_name
             else:
                 self.part.desc = "Alias to %s from %s" % (
-                    self.target_part,
-                    self.target_project,
+                    self.source_part_name,
+                    self.source_project_name,
                 )
+
+            pc_logging.debug("Initializing an alias to %s" % self.source)
 
     def instantiate(self, part):
         with pc_logging.Action("Alias", part.project_name, part.name):
-            # TODO(clairbee): resolve the absolute package path?
 
-            target = self.ctx._get_part(self.target_part, self.target_project)
-            shape = target.shape
+            source = self.ctx._get_part(self.source)
+            shape = source.shape
             if not shape is None:
                 return shape
 
             self.ctx.stats_parts_instantiated += 1
 
-            return target.instantiate(part)
+            return source.instantiate(part)

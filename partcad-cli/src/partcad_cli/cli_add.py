@@ -37,7 +37,7 @@ def cli_help_add(subparsers):
         "kind",
         help="Type of the part",
         type=str,
-        choices=["cadquery", "build123d", "step", "stl", "3mf"],
+        choices=["cadquery", "build123d", "scad", "step", "stl", "3mf"],
     )
     parser_add_part.add_argument(
         "path",
@@ -63,17 +63,17 @@ def cli_help_add(subparsers):
 
 
 def cli_add(args, ctx):
-    prj = ctx.get_project(pc.THIS)
+    prj = ctx.get_project(pc.ROOT)
     prj.add_import(args.alias, args.location)
 
 
 def cli_add_part(args, ctx):
-    prj = ctx.get_project(pc.THIS)
+    prj = ctx.get_project(pc.ROOT)
     if prj.add_part(args.kind, args.path):
         Path(args.path).touch()
 
 
 def cli_add_assembly(args, ctx):
-    prj = ctx.get_project(pc.THIS)
+    prj = ctx.get_project(pc.ROOT)
     if prj.add_assembly(args.kind, args.path):
         Path(args.path).touch()

@@ -19,13 +19,21 @@ from . import logging as pc_logging
 
 
 class PartFactoryScad(pff.PartFactoryFile):
-    def __init__(self, ctx, project, part_config):
-        with pc_logging.Action("InitOpenSCAD", project.name, part_config["name"]):
-            super().__init__(ctx, project, part_config, extension=".scad")
+    def __init__(self, ctx, source_project, target_project, part_config):
+        with pc_logging.Action(
+            "InitOpenSCAD", target_project.name, part_config["name"]
+        ):
+            super().__init__(
+                ctx,
+                source_project,
+                target_project,
+                part_config,
+                extension=".scad",
+            )
             # Complement the config object here if necessary
             self._create(part_config)
 
-            self.project_dir = project.config_dir
+            self.project_dir = source_project.config_dir
 
     def instantiate(self, part):
         with pc_logging.Action("OpenSCAD", part.project_name, part.name):
@@ -37,8 +45,16 @@ class PartFactoryScad(pff.PartFactoryFile):
 
             stl_path = tempfile.mktemp(".stl")
             p = subprocess.run(
-                [scad_path, "--export-format", "binstl", "-o", stl_path, self.path],
+                [
+                    scad_path,
+                    "--export-format",
+                    "binstl",
+                    "-o",
+                    stl_path,
+                    self.path,
+                ],
                 capture_output=True,
+                # TODO(clairbee): cwd=self.project_dir,
             )
 
             shape = b3d.Mesher().read(stl_path)[0].wrapped

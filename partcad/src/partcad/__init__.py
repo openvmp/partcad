@@ -13,7 +13,7 @@ from .globals import (
     _partcad_context,
     render,
 )
-from .consts import THIS
+from .consts import *
 from .context import Context
 from .assembly import Assembly
 from .part import Part
@@ -25,6 +25,7 @@ from .plugins import plugins
 from .plugin_export_png_reportlab import PluginExportPngReportlab
 from .logging_ansi_terminal import init as logging_ansi_terminal_init
 from . import logging
+from . import utils
 
 __all__ = [
     "config",

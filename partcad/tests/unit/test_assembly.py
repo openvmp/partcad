@@ -14,10 +14,10 @@ import partcad as pc
 
 
 def test_assembly_primitive():
-    ctx = pc.init("partcad/tests/partcad-examples.yaml")
-    part1 = ctx._get_part("cube", "example_part_cadquery_primitive")
+    ctx = pc.init("examples")
+    part1 = ctx._get_part("/produce_part_cadquery_primitive:cube")
     assert part1 is not None
-    part2 = ctx._get_part("cylinder", "example_part_cadquery_primitive")
+    part2 = ctx._get_part("/produce_part_cadquery_primitive:cylinder")
     assert part2 is not None
 
     model = pc.Assembly({"name": "example1"})
@@ -29,8 +29,8 @@ def test_assembly_primitive():
 
 
 def test_assembly_example_assy_primitive():
-    ctx = pc.init("partcad/tests/partcad-examples.yaml")
-    primitive = ctx._get_assembly("primitive", "example_assembly_assy")
+    ctx = pc.init("examples")
+    primitive = ctx._get_assembly("/produce_assembly_assy:primitive")
     assert primitive is not None
     assert asyncio.run(primitive.get_shape()) is not None
     assert asyncio.run(primitive.get_cadquery()) is not None
@@ -38,8 +38,8 @@ def test_assembly_example_assy_primitive():
 
 
 def test_assembly_example_assy_logo():
-    ctx = pc.init("partcad/tests/partcad-examples.yaml")
-    logo = ctx._get_assembly("logo", "example_assembly_assy")
+    ctx = pc.init("examples")
+    logo = ctx._get_assembly("/produce_assembly_assy:logo")
     assert logo is not None
     assert asyncio.run(logo.get_shape()) is not None
     assert asyncio.run(logo.get_cadquery()) is not None
@@ -47,8 +47,8 @@ def test_assembly_example_assy_logo():
 
 
 def test_assembly_example_assy_logo_embedded():
-    ctx = pc.init("partcad/tests/partcad-examples.yaml")
-    logo = ctx._get_assembly("logo_embedded", "example_assembly_assy")
+    ctx = pc.init("examples")
+    logo = ctx._get_assembly("/produce_assembly_assy:logo_embedded")
     assert logo is not None
     assert asyncio.run(logo.get_shape()) is not None
     assert asyncio.run(logo.get_cadquery()) is not None
