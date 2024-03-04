@@ -88,30 +88,29 @@ def cli_help_list(subparsers):
 def cli_list(args, ctx):
     pkg_count = 0
 
-    projects = ctx.get_packages()
+    projects = ctx.get_all_packages()
+    projects = sorted(projects, key=lambda p: p["name"])
 
     # TODO(clairbee): remove the following workaround after replacing 'print'
     # with corresponding logging calls
     time.sleep(2)
 
-    print("PartCAD dependencies:")
+    output = "PartCAD packages:\n"
     for project in projects:
         project_name = project["name"]
-        if project_name == pc.THIS or project_name.startswith("partcad-"):
-            # Omit partcad-index's internal intermediate packages
-            continue
 
         line = "\t%s" % project_name
-        padding_size = 40 - len(project_name)
+        padding_size = 60 - len(project_name)
         if padding_size < 4:
             padding_size = 4
         line += " " * padding_size
         line += "%s" % project["desc"]
-        print(line)
+        output += line + "\n"
         pkg_count = pkg_count + 1
 
     if pkg_count < 1:
-        print("\t<none>")
+        output += "\t<none>\n"
+    pc.logging.info(output)
 
 
 def cli_list_parts(args, ctx):
@@ -119,14 +118,16 @@ def cli_list_parts(args, ctx):
     part_kinds = 0
 
     if args.used_by is not None:
-        print("Instantiating %s..." % args.used_by)
-        pc.get_assembly(args.used_by)
+        pc.logging.info("Instantiating %s..." % args.used_by)
+        ctx.get_assembly(args.used_by)
+    else:
+        ctx.get_all_packages()
 
     # TODO(clairbee): remove the following workaround after replacing 'print'
     # with corresponding logging calls
     time.sleep(2)
 
-    print("PartCAD parts:")
+    output = "PartCAD parts:\n"
     for project_name in ctx.projects:
         if (
             hasattr(args, "package")
@@ -135,7 +136,7 @@ def cli_list_parts(args, ctx):
         ):
             continue
 
-        if project_name != pc.THIS and (
+        if project_name != ctx.get_current_project_path() and (
             not args.recursive
             and hasattr(args, "package")
             and args.package is None
@@ -160,16 +161,17 @@ def cli_list_parts(args, ctx):
                 part_count = part_count + part.count
             line += " " + " " * (35 - len(part_name))
             line += "%s" % part.desc
-            print(line)
+            output += line + "\n"
             part_kinds = part_kinds + 1
 
     if part_kinds > 0:
         if args.used_by is None:
-            print("Total: %d" % part_kinds)
+            output += "Total: %d\n" % part_kinds
         else:
-            print("Total: %d parts of %d kinds" % (part_count, part_kinds))
+            output += "Total: %d parts of %d kinds\n" % (part_count, part_kinds)
     else:
-        print("\t<none>")
+        output += "\t<none>\n"
+    pc.logging.info(output)
 
 
 def cli_list_assemblies(args, ctx):
@@ -179,13 +181,15 @@ def cli_list_assemblies(args, ctx):
     if args.used_by is not None:
         print("Instantiating %s..." % args.used_by)
         # TODO(clairbee): do not call it twice in 'list-all'
-        pc.get_assembly(args.used_by)
+        ctx.get_assembly(args.used_by)
+    else:
+        ctx.get_all_packages()
 
     # TODO(clairbee): remove the following workaround after replacing 'print'
     # with corresponding logging calls
     time.sleep(2)
 
-    print("PartCAD assemblies:")
+    output = "PartCAD assemblies:\n"
     for project_name in ctx.projects:
         if (
             hasattr(args, "package")
@@ -194,7 +198,7 @@ def cli_list_assemblies(args, ctx):
         ):
             continue
 
-        if project_name != pc.THIS and (
+        if project_name != ctx.get_current_project_path() and (
             not args.recursive
             and hasattr(args, "package")
             and args.package is None
@@ -219,13 +223,17 @@ def cli_list_assemblies(args, ctx):
                 assy_count = assy_count + assy.count
             line += " " + " " * (35 - len(assy_name))
             line += "%s" % assy.desc
-            print(line)
+            output += line + "\n"
             assy_kinds = assy_kinds + 1
 
     if assy_kinds > 0:
         if args.used_by is None:
-            print("Total: %d" % assy_kinds)
+            output += "Total: %d\n" % assy_kinds
         else:
-            print("Total: %d assemblies of %d kinds" % (assy_count, assy_kinds))
+            output += "Total: %d assemblies of %d kinds\n" % (
+                assy_count,
+                assy_kinds,
+            )
     else:
-        print("\t<none>")
+        output += "\t<none>\n"
+    pc.logging.info(output)

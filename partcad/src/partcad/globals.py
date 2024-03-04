@@ -8,81 +8,103 @@
 
 import os
 import shutil
+import threading
 
 from .context import Context
 from .assembly import Assembly
+from .assembly_factory_assy import AssemblyFactoryAssy
+from .assembly_factory_alias import AssemblyFactoryAlias
 from .part import Part
 from . import consts
+from . import factory
 
 # from . import logging as pc_logging
 
 global _partcad_context
 _partcad_context = None
+_partcad_context_lock = threading.Lock()
+
+factory.register("assembly", "assy", AssemblyFactoryAssy)
+factory.register("assembly", "alias", AssemblyFactoryAlias)
 
 
-def init(config_path=".") -> Context:
+def init(config_path=None) -> Context:
     """Initialize the default context explicitly using the desired path."""
     global _partcad_context
     global _partcad_context_path
+    global _partcad_context_lock
 
-    if _partcad_context is None:
-        # pc_logging.debug("Initializing (%s)..." % __name__)
+    with _partcad_context_lock:
+        if _partcad_context is None:
+            _partcad_context_path = config_path
+            _partcad_context = Context(config_path)
+            return _partcad_context
 
-        _partcad_context = Context(config_path)
-        _partcad_context_path = config_path
-    # else:
-    #     # The below is useful to troubleshoot common pitfalls.
-    #     # But it's not really wrong, and in some cases it's a desired bahavior.
-    #     if _partcad_context_path != config_path:
-    #         pc_logging.error("Multiple context configurations")
-    #         raise Exception("partcad: multiple context configurations")
+    if _partcad_context_path == config_path:
+        return _partcad_context
 
-    return _partcad_context
+    return Context(config_path)
 
 
 def fini():
     global _partcad_context
     global _partcad_context_path
+    global _partcad_context_lock
 
-    _partcad_context = None
-    _partcad_context_path = None
+    with _partcad_context_lock:
+        _partcad_context = None
+        _partcad_context_path = None
 
 
-def get_assembly(assembly_name, project_name=consts.THIS, params=None) -> Assembly:
+def get_assembly(assembly_name, project_name=None, params=None) -> Assembly:
     """Get the assembly from the given project"""
     if project_name is None:
-        project_name = consts.THIS
+        project_name = consts.ROOT
     return init().get_assembly(assembly_name, project_name, params=params)
 
-def get_assembly_cadquery(assembly_name, project_name=consts.THIS, params=None) -> Assembly:
+
+def get_assembly_cadquery(
+    assembly_name, project_name=None, params=None
+) -> Assembly:
     """Get the assembly from the given project"""
     if project_name is None:
-        project_name = consts.THIS
-    return init().get_assembly_cadquery(assembly_name, project_name, params=params)
+        project_name = consts.ROOT
+    return init().get_assembly_cadquery(
+        assembly_name, project_name, params=params
+    )
 
-def get_assembly_build123d(assembly_name, project_name=consts.THIS, params=None) -> Assembly:
+
+def get_assembly_build123d(
+    assembly_name, project_name=None, params=None
+) -> Assembly:
     """Get the assembly from the given project"""
     if project_name is None:
-        project_name = consts.THIS
-    return init().get_assembly_build123d(assembly_name, project_name, params=params)
+        project_name = consts.ROOT
+    return init().get_assembly_build123d(
+        assembly_name, project_name, params=params
+    )
 
 
-def get_part(part_name, project_name=consts.THIS, params=None) -> Part:
+def get_part(part_name, project_name=None, params=None) -> Part:
     """Get the part from the given project"""
     if project_name is None:
-        project_name = consts.THIS
+        project_name = consts.ROOT
     return init().get_part(part_name, project_name, params=params)
 
-def get_part_cadquery(part_name, project_name=consts.THIS, params=None) -> Part:
+
+def get_part_cadquery(part_name, project_name=None, params=None) -> Part:
     """Get the part from the given project"""
     if project_name is None:
-        project_name = consts.THIS
+        project_name = consts.ROOT
     return init().get_part_cadquery(part_name, project_name, params=params)
 
-def get_part_build123d(part_name, project_name=consts.THIS, params=None) -> Part:
+
+def get_part_build123d(
+    part_name, project_name=consts.ROOT, params=None
+) -> Part:
     """Get the part from the given project"""
     if project_name is None:
-        project_name = consts.THIS
+        project_name = consts.ROOT
     return init().get_part_build123d(part_name, project_name, params=params)
 
 
@@ -95,7 +117,9 @@ def create_package(dst_path=consts.DEFAULT_PACKAGE_CONFIG, private=False):
         template_name = "init-private.yaml"
     else:
         template_name = "init-public.yaml"
-    src_path = os.path.join(os.path.dirname(__file__), "template", template_name)
+    src_path = os.path.join(
+        os.path.dirname(__file__), "template", template_name
+    )
 
     if os.path.exists(dst_path):
         return False

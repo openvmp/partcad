@@ -39,6 +39,15 @@ def cli_help_render(subparsers: argparse.ArgumentParser):
         choices=["svg", "png", "step", "stl", "3mf", "threejs", "obj"],
     )
 
+    parser_render.add_argument(
+        "-P",
+        "--package",
+        help="Package to retrieve the object from",
+        type=str,
+        dest="package",
+        default="",
+    )
+
     group_type = parser_render.add_mutually_exclusive_group(required=False)
     group_type.add_argument(
         "-a",
@@ -56,12 +65,6 @@ def cli_help_render(subparsers: argparse.ArgumentParser):
     parser_render.add_argument(
         "object",
         help="Part (default), assembly or scene to render",
-        type=str,
-        nargs="?",
-    )
-    parser_render.add_argument(
-        "package",
-        help="Package to retrieve the object from",
         type=str,
         nargs="?",
     )

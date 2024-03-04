@@ -1,7 +1,16 @@
-######################
-Implementation details
+Implementation Details
 ######################
 
+The following information is useful for PartCAD contributors.
+
+================================
+Internal geometry representation
+================================
+
+PartCAD maintains parts as OCCT objects. Similar to ``wrapped`` objects found
+in ``CadQuery`` and ``build123d``.
+
+===========
 Parallelism
 ===========
 

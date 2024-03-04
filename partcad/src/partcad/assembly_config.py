@@ -18,6 +18,6 @@ class AssemblyConfiguration(ShapeConfiguration):
     def normalize(name, config):
         if isinstance(config, str):
             # This is a short form alias
-            config = {"type": "alias", "target": config}
+            config = {"type": "alias", "source": config}
 
         return ShapeConfiguration.normalize(name, config)

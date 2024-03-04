@@ -22,28 +22,48 @@ from .logging import ops
 def ansi_process_start(op: str, package: str, item: str = None):
     logging.getLogger("partcad").critical(
         "process_start: %s: %s: %s" % (op, package, item),
-        extra={"pc_event": "process_start", "op": op, "package": package, "item": item},
+        extra={
+            "pc_event": "process_start",
+            "op": op,
+            "package": package,
+            "item": item,
+        },
     )
 
 
 def ansi_process_end(op: str, package: str, item: str = None):
     logging.getLogger("partcad").critical(
         "process_end: %s: %s: %s" % (op, package, item),
-        extra={"pc_event": "process_end", "op": op, "package": package, "item": item},
+        extra={
+            "pc_event": "process_end",
+            "op": op,
+            "package": package,
+            "item": item,
+        },
     )
 
 
 def ansi_action_start(op: str, package: str, item: str = None):
     logging.getLogger("partcad").critical(
         "action_start: %s: %s: %s" % (op, package, item),
-        extra={"pc_event": "action_start", "op": op, "package": package, "item": item},
+        extra={
+            "pc_event": "action_start",
+            "op": op,
+            "package": package,
+            "item": item,
+        },
     )
 
 
 def ansi_action_end(op: str, package: str, item: str = None):
     logging.getLogger("partcad").critical(
         "action_end: %s: %s: %s" % (op, package, item),
-        extra={"pc_event": "action_end", "op": op, "package": package, "item": item},
+        extra={
+            "pc_event": "action_end",
+            "op": op,
+            "package": package,
+            "item": item,
+        },
     )
 
 
@@ -76,7 +96,7 @@ class AnsiTerminalProgressHandler(logging.Handler):
 
     def run_thread(self):
         while not self.process is None:
-            time.sleep(1.0)
+            time.sleep(0.25)
             if time.time() - self.last_output > 0.5:
                 self.emit(None)
 
@@ -168,16 +188,21 @@ class AnsiTerminalProgressHandler(logging.Handler):
         if not self.process is None:
             seconds = int(now - self.process_start)
 
-            output += "\033[92m\033[1m[ %d / %d ]\033[0m \033[1m%s\033[0m %s; %ds\n" % (
-                self.actions_running,
-                self.actions_total,
-                self.process,
-                self.process_target,
-                seconds,
+            output += (
+                "\033[92m\033[1m[ %d / %d ]\033[0m \033[1m%s\033[0m %s; %ds\n"
+                % (
+                    self.actions_running,
+                    self.actions_total,
+                    self.process,
+                    self.process_target,
+                    seconds,
+                )
             )
             self.footer_size = 1
 
-            sorted_actions = sorted(self.actions.values(), key=lambda a: a["start"])
+            sorted_actions = sorted(
+                self.actions.values(), key=lambda a: a["start"]
+            )
             sorted_actions = sorted_actions[: self.MAX_LINES]
             for action in sorted_actions:
                 output += "\t\033[1m[%s]\033[0m %s [%ds]\n" % (

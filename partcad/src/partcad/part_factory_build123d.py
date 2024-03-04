@@ -23,9 +23,11 @@ from cq_serialize import (
 
 
 class PartFactoryBuild123d(pfp.PartFactoryPython):
-    def __init__(self, ctx, project, part_config):
-        with pc_logging.Action("InitBuild123d", project.name, part_config["name"]):
-            super().__init__(ctx, project, part_config)
+    def __init__(self, ctx, source_project, target_project, part_config):
+        with pc_logging.Action(
+            "InitBuild123d", target_project.name, part_config["name"]
+        ):
+            super().__init__(ctx, source_project, target_project, part_config)
             # Complement the config object here if necessary
             self._create(part_config)
 

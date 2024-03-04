@@ -1,0 +1,32 @@
+links:
+  {% for x in [0, (param_length - 12.0)*25.4] %}
+  {% for y in [0, (param_width  - 12.0)*25.4] %}
+  - part: leg
+    location: [[{{x}}, {{y}}, 0], [1, 0, 0], 0]
+    params:
+      length: {{ param_height }}
+  {% endfor %}
+  {% endfor %}
+
+  {% for x in [0, (param_length - 12.0 + (3.5-1.5))*25.4] %}
+  - part: side-support
+    name: side-y
+    location: [[{{x}}, {{ 3.5*25.4 }}, 0], [1, 0, 0], 0]
+    params:
+      length: {{ param_width - 15.5 }}
+  {% endfor %}
+
+  {% for y in [0, (param_width - 12.0 + (3.5-1.5))*25.4] %}
+  - part: side-support
+    name: side-x
+    location: [[{{ 3.5*25.4 }}, {{y + 1.5*25.4}}, 0], [0, 0, 1], -90]
+    params:
+      length: {{ param_length - 15.5 }}
+  {% endfor %}
+
+  - part: table-top
+    location: [[-{{4.25*25.4}}, -{{4.25*25.4}}, 0], [0, 0, 1], 0]
+    params:
+      length: {{ param_width }}
+      width: {{ param_length }}
+  

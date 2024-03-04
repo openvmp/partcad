@@ -1,0 +1,48 @@
+desc: Demonstrates the use of "enrich"
+
+parts:
+  leg:
+    type: enrich
+    source: /pub/pc-std-imperial/pc-std-imperial-dimensional-lumber:lumber
+    with:
+      # 4x4
+      height: 4
+      width: 4
+    offset: [[0, 0, 0], [1, 0, 0], 90]
+  side-support:
+    type: enrich
+    source: /pub/pc-std-imperial/pc-std-imperial-dimensional-lumber:lumber
+    with:
+      # 2x6
+      height: 2
+      width: 6
+    offset: [[0, 0, 0], [0, 1, 0], -90]
+  table-top:
+    type: enrich
+    source: /pub/pc-std-imperial/pc-std-imperial-dimensional-lumber:plywood
+
+assemblies:
+  desk-no-enrich:
+    type: assy
+    parameters:
+      length:
+        type: float
+        default: 72
+      width:
+        type: float
+        default: 36
+      height:
+        type: float
+        default: 48
+  desk-enrich:
+    type: assy
+    parameters:
+      length:
+        type: float
+        default: 72
+      width:
+        type: float
+        default: 36
+      height:
+        type: float
+        default: 48

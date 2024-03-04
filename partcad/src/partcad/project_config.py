@@ -28,13 +28,16 @@ class Configuration:
         self.config_path = config_path
 
         if os.path.isdir(config_path):
-            self.config_path = os.path.join(config_path, DEFAULT_CONFIG_FILENAME)
+            self.config_path = os.path.join(
+                config_path, DEFAULT_CONFIG_FILENAME
+            )
         else:
             self.config_dir = os.path.dirname(os.path.abspath(config_path))
 
         if not os.path.isfile(self.config_path):
             pc_logging.error(
-                "PartCAD configuration file is not found: '%s'" % self.config_path
+                "PartCAD configuration file is not found: '%s'"
+                % self.config_path
             )
             return
 
@@ -56,6 +59,9 @@ class Configuration:
             self.config_obj = yaml.safe_load(config)
         if self.config_path.endswith(".json"):
             self.config_obj = json.load(config)
+
+        if self.config_obj is None:
+            self.config_obj = {}
 
         self.config_obj["name"] = name
 

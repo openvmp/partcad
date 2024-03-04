@@ -13,46 +13,74 @@ import typing
 from . import part_config
 from . import part_factory as pf
 from . import logging as pc_logging
+from .utils import resolve_resource_path
 
 
 class PartFactoryEnrich(pf.PartFactory):
-    target_part: str
-    target_project: typing.Optional[str]
+    source_part_name: str
+    source_project_name: typing.Optional[str]
+    source: str
 
-    def __init__(self, ctx, project, config):
-        with pc_logging.Action("Enrich", project.name, config["name"]):
-            super().__init__(ctx, project, config)
+    def __init__(self, ctx, source_project, target_project, config):
+        with pc_logging.Action(
+            "InitEnrich", target_project.name, config["name"]
+        ):
+            super().__init__(ctx, source_project, target_project, config)
 
             # Determine the part the 'enrich' points to
-            # TODO(clairbee): refactor this using the resource locator when available
-            self.target_part = config["target"]
-            if "project" in config:
-                self.target_project = config["project"]
+            if "source" in config:
+                self.source_part_name = config["source"]
             else:
-                self.target_project = None
+                self.source_part_name = config["name"]
+                if not "project" in config:
+                    raise Exception(
+                        "Enrich needs either the source part name or the source project name"
+                    )
 
-            pc_logging.debug(
-                "Initializing an enrich to %s:%s"
-                % (self.target_project, self.target_part)
-            )
+            if "project" in config:
+                self.source_project_name = config["project"]
+                if (
+                    self.source_project_name == "this"
+                    or self.source_project_name == ""
+                ):
+                    self.source_project_name = source_project.name
+            else:
+                if ":" in self.source_part_name:
+                    self.source_project_name, self.source_part_name = (
+                        resolve_resource_path(
+                            source_project.name,
+                            self.source_part_name,
+                        )
+                    )
+                else:
+                    self.source_project_name = source_project.name
+            self.source = self.source_project_name + ":" + self.source_part_name
+
+            pc_logging.debug("Initializing an enrich to %s" % self.source)
 
             # Get the config of the part the 'enrich' points to
-            if self.target_project is None:
-                augmented_config = project.get_part_config(self.target_part)
+            orig_source_project = source_project
+            if self.source_project_name == source_project.name:
+                augmented_config = source_project.get_part_config(
+                    self.source_part_name
+                )
             else:
-                augmented_config = ctx.get_project(self.target_project).get_part_config(
-                    self.target_part
+                source_project = ctx.get_project(self.source_project_name)
+                augmented_config = source_project.get_part_config(
+                    self.source_part_name
                 )
             if augmented_config is None:
                 pc_logging.error(
-                    "Failed to find the part to enrich: %s" % self.target_part
+                    "Failed to find the part to enrich: %s"
+                    % self.source_part_name
                 )
                 return
 
             augmented_config = copy.deepcopy(augmented_config)
             # TODO(clairbee): ideally whatever we pull from the project is already normalized
             augmented_config = part_config.PartConfiguration.normalize(
-                self.target_part, augmented_config
+                self.source_part_name,
+                augmented_config,
             )
 
             # Drop fields we don't want to be inherited by enriched clones
@@ -67,7 +95,7 @@ class PartFactoryEnrich(pf.PartFactory):
                     prop_to_copy == "type"
                     or prop_to_copy == "path"
                     or prop_to_copy == "orig_name"
-                    or prop_to_copy == "target"
+                    or prop_to_copy == "source"
                     or prop_to_copy == "project"
                     or prop_to_copy == "with"
                 ):
@@ -77,8 +105,10 @@ class PartFactoryEnrich(pf.PartFactory):
             # Fill in the parameter values using the simplified "with" option
             if "with" in config:
                 for param in config["with"]:
-                    augmented_config["parameters"][param]["default"] = config["with"][
-                        param
-                    ]
-
-            project.init_part_by_config(augmented_config)
+                    augmented_config["parameters"][param]["default"] = config[
+                        "with"
+                    ][param]
+            orig_source_project.init_part_by_config(
+                augmented_config,
+                source_project,
+            )

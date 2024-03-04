@@ -16,12 +16,12 @@ import partcad as pc
 def test_part_enrich_get_1():
     """Load a CadQuery part using enrichment for parameters and see if the origin is intact"""
     ctx = pc.Context("examples/produce_part_cadquery_primitive")
-    brick = ctx._get_part("brick", "this")
+    brick = ctx._get_part(":brick")
     assert brick is not None
     assert asyncio.run(brick.get_wrapped()) is not None
 
     # Check whether the original part is stil ok or not
-    cube_config = ctx.get_project("this").get_part_config("cube")
+    cube_config = ctx.get_project(".").get_part_config("cube")
     assert cube_config["name"] == "cube"
     assert cube_config["parameters"]["width"]["default"] == 10.0
 
@@ -29,7 +29,7 @@ def test_part_enrich_get_1():
 def test_part_enrich_get_2():
     """Load a CadQuery part using enrichment for parameters and see if the parameters changed"""
     ctx = pc.Context("examples/produce_part_cadquery_primitive")
-    brick = ctx._get_part("brick", "this")
+    brick = ctx._get_part(":brick")
     assert brick is not None
     assert asyncio.run(brick.get_wrapped()) is not None
 
@@ -41,7 +41,7 @@ def test_part_enrich_get_2():
 # def test_part_enrich_get_3():
 #     """Load a CadQuery part using enrichment for parameters and see if the parameters changed"""
 #     ctx = pc.Context("examples/produce_part_cadquery_primitive")
-#     brick = ctx._get_part("brick2", "this")
+#     brick = ctx._get_part(":brick2")
 #     assert brick is not None
 #     assert asyncio.run(brick.get_wrapped()) is not None
 

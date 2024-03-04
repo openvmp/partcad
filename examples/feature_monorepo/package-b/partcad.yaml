@@ -1,0 +1,6 @@
+parts:
+  cylinder:
+    type: cadquery
+    path: cylinder.py
+    desc: This is a cylinder from examples
+

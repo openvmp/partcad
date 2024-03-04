@@ -18,7 +18,7 @@ class PartConfiguration(ShapeConfiguration):
     def normalize(name, config):
         if isinstance(config, str):
             # This is a short form alias
-            config = {"type": "alias", "target": config}
+            config = {"type": "alias", "source": config}
 
         if "parameters" in config:
             for param_name, param_value in config["parameters"].items():
@@ -44,7 +44,9 @@ class PartConfiguration(ShapeConfiguration):
                         "default": param_value,
                     }
                 # All params are float unless another type is explicitly speciifed
-                elif isinstance(param_value, dict) and not "type" in param_value:
+                elif (
+                    isinstance(param_value, dict) and not "type" in param_value
+                ):
                     param_value["type"] = "float"
 
         return ShapeConfiguration.normalize(name, config)

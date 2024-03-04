@@ -8,7 +8,7 @@ import:
   #         relPath: <relative path within the repo>  # type:git|tar only
   #         web: <package's or maintainer's url>      # optional
   #         poc: <maintainer's email>                 # optional
-  partcad-index:
+  pub:
     type: git
     url: https://github.com/openvmp/partcad-index.git
 

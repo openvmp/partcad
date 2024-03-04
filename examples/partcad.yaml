@@ -1,0 +1,16 @@
+#
+# OpenVMP, 2023
+#
+# Author: Roman Kuzmenko
+# Created: 2023-08-19
+#
+# Licensed under Apache License, Version 2.0.
+#
+
+# Repo used by some built-in tests
+
+import:
+  pub:
+    type: git
+    url: https://github.com/openvmp/partcad-index.git
+  # The subdirectories automatically become "local" imports

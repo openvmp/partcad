@@ -1,0 +1,4 @@
+parts:
+  cube:
+    type: cadquery
+    desc: This is a cube from examples
