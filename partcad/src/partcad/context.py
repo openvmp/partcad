@@ -33,7 +33,7 @@ class Context(project_config.Configuration):
     stats_assemblies_instantiated: int
     stats_memory: int
 
-    def __init__(self, root_path=None):
+    def __init__(self, root_path=None, search_root=True):
         """Initializes the context and imports the root project."""
         root_file = ""
         if root_path is None:
@@ -44,8 +44,9 @@ class Context(project_config.Configuration):
                 root_file = os.path.basename(root_path)
                 root_path = os.path.dirname(root_path)
         initial_root_path = os.path.abspath(root_path)
-        while os.path.exists(os.path.join(root_path, "..", "partcad.yaml")):
-            root_path = os.path.join(root_path, "..")
+        if search_root:
+            while os.path.exists(os.path.join(root_path, "..", "partcad.yaml")):
+                root_path = os.path.join(root_path, "..")
         self.root_path = os.path.abspath(root_path)
         if self.root_path == initial_root_path and root_file != "":
             self.root_path = os.path.join(self.root_path, root_file)
