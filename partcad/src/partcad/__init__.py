@@ -24,6 +24,7 @@ from .user_config import user_config
 from .plugins import plugins
 from .plugin_export_png_reportlab import PluginExportPngReportlab
 from .logging_ansi_terminal import init as logging_ansi_terminal_init
+from .logging_ansi_terminal import fini as logging_ansi_terminal_fini
 from . import logging
 from . import utils
 

@@ -148,6 +148,9 @@ def main():
     except:
         pc.logging.exception("PartCAD CLI exception")
 
+    if not args.no_ansi:
+        pc.logging_ansi_terminal_fini()
+
 
 if __name__ == "__main__":
     main()

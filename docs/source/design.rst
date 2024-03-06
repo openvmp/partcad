@@ -1,7 +1,7 @@
 Design
 ######
 
-.. image:: ./architecture.png
+.. image:: ./images/architecture.png
 
 =========================
 Standards and conventions
