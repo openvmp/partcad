@@ -1,9 +1,8 @@
 desc: Demonstrates the use of "enrich"
-
 parts:
   leg:
     type: enrich
-    source: /pub/pc-std-imperial/pc-std-imperial-dimensional-lumber:lumber
+    source: /pub/std/imperial/dimensional-lumber:lumber
     with:
       # 4x4
       height: 4
@@ -11,7 +10,7 @@ parts:
     offset: [[0, 0, 0], [1, 0, 0], 90]
   side-support:
     type: enrich
-    source: /pub/pc-std-imperial/pc-std-imperial-dimensional-lumber:lumber
+    source: /pub/std/imperial/dimensional-lumber:lumber
     with:
       # 2x6
       height: 2
@@ -19,7 +18,7 @@ parts:
     offset: [[0, 0, 0], [0, 1, 0], -90]
   table-top:
     type: enrich
-    source: /pub/pc-std-imperial/pc-std-imperial-dimensional-lumber:plywood
+    source: /pub/std/imperial/dimensional-lumber:plywood
 
 assemblies:
   desk-no-enrich:
