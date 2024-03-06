@@ -17,8 +17,7 @@ from .assembly_factory_alias import AssemblyFactoryAlias
 from .part import Part
 from . import consts
 from . import factory
-
-# from . import logging as pc_logging
+from . import logging as pc_logging
 
 global _partcad_context
 _partcad_context = None
@@ -100,6 +99,7 @@ def create_package(dst_path=consts.DEFAULT_PACKAGE_CONFIG, private=False):
     )
 
     if os.path.exists(dst_path):
+        pc_logging.error("File already exists: %s" % dst_path)
         return False
     shutil.copyfile(src_path, dst_path)
 

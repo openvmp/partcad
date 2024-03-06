@@ -24,6 +24,7 @@ exclude_patterns = ["docs/build", "_build", ".git"]
 
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
+html_logo = 'images/logo.png'
 
 
 source_suffix = ".rst"

@@ -38,4 +38,3 @@ def cli_init(args):
 
     if not pc.create_package(dst_path, args.private):
         pc_logging.error("Failed creating '%s'!" % dst_path)
-        sys.exit(1)

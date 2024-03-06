@@ -135,11 +135,87 @@ Create a part
 -------------
 
 Click ``Add a CAD script`` in the Explorer view toolbar.
-Select the script type from the dropdown list. Then select the template to use.
+Select ``build123d`` from the dropdown list.
+Then select ``Example 3: Bead`` as the template to use.
 An editor view with the newly created script will be shown.
 
 Inspect the part
 ----------------
 
+When you edit Python or OpenSCAD files that are used in the current
+PartCAD package, saving the file makes it displayed automatically.
 Press ``Save`` (Ctrl-S or Cmd-S) to save the script and to trigger an automatic
 inspection of the part. ``OCP CAD Viewer`` view will appear on the right.
+
+Import parts part
+-----------------
+
+In case you want to use existing PartCAD parts in the design of your part,
+then follow the following steps.
+
+First, select the part you want to use in the PartCAD Explorer view.
+Then, add the following to the ``build123d`` script created during the previous
+steps of this tutorial:
+
+  .. code-block:: python
+
+    import partcad as pc
+
+    other_part = pc.get_
+
+Please, note, that after "``pc.get_"`` a code completion suggestion appears.
+Use the suggested code completion option to insert the code that adds
+the selected part to this ``build123d`` script.
+
+Here is an example how to use the newly added solid:
+
+  .. code-block:: python
+
+    ...
+    # After "with BuildPart"
+    art = Compound([art, other_part])
+    # Before "show_object"
+    ...
+
+
+Create an assembly
+------------------
+
+This is what PartCAD (or, at least, its VS Code Extension) is actually for.
+
+Click ``Add an assembly file to the current package`` in the PartCAD Explorer
+view. After that select and existing assembly file (`*.assy`) or enter a
+filename for the new file to be created.
+
+ASSY (Assembly YAML) files use the YAML syntax.
+The list of parts has to be added as children under the ``links`` node.
+Here is how an empty assembly file looks like:
+
+  .. code-block:: yaml
+
+    links:
+
+Add a part to the assembly
+--------------------------
+
+Select the desired part or assembly in PartCAD Explorer.
+After that navigate to the next line under "``links:``" and type "- pa"
+(which is what you do when you want to add a child item with the name "part")
+and, then, select the code completion suggestion from PartCAD.
+
+.. image:: ./images/assy-autocompletion.png
+  :width: 60%
+
+This will add the selected part or assembly to the assembly file.
+
+.. image:: ./images/assy-autocompletion-done.png
+  :width: 60%
+
+Inspect the assembly
+--------------------
+
+When you edit ASSY files that are used in the current PartCAD package,
+saving the file makes it displayed automatically.
+Press ``Save`` (Ctrl-S or Cmd-S) to save the assembly file and to trigger an
+automatic inspection of the assembly. ``OCP CAD Viewer`` view will appear on
+the right if it's not open yet.
