@@ -6,9 +6,9 @@ Installation
 Command line tools
 ==================
 
-PartCAD command lines tools are implemented in Python and, in theory,
-available on all platforms where Python is available. However it is only getting
-tested on Linux, MacOS and Windows.
+PartCAD command line tools are implemented in Python and, in theory,
+available on all platforms where Python is available. However, it is only
+getting tested on Linux, MacOS and Windows.
 
   .. code-block:: shell
 
@@ -28,8 +28,8 @@ The commands and options supported by PartCAD CLI:
         add                 Import a package
         add-part            Add a part
         add-assembly        Add an assembly
-        init                Initialize new PartCAD package in this directory
-        info                Show detailed info a part, assembly or scene
+        init                Initialize a new PartCAD package in this directory
+        info                Show detailed info on a part, assembly or scene
         install             Download and prepare all imported packages
         update              Update all imported packages
         list                List imported packages
@@ -51,7 +51,7 @@ The commands and options supported by PartCAD CLI:
 Python module
 =============
 
-PartCAD provides a Python modules that can be used in CAD as code scripts
+PartCAD provides Python modules that can be used in CAD as code scripts
 (such as CadQuery and build123d). It is a dependency for `partcad-cli` so it
 doesn't usually need to be installed separately.
 

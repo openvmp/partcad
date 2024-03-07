@@ -5,9 +5,9 @@ Troubleshooting
 Command Line
 ============
 
-The most basic (though not the most convinient) way to troubleshoot PartCAD
-configuration, model declarations and definitions is by using a command line
-interface.
+The command line interface is
+the most basic (though not the most convenient) way to troubleshoot PartCAD
+configuration, model declarations and definitions.
 
 The status of PartCAD context can be evaluated using the ``status`` command.
 
@@ -24,7 +24,7 @@ PartCAD VSCode Extension
 ========================
 
 The recommended way to use PartCAD is by using the Visual Studio Extension
-called ``PartCAD``. Follow the extension documentation for instructions how
+called ``PartCAD``. Follow the extension documentation for instructions on how
 to use this extension.
 
 For troubleshooting purposes, the ``PartCAD`` terminal view output may not

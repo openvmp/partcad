@@ -2,7 +2,7 @@
 
 ## Publish (produce) models
 
-There are many way to produce a PartCAD model that can be consumed by others.
+There are many ways to produce a PartCAD model that can be consumed by others.
 
 - Import parts defined using Python CAD frameworks:
   - [Primitive shapes using CadQuery](./produce_part_cadquery_primitive/)
@@ -22,10 +22,10 @@ There are many way to produce a PartCAD model that can be consumed by others.
 There are many ways to consume existing modules:
 
 - CLI: Export the model to a file:
-  - `pc render -p -t step <part> [<package>]`
+  - `pc render -t step [<package-path>]:<part>`
 
 - Visual Studio Code:  Show the model in OCP CAD Viewer:
-  - `pc show <part> [<package>]`
+  - `pc inspect [<package-path>]:<part>`
 
 - Python scripts that use CadQuery:
   - [Import PartCAD parts in CadQuery scripts](./consume_cadquery/)
@@ -33,11 +33,11 @@ There are many ways to consume existing modules:
 - Python scripts that use buid123d:
   - [Import PartCAD parts in buid123d scripts](./consume_build123d/)
 
-- Any other python script:
+- Any other Python script:
   - [Import PartCAD parts in Python scripts](./consume_standalone/)
 
 ## Features
 
-There are examples that showcase particular PartCAD feature:
+These examples showcase particular PartCAD features:
 
 - [Export to file](./feature_export)
