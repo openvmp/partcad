@@ -43,7 +43,7 @@ On Windows, PartCAD requires at least a `conda` environment.
 
 ## Architecture
 
-![Architecture](https://github.com/openvmp/partcad/blob/main/docs/source/architecture.png?raw=true)
+![Architecture](https://github.com/openvmp/partcad/blob/main/docs/source/images/architecture.png?raw=true)
 
 ## Tools for Mechanical Engineering
 
