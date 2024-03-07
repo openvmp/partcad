@@ -17,7 +17,7 @@ from partcad.utils import total_size
 def cli_help_info(subparsers):
     parser_info = subparsers.add_parser(
         "info",
-        help="Show detailed info a part, assembly or scene",
+        help="Show detailed info on a part, assembly or scene",
     )
 
     parser_info.add_argument(

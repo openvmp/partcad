@@ -12,7 +12,7 @@ First, the current directory needs to be initialized as a PartCAD package.
 
   .. code-block:: shell
 
-    # Initialize new PartCAD package in the current folder
+    # Initialize the new PartCAD package in the current folder
     pc init
 
 If there is no ``-p`` flag passed to ``pc init``
@@ -43,7 +43,7 @@ Manage dependencies
 PartCAD has to be provided with a configuration file which may declare parts and
 assemblies, but also declares all repositories that PartCAD is allowed to query.
 
-PartCAD has no implicit dependencies built in,
+PartCAD has no implicit dependencies built-in,
 so a dependency on the public PartCAD repository needs to be added
 if PartCAD is supposed to query it.
 
@@ -72,7 +72,7 @@ Now let's add a declaration of this part to ``partcad.yaml``.
 Inspect the part
 ----------------
 
-Once a part is created, it can be inspect in ``OCP CAD Viewer``.
+Once a part is created, it can be inspected in ``OCP CAD Viewer``.
 
   .. code-block:: shell
 
@@ -129,7 +129,13 @@ Browse
 ------
 
 Browse the imported packages in the Explorer view. Click on the parts and
-assemblies to see them in ``OCP CAD Viewer`` view that will appear on the right.
+assemblies to see them in the ``OCP CAD Viewer`` view that will appear on the
+right.
+
+For example, navigate to ``/pub/std/metric/cqwarehouse`` and click on some part
+(e.g. ``fastener/hexhead-din931``).
+The PartCAD Inspector view displays the part parameters.
+The parameter values can be changed and the part gets redrawn on ``Update``.
 
 Create a part
 -------------
@@ -144,8 +150,8 @@ Inspect the part
 
 When you edit Python or OpenSCAD files that are used in the current
 PartCAD package, saving the file makes it displayed automatically.
-Press ``Save`` (Ctrl-S or Cmd-S) to save the script and to trigger an automatic
-inspection of the part. ``OCP CAD Viewer`` view will appear on the right.
+Press ``Save`` (Ctrl-S or Cmd-S) to save the script and trigger an automatic
+inspection of the part. The ``OCP CAD Viewer`` view will appear on the right.
 
 Import parts part
 -----------------
@@ -167,7 +173,7 @@ Please, note, that after "``pc.get_"`` a code completion suggestion appears.
 Use the suggested code completion option to insert the code that adds
 the selected part to this ``build123d`` script.
 
-Here is an example how to use the newly added solid:
+Here is an example of how to use the newly added solid:
 
   .. code-block:: python
 
@@ -184,7 +190,7 @@ Create an assembly
 This is what PartCAD (or, at least, its VS Code Extension) is actually for.
 
 Click ``Add an assembly file to the current package`` in the PartCAD Explorer
-view. After that select and existing assembly file (`*.assy`) or enter a
+view. After that select an existing assembly file (`*.assy`) or enter a
 filename for the new file to be created.
 
 ASSY (Assembly YAML) files use the YAML syntax.
@@ -214,8 +220,8 @@ This will add the selected part or assembly to the assembly file.
 Inspect the assembly
 --------------------
 
-When you edit ASSY files that are used in the current PartCAD package,
-saving the file makes it displayed automatically.
-Press ``Save`` (Ctrl-S or Cmd-S) to save the assembly file and to trigger an
-automatic inspection of the assembly. ``OCP CAD Viewer`` view will appear on
+When you edit ASSY files in the current PartCAD package,
+the assembly is displayed automatically on save.
+Press ``Save`` (Ctrl-S or Cmd-S) to save the assembly file and trigger an
+automatic inspection of the assembly. The ``OCP CAD Viewer`` view will appear on
 the right if it's not open yet.

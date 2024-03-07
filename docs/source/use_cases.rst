@@ -19,28 +19,46 @@ Visual Studio Code extension
 ----------------------------
 
 The PartCAD extension is
-[available](https://marketplace.visualstudio.com/items?itemName=OpenVMP.partcad>)
+[available](https://marketplace.visualstudio.com/items?itemName=OpenVMP.partcad)
 in VS Code extension marketplace.
 
-### Command line tools
+Command line tools
+------------------
 
-Whether you consder to publish new CAD models or consume already existing ones,
-it makes senes to browse what's already available.
+Whether you consider publishing new CAD models or consuming already existing ones,
+it makes sense to browse what's already available.
 
 The PartCAD's integration into WebAssembly is not yet completed and, thus, there
 is currently no public website where you can browse the public PartCAD
 repository.
 
-The command line tools is the easiest way to browse parts:
+The command line tools are the easiest way to browse parts:
 
   .. code-block:: shell
 
-    pc init # to initialize new PartCAD package in the current folder
-    pc list # to list all available packages
-    pc list-parts -r # to list all parts in all available packages
-    pc list-assemblies -r # to list all assemblies in all available packages
-    pc info /pub/std/metric/cqwarehouse:fastener/screw-buttonhead
-    pc inspect /pub/std/metric/cqwarehouse:fastener/screw-buttonhead
+    # Initialize a new PartCAD package in the current folder
+    pc init
+
+    # List all available packages
+    pc list
+
+    # List all parts in all available packages
+    pc list-parts -r
+
+    # List all assemblies in all available packages
+    pc list-assemblies -r
+
+    # Try initializing the model, print some basic info without displaying it
+    pc info /pub/std/metric/cqwarehouse:fastener/hexhead-din931
+
+    # Display the model in OCP CAD Viewer
+    pc inspect /pub/std/metric/cqwarehouse:fastener/hexhead-din931
+
+    # Display the parametrized model
+    pc inspect \
+        -p length=30 \
+        -p size=M4-0.7 \
+        /pub/std/metric/cqwarehouse:fastener/hexhead-din931
 
 The last command displays the chosen part in
 ``OCP CAD Viewer`` view in Visual Studio Code.
@@ -100,7 +118,7 @@ STEP or 3MF files and, then, import them into the CAD Design GUI of your choice.
 Python: CadQuery
 ----------------
 
-Here are some examples how to fetch PartCAD models from within a ``CadQuery``
+Here are some examples of how to fetch PartCAD models from within a ``CadQuery``
 script:
 
   .. code-block:: python
@@ -109,7 +127,7 @@ script:
     import cadquery as cq
     import partcad as pc
     part = pc.get_part_cadquery(
-        "/pub/std/metric/cqwarehouse:fastener/screw-buttonhead",
+        "/pub/std/metric/cqwarehouse:fastener/hexhead-din931",
     )
     ...
     show_object(part)
@@ -137,7 +155,7 @@ script:
     import build123d as b3d
     import partcad as pc
     part = pc.get_part_build123d(
-        "/pub/std/metric/cqwarehouse:fastener/screw-buttonhead",
+        "/pub/std/metric/cqwarehouse:hexhead-din931",
     )
     ...
     show_object(part)
@@ -163,7 +181,7 @@ Python
     import partcad as pc
 
     part = pc.get_part(
-        "/pub/std/metric/cqwarehouse:fastener/screw-buttonhead",
+        "/pub/std/metric/cqwarehouse:fastener/hexhead-din931",
     )
     part.show()
 
@@ -199,13 +217,13 @@ shell
 Produce models
 ==============
 
-Files
------
+Part: Files
+-----------
 
 One way to define parts in PartCAD is by providing a file in any of the currently
 supported formats: STEP, STL, 3MF. There is no intention to limit the list of
 file formats supported. Contribute support of your favorite file format
-(ideally, iimplicitly, by adding the corresponding support to build123d).
+(ideally, implicitly, by adding the corresponding support to build123d).
 
    .. code-block:: yaml
 
@@ -218,8 +236,8 @@ file formats supported. Contribute support of your favorite file format
         part3:
             type: 3mf # part3.3mf is used
 
-CAD scripts
------------
+Part: CAD scripts
+-----------------
 
 Another way to define parts is by using CAD scripting technologies such
 as OpenSCAD. This is the only CAD scripting language supported at the moment.
@@ -234,10 +252,10 @@ parameters. However OpenSCAD parameters are not yet supported.
             type: scad # part1.scad is used
 
 
-Python scripts
---------------
+Part: Python scripts
+--------------------
 
-The best way to define parts is by using modelling frameworks such as
+The most powerful way to define parts is by using modeling frameworks such as
 CadQuery and build123d. PartCAD uses CQGI to load models
 (in other words: intercepts `show_object()` calls).
 
@@ -247,11 +265,11 @@ CadQuery and build123d. PartCAD uses CQGI to load models
     parts:
         part1:
             type: cadquery # part1.py is used
-        optiona-path/part2:
+        optional-path/part2:
             type: build123d # optional-path/part2.py is used
 
-Assemblies
-----------
+Assembly
+--------
 
   .. code-block:: yaml
 
@@ -264,22 +282,18 @@ Assemblies
 
     # logo.assy
     links:
-      - part: bone
-        package: example_part_cadquery_logo
+      - part: /produce_part_cadquery_logo:bone
         location: [[0,0,0], [0,0,1], 0]
-      - part: bone
-        package: example_part_cadquery_logo
+      - part: /produce_part_cadquery_logo:bone
         location: [[0,0,-2.5], [0,0,1], -90]
-      - part: head_half
-        package: example_part_cadquery_logo
-        name: head_half_1
-        location: [[0,0,27.5], [0,0,1], 0]
-      - part: head_half
-        package: example_part_cadquery_logo
-        name: head_half_2
-        location: [[0,0,25], [0,0,1], -90]
-      - part: bolt
-        package: example_part_step
+      - links:
+          - part: /produce_part_cadquery_logo:head_half
+            location: [[0,0,2.5], [0,0,1], 0]
+          - part: /produce_part_cadquery_logo:head_half
+            location: [[0,0,0], [0,0,1], -90]
+        location: [[0,0,25], [1,0,0], 0]
+      - part: /produce_part_step:bolt
+        package:
         location: [[0,0,7.5], [0,0,1], 0]
 
 ==============

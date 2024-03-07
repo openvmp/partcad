@@ -17,7 +17,7 @@ import partcad.logging as pc_logging
 def cli_help_init(subparsers):
     parser_init = subparsers.add_parser(
         "init",
-        help="Initialize new PartCAD package in this directory",
+        help="Initialize a new PartCAD package in this directory",
     )
     parser_init.add_argument(
         "-p",

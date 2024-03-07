@@ -11,9 +11,9 @@
 PartCAD is the first build system and package manager for CAD models,
 and a framework for creating assemblies.
 
-PartCAD allows to maintain information about mechanical parts,
+PartCAD allows maintenance information about mechanical parts,
 how they come together to form larger assemblies,
-and to reuse the same parts in multiple assemblies, multiple projects.
+and to reuse the same parts in multiple assemblies, and multiple projects.
 The implementation of parts can change over time
 (e.g. optimize or migrate to [build123d] from [STEP]) without the need to update
 all of the consumers.
@@ -45,10 +45,10 @@ On Windows, PartCAD requires at least a `conda` environment.
 
 ![Architecture](https://github.com/openvmp/partcad/blob/main/docs/source/architecture.png?raw=true)
 
-## Tools for mechanical engineering
+## Tools for Mechanical Engineering
 
-Here is an overview of the open source tools to maintain
-mechanical projects. It shows where does this framework fit
+Here is an overview of the open-source tools to maintain
+mechanical projects. It demonstrates where this framework fits
 in the modern mechanical development workflows.
 
 ```mermaid

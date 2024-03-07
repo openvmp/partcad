@@ -13,7 +13,7 @@ Packages
 All data in PartCAD is bundled into 'packages'.
 Packages are organized in a hierarchical structure where some packages may
 "import" a list of other packages.
-The top level package is called "/". If a package called "/package" imports a
+The top-level package is called "/". If a package called "/package" imports a
 child package called "sub-package" then such package will be called
 "/package/sub-package".
 
@@ -34,7 +34,7 @@ The configuration file syntax is as follows:
             desc: <(optional) textual description>
             type: <git|tar|local>
             path: <(local only) relative path>
-            url: <(git|tar only) url of the package>
+            url: <(git|tar only) URL of the package>
             relPath: <(git|tar only) relative path within the repository>
             revision: <(git only) the exact revision to import>
             web: <(optional) package or maintainer's url>
@@ -89,9 +89,9 @@ PartCAD has an evergrowing list of ways to define the part model:
 - `CadQuery <https://github.com/CadQuery/cadquery>`_
 - `build123d <https://github.com/gumyr/build123d>`_
 
-Parts are declared in ``partcad.yaml`` using the folowing syntax:
+Parts are declared in ``partcad.yaml`` using the following syntax:
 
-  .. code-block:: yaml 
+  .. code-block:: yaml
 
     parts:
       <part name>:
@@ -133,7 +133,7 @@ Here are some examples:
 
 Other methods to define parts are coming soon (e.g. `SDF <https://github.com/fogleman/sdf>`_).
 
-It is also possible to declare parts in ways that piggy back on parts that are
+It is also possible to declare parts in ways that piggyback on parts that are
 already defined elsewhere.
 
 +---------+----------------------------------------+----------------------------+
@@ -161,52 +161,64 @@ already defined elsewhere.
 Assemblies
 ----------
 
-Assemblies are parametrized instructions how to put parts and other
+Assemblies are parametrized instructions on how to put parts and other
 assemblies together.
 
-PartCAD is expected to have an ever growing list of ways to define assemblies
+PartCAD is expected to have an ever-growing list of ways to define assemblies
 using existing parts.
 However, at the moment, only one way is supported.
 It is called ASSY: assembly YAML.
-
 The idea behind ASSY is to create a simplistic way to enumerate parts,
-define their parameters and define how parts connect to each other.
+define their parameters and define how parts connect.
+
+Assemblies are declared in ``partcad.yaml`` using the following syntax:
+
+  .. code-block:: yaml
+
+    assemblies:
+      <assembly name>:
+        type: assy
+        path: <(optional) the source file path>
+        parameters:  # (optional)
+          <param name>:
+            type: <str|float|int|bool>
+            default: <default value>
+        offset: <OCCT Location object, e.g. "[[0,0,0], [0,0,1], 0]">
+
 Here is an example:
 
-+------------------------------------------+-------------------------------------------------------------------------------------------------------------------------+
-| Configuration                            | Result                                                                                                                  |
-+==========================================+=========================================================================================================================+
-| .. code-block:: yaml                     | .. image:: https://github.com/openvmp/partcad/blob/main/examples/produce_assembly_assy/logo.svg?raw=true                |
-|                                          |   :width: 400                                                                                                           |
-|   # partcad.yaml                         |                                                                                                                         |
-|   assemblies:                            |                                                                                                                         |
-|    logo:                                 |                                                                                                                         |
-|      type: assy                          |                                                                                                                         |
-|                                          |                                                                                                                         |
-|   # logo.assy                            |                                                                                                                         |
-|   links:                                 |                                                                                                                         |
-|   - part: bone                           |                                                                                                                         |
-|     package: example_part_cadquery_logo  |                                                                                                                         |
-|     location: [[0,0,0], [0,0,1], 0]      |                                                                                                                         |
-|   - part: bone                           |                                                                                                                         |
-|     package: example_part_cadquery_logo  |                                                                                                                         |
-|     location: [[0,0,-2.5], [0,0,1], -90] |                                                                                                                         |
-|   - part: head_half                      |                                                                                                                         |
-|     package: example_part_cadquery_logo  |                                                                                                                         |
-|     name: head_half_1                    |                                                                                                                         |
-|     location: [[0,0,27.5], [0,0,1], 0]   |                                                                                                                         |
-|   - part: head_half                      |                                                                                                                         |
-|     package: example_part_cadquery_logo  |                                                                                                                         |
-|     name: head_half_2                    |                                                                                                                         |
-|     location: [[0,0,25], [0,0,1], -90]   |                                                                                                                         |
-|   - part: bolt                           |                                                                                                                         |
-|     package: example_part_step           |                                                                                                                         |
-|     location: [[0,0,7.5], [0,0,1], 0]    |                                                                                                                         |
-+------------------------------------------+-------------------------------------------------------------------------------------------------------------------------+
++---------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------+
+| Configuration                                     | Result                                                                                                                  |
++===================================================+=========================================================================================================================+
+| .. code-block:: yaml                              | .. image:: https://github.com/openvmp/partcad/blob/main/examples/produce_assembly_assy/logo.svg?raw=true                |
+|                                                   |   :width: 400                                                                                                           |
+|   # partcad.yaml                                  |                                                                                                                         |
+|   assemblies:                                     |                                                                                                                         |
+|    logo:                                          |                                                                                                                         |
+|      type: assy                                   |                                                                                                                         |
+|                                                   |                                                                                                                         |
+|   # logo.assy                                     |                                                                                                                         |
+|   links:                                          |                                                                                                                         |
+|   - part: /produce_part_cadquery_logo:bone        |                                                                                                                         |
+|     location: [[0,0,0], [0,0,1], 0]               |                                                                                                                         |
+|   - part: /produce_part_cadquery_logo:bone        |                                                                                                                         |
+|     location: [[0,0,-2.5], [0,0,1], -90]          |                                                                                                                         |
+|   - links:                                        |                                                                                                                         |
+|     - part: /produce_part_cadquery_logo:head_half |                                                                                                                         |
+|       name: head_half_1                           |                                                                                                                         |
+|       location: [[0,0,2.5], [0,0,1], 0]           |                                                                                                                         |
+|     - part: /produce_part_cadquery_logo:head_half |                                                                                                                         |
+|       name: head_half_2                           |                                                                                                                         |
+|       location: [[0,0,0], [0,0,1], -90]           |                                                                                                                         |
+|     name: {{name}}_head                           |                                                                                                                         |
+|     location: [[0,0,25], [1,0,0], 0]              |                                                                                                                         |
+|   - part: /produce_part_step:bolt                 |                                                                                                                         |
+|     location: [[0,0,7.5], [0,0,1], 0]             |                                                                                                                         |
++---------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------+
 
-Other methods to define assemblies are coming soon (e.g. using ``CadQuery``s ``Assembly``).
+Other methods to define assemblies are coming soon (e.g. using ``CadQuery``).
 
-It is also possible to declare parts in ways that piggy back on parts that are
+It is also possible to declare parts in ways that piggyback on parts that are
 already defined elsewhere. Unfortunately, "enrich" is not yet implemented for
 assemblies.
 
@@ -255,6 +267,20 @@ The complete path of a part or assembly is the combination of the package path
 and the item name: ``<package-path>:<part-name>`` or
 ``<package-path>:<assembly-name>``.
 
+For parametrized parts, the parameter values can be appended to the part name
+after ``;``:
+
+  .. code-block:: shell
+
+    # Instead of:
+    pc inspect \
+        -p length=30 \
+        -p size=M4-0.7 \
+        /pub/std/metric/cqwarehouse:fastener/hexhead-din931
+
+    # Use this:
+    pc inspect /pub/std/metric/cqwarehouse:fastener/hexhead-din931;length=30,size=M4-0.7
+
 =====================
 The public repository
 =====================
@@ -263,15 +289,15 @@ The public PartCAD repository is created and maintained by the community
 based on the PartCAD standards and conventions. It is hosted on
 `GitHub <https://github.com/openvmp/partcad-index>`_.
 
-Top levels of the package hierarchy are expected to be maintained by the
+The top levels of the package hierarchy are expected to be maintained by the
 PartCAD community.
 Lower levels of the hierarchy are expected to be maintained by vendors and
-other communities. PartCAD community does not aim to achieve
+other communities. PartCAD community does not aim to achieve the
 uniqueness of parts and assemblies. Moreover, everyone is invited to provide
 their alternative models as long as they provide a different level of model
 quality or different level of package quality management processes, and as long
 the package data properly reflects the quality that the maintainer provides and
-commits to maintain. This way PartCAD users have a choice which model to
+commits to maintain. This way PartCAD users have a choice of which model to
 use based on their specific needs.
 
 =====
@@ -282,12 +308,12 @@ PartCAD tools can operate with public and private repositories for as
 long as they are maintained in accordance with the PartCAD standards and
 conventions.
 
-Comman line tools
------------------
+Command line tools
+------------------
 
 PartCAD CLI tools get installed using the PyPI module ``partcad-cli``.
 The main tool is called ``pc``.
-The CLI tools are suppose to provide the complete set of PartCAD features.
+The CLI tools are supposed to provide the complete set of PartCAD features.
 
 Visual Studio Code extension
 ----------------------------
@@ -303,8 +329,8 @@ Python
 ------
 
 The `partcad` Python module is the first PartCAD library. Its development is
-prioritized due to popularity and the value proposition of such Python
-frameworks as CadQuery and build123d. 
+prioritized due to the popularity and the value proposition of such Python
+frameworks such as CadQuery and build123d.
 
 Other languages
 ---------------
