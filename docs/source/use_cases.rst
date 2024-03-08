@@ -296,9 +296,9 @@ Assembly
         package:
         location: [[0,0,7.5], [0,0,1], 0]
 
-==============
-Publish models
-==============
+================
+Publish packages
+================
 
 It's very simple to publish your package to the public PartCAD repository.
 First, publish your package as a repo on GitHub.
