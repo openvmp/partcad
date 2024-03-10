@@ -16,7 +16,7 @@ import time
 from typing import Any
 import threading
 
-from .logging import ops
+from .logging import ops, error
 
 
 def ansi_process_start(op: str, package: str, item: str = None):
@@ -162,7 +162,14 @@ class AnsiTerminalProgressHandler(logging.Handler):
                     target = record.package
                     if record.item is not None:
                         target += ":" + record.item
-                    del self.actions[record.op + "-" + target]
+                    action_key = record.op + "-" + target
+                    if action_key in self.actions:
+                        del self.actions[record.op + "-" + target]
+                    else:
+                        error(
+                            "action_key not found: %s: among %s"
+                            % (action_key, str(self.actions.keys()))
+                        )
 
                     self.actions_running -= 1
                 ignore_message = True
