@@ -110,22 +110,50 @@ class Shape(ShapeConfiguration):
         if filepath is None:
             filepath = tempfile.mktemp(".svg")
 
-        cq_obj = await self.get_cadquery()
+        # cq_obj = await self.get_cadquery()
 
-        opts = DEFAULT_RENDER_SVG_OPTS
-        bb = cq_obj.BoundingBox()
-        xlen = bb.xlen
-        ylen = bb.ylen
-        zlen = bb.zlen
-        len = max(xlen, ylen, zlen)
-        if len > 300.0:
-            len = 300.0
-        opts["strokeWidth"] = len / 150.0
+        # opts = DEFAULT_RENDER_SVG_OPTS
+        # bb = cq_obj.BoundingBox()
+        # xlen = bb.xlen
+        # ylen = bb.ylen
+        # zlen = bb.zlen
+        # len = max(xlen, ylen, zlen)
+        # if len > 300.0:
+        #     len = 300.0
+        # opts["strokeWidth"] = len / 150.0
+
+        # def do_render_svg():
+        #     nonlocal cq_obj, filepath, opts
+        #     cq_obj = cq_obj.rotate((0, 0, 0), (1, -1, 0.75), 180)
+        #     cq.exporters.export(cq_obj, filepath, opt=opts)
+
+        b3d_obj = await self.get_build123d()
 
         def do_render_svg():
-            nonlocal cq_obj, filepath, opts
-            cq_obj = cq_obj.rotate((0, 0, 0), (1, -1, 0.75), 180)
-            cq.exporters.export(cq_obj, filepath, opt=opts)
+            nonlocal b3d_obj, filepath
+
+            view_port_origin = (100, -100, 100)
+            visible, hidden = b3d_obj.project_to_viewport(view_port_origin)
+            max_dimension = max(
+                *b3d.Compound(children=visible + hidden).bounding_box().size
+            )
+            exporter = b3d.ExportSVG(scale=100 / max_dimension)
+            exporter.add_layer(
+                "Visible",
+                line_color=(64, 192, 64),
+                line_weight=1.0,
+            )
+            exporter.add_layer(
+                "Hidden",
+                line_color=(32, 64, 32),
+                line_type=b3d.LineType.ISO_DOT,
+            )
+            try:
+                exporter.add_shape(visible, layer="Visible")
+                exporter.add_shape(hidden, layer="Hidden")
+            except:
+                pass
+            exporter.write(filepath)
 
         await pc_thread.run(do_render_svg)
 
