@@ -58,8 +58,9 @@ class PartFactoryCadquery(pfp.PartFactoryPython):
             result = pickle.loads(response)
 
             if not result["success"]:
-                pc_logging.error(result["exception"])
-                raise Exception(result["exception"])
+                pc_logging.error("%s: %s" % (self.name, result["exception"]))
+                # raise Exception(result["exception"])
+                return None
 
             self.ctx.stats_parts_instantiated += 1
 
