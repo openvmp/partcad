@@ -15,6 +15,7 @@ import ruamel.yaml
 import threading
 import typing
 
+from . import consts
 from . import factory
 from . import logging as pc_logging
 from . import project_config
@@ -106,6 +107,33 @@ class Project(project_config.Configuration):
 
         self.init_parts()
         self.init_assemblies()
+
+    def get_child_project_names(self):
+        children = list()
+        subfolders = [f.name for f in os.scandir(self.config_dir) if f.is_dir()]
+        for subdir in list(subfolders):
+            if os.path.exists(
+                os.path.join(
+                    self.config_dir,
+                    subdir,
+                    consts.DEFAULT_PACKAGE_CONFIG,
+                )
+            ):
+                children.append(self.name + "/" + subdir)
+
+        if (
+            "import" in self.config_obj
+            and not self.config_obj["import"] is None
+        ):
+            children.extend(
+                list(
+                    map(
+                        lambda project_name: self.name + "/" + project_name,
+                        self.config_obj["import"],
+                    )
+                )
+            )
+        return children
 
     def get_part_config(self, part_name):
         if not part_name in self.part_configs:

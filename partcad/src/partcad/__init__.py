@@ -17,6 +17,7 @@ from .consts import *
 from .context import Context
 from .assembly import Assembly
 from .part import Part
+from .project import Project
 from .project_factory_local import ProjectFactoryLocal
 from .project_factory_git import ProjectFactoryGit
 from .project_factory_tar import ProjectFactoryTar
