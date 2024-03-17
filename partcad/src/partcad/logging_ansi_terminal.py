@@ -236,6 +236,7 @@ queue_handler: AnsiTerminalProgressHandler = None
 def fini():
     global listener
     if not listener is None:
+        atexit.unregister(fini)
         listener.stop()
         listener = None
 

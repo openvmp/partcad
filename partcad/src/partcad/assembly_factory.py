@@ -9,13 +9,14 @@
 
 import typing
 
-from . import assembly
+from .assembly import Assembly
 
 
 # TODO(clairbee): introduce ShapeFactory
 class AssemblyFactory:
     # TODO(clairbee): Make the next line work for assembly_factory_file only
     path: typing.Optional[str] = None
+    assembly: Assembly
 
     def __init__(self, ctx, project, assembly_config, extension=""):
         self.ctx = ctx
@@ -25,7 +26,7 @@ class AssemblyFactory:
         self.orig_name = assembly_config["orig_name"]
 
     def _create(self, assembly_config):
-        self.assembly = assembly.Assembly(assembly_config)
+        self.assembly = Assembly(assembly_config)
         self.assembly.project_name = (
             self.project.name
         )  # TODO(clairbee): pass it via the constructor

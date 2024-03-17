@@ -22,7 +22,7 @@ class NonePythonRuntime(runtime_python.PythonRuntime):
     def run(self, cmd, stdin=""):
         return super().run(
             [
-                "python",
+                "python" if os.name != "nt" else "pythonw",
                 # "python%s" % self.version, # This doesn't work on Windows
             ]
             + cmd,

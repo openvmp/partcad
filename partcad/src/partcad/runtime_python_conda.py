@@ -49,7 +49,9 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
                         )
                         _, stderr = p.communicate()
                         if not stderr is None and stderr != b"":
-                            pc_logging.error("conda env install error: %s" % stderr)
+                            pc_logging.error(
+                                "conda env install error: %s" % stderr
+                            )
 
                         # Install pip into the newly created conda environment
                         p = subprocess.Popen(
@@ -68,7 +70,9 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
                         )
                         _, stderr = p.communicate()
                         if not stderr is None and stderr != b"":
-                            pc_logging.error("conda pip install error: %s" % stderr)
+                            pc_logging.error(
+                                "conda pip install error: %s" % stderr
+                            )
 
                         self.initialized = True
                     except Exception as e:
@@ -82,7 +86,7 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
                 "--no-capture-output",
                 "-p",
                 self.path,
-                "python",
+                "python" if os.name != "nt" else "pythonw",
                 # "python%s" % self.version,  # This doesn't work on Windows
             ]
             + cmd,

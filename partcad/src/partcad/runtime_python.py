@@ -29,6 +29,7 @@ class PythonRuntime(runtime.Runtime):
         self.lock = threading.RLock()
 
     def run(self, cmd, stdin=""):
+        pc_logging.debug("Running: %s", cmd)
         p = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,

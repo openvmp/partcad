@@ -105,10 +105,20 @@ class Shape(ShapeConfiguration):
     def show(self, show_object=None):
         asyncio.run(self.show_async(show_object))
 
-    async def render_svg_somewhere(self, project=None, filepath=None):
+    async def render_svg_somewhere(
+        self, project=None, filepath=None, line_weight=None
+    ):
         """Renders an SVG file somewhere and ignore the project settings"""
         if filepath is None:
             filepath = tempfile.mktemp(".svg")
+
+        svg_opts, _ = self.render_getopts("svg", ".svg", project, filepath)
+
+        if line_weight is None:
+            if "lineWeight" in svg_opts and not svg_opts["lineWeight"] is None:
+                line_weight = svg_opts["lineWeight"]
+            else:
+                line_weight = 1.0
 
         # cq_obj = await self.get_cadquery()
 
@@ -130,7 +140,7 @@ class Shape(ShapeConfiguration):
         b3d_obj = await self.get_build123d()
 
         def do_render_svg():
-            nonlocal b3d_obj, filepath
+            nonlocal b3d_obj, filepath, line_weight
 
             view_port_origin = (100, -100, 100)
             visible, hidden = b3d_obj.project_to_viewport(view_port_origin)
@@ -141,16 +151,16 @@ class Shape(ShapeConfiguration):
             exporter.add_layer(
                 "Visible",
                 line_color=(64, 192, 64),
-                line_weight=1.0,
+                line_weight=line_weight,
             )
-            exporter.add_layer(
-                "Hidden",
-                line_color=(32, 64, 32),
-                line_type=b3d.LineType.ISO_DOT,
-            )
+            # exporter.add_layer(
+            #     "Hidden",
+            #     line_color=(32, 64, 32),
+            #     line_type=b3d.LineType.ISO_DOT,
+            # )
             try:
                 exporter.add_shape(visible, layer="Visible")
-                exporter.add_shape(hidden, layer="Hidden")
+                # exporter.add_shape(hidden, layer="Hidden")
             except:
                 pass
             exporter.write(filepath)
@@ -224,7 +234,8 @@ class Shape(ShapeConfiguration):
             # This creates a temporary file, but it allows to reuse the file
             # with other consumers of self._get_svg_path()
             svg_path = await self._get_svg_path(project)
-            shutil.copyfile(svg_path, filepath)
+            if not svg_path is None and svg_path != filepath:
+                shutil.copyfile(svg_path, filepath)
 
     def render_svg(
         self,
@@ -512,26 +523,27 @@ class Shape(ShapeConfiguration):
                 else:
                     angularTolerance = 0.1
 
-            cq_obj = await self.get_cadquery()
+            b3d_obj = await self.get_build123d()
 
             def do_render_obj():
-                nonlocal cq_obj, project, filepath, tolerance, angularTolerance
+                nonlocal b3d_obj, project, filepath, tolerance, angularTolerance
                 try:
-                    vertices, triangles = cq_obj.tessellate(
-                        tolerance, angularTolerance
+                    vertices, triangles = b3d.Mesher._mesh_shape(
+                        b3d_obj, tolerance, angularTolerance
                     )
 
                     with open(filepath, "w") as f:
                         f.write("# OBJ file\n")
                         for v in vertices:
-                            f.write("v %.4f %.4f %.4f\n" % (v.x, v.y, v.z))
+                            f.write("v %.4f %.4f %.4f\n" % (v[0], v[1], v[2]))
                         for p in triangles:
                             f.write("f")
                             for i in p:
                                 f.write(" %d" % (i + 1))
                             f.write("\n")
-                except:
+                except Exception as e:
                     pc_logging.error("Exception while exporting to " + filepath)
+                    pc_logging.exception(e)
 
             await pc_thread.run(do_render_obj)
 
@@ -544,6 +556,70 @@ class Shape(ShapeConfiguration):
     ):
         asyncio.run(
             self.render_obj_async(
+                project, filepath, tolerance, angularTolerance
+            )
+        )
+
+    async def render_gltf_async(
+        self,
+        project=None,
+        filepath=None,
+        binary=None,
+        tolerance=None,
+        angularTolerance=None,
+    ):
+        with pc_logging.Action("RenderGLTF", self.project_name, self.name):
+            gltf_opts, filepath = self.render_getopts(
+                "gltf", ".json", project, filepath
+            )
+
+            if tolerance is None:
+                if (
+                    "tolerance" in gltf_opts
+                    and not gltf_opts["tolerance"] is None
+                ):
+                    tolerance = gltf_opts["tolerance"]
+                else:
+                    tolerance = 0.1
+
+            if angularTolerance is None:
+                if (
+                    "angularTolerance" in gltf_opts
+                    and not gltf_opts["angularTolerance"] is None
+                ):
+                    angularTolerance = gltf_opts["angularTolerance"]
+                else:
+                    angularTolerance = 0.1
+
+            if binary is None:
+                if "binary" in gltf_opts and not gltf_opts["binary"] is None:
+                    binary = gltf_opts["binary"]
+                else:
+                    binary = False
+
+            b3d_obj = await self.get_build123d()
+
+            def do_render_gltf():
+                nonlocal b3d_obj, project, filepath, tolerance, angularTolerance
+                b3d.export_gltf(
+                    b3d_obj,
+                    filepath,
+                    binary=binary,
+                    linear_deflection=tolerance,
+                    angular_deflection=angularTolerance,
+                )
+
+            await pc_thread.run(do_render_gltf)
+
+    def render_gltf(
+        self,
+        project=None,
+        filepath=None,
+        tolerance=None,
+        angularTolerance=None,
+    ):
+        asyncio.run(
+            self.render_gltf_async(
                 project, filepath, tolerance, angularTolerance
             )
         )

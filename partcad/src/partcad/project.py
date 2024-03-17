@@ -677,11 +677,17 @@ class Project(project_config.Configuration):
             # Enumerating all parts and assemblies
             if parts is None:
                 parts = []
-                if "parts" in self.config_obj:
+                if (
+                    "parts" in self.config_obj
+                    and not self.config_obj["parts"] is None
+                ):
                     parts = self.config_obj["parts"].keys()
             if assemblies is None:
                 assemblies = []
-                if "assemblies" in self.config_obj:
+                if (
+                    "assemblies" in self.config_obj
+                    and not self.config_obj["assemblies"] is None
+                ):
                     assemblies = self.config_obj["assemblies"].keys()
 
             # Render
@@ -751,6 +757,13 @@ class Project(project_config.Configuration):
                     else:
                         render_obj = False
 
+                    if format is None and "gltf" in part_render:
+                        render_gltf = True
+                    elif not format is None and format == "gltf":
+                        render_gltf = True
+                    else:
+                        render_gltf = False
+
                     if render_svg:
                         tasks.append(part.render_svg_async(self))
                     if render_png:
@@ -765,6 +778,8 @@ class Project(project_config.Configuration):
                         tasks.append(part.render_threejs_async(self))
                     if render_obj:
                         tasks.append(part.render_obj_async(self))
+                    if render_gltf:
+                        tasks.append(part.render_gltf_async(self))
 
             for assembly_name in assemblies:
                 assembly = self.get_assembly(assembly_name)
@@ -831,6 +846,13 @@ class Project(project_config.Configuration):
                     else:
                         render_obj = False
 
+                    if format is None and "gltf" in assy_render:
+                        render_gltf = True
+                    elif not format is None and format == "gltf":
+                        render_gltf = True
+                    else:
+                        render_gltf = False
+
                     if render_svg:
                         tasks.append(assembly.render_svg_async(self))
                     if render_png:
@@ -845,6 +867,8 @@ class Project(project_config.Configuration):
                         tasks.append(assembly.render_threejs_async(self))
                     if render_obj:
                         tasks.append(assembly.render_obj_async(self))
+                    if render_gltf:
+                        tasks.append(assembly.render_gltf_async(self))
 
             await asyncio.gather(*tasks)
 
