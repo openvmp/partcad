@@ -8,24 +8,27 @@
 [![Documentation Status](https://readthedocs.org/projects/partcad/badge/?version=latest)](https://partcad.readthedocs.io/en/latest/?badge=latest)
 <a href="https://discord.gg/AXbP47zYw5"><img alt="Discord" src="https://img.shields.io/discord/1091497262733074534?logo=discord&logoColor=white&label=Discord&labelColor=353c43&color=31c151"></a>
 
-PartCAD is the first build system and package manager for CAD models,
-and a framework for creating assemblies.
+PartCAD is the first package manager for CAD models,
+and a framework for managing assemblies.
 
-PartCAD allows maintenance information about mechanical parts,
-how they come together to form larger assemblies,
-and to reuse the same parts in multiple assemblies, and multiple projects.
-The implementation of parts can change over time
-(e.g. optimize or migrate to [build123d] from [STEP]) without the need to update
-all of the consumers.
+PartCAD maintains information about mechanical parts and
+how they come together to form larger assemblies.
+The same parts are reused in multiple assemblies and multiple projects.
 
 Find [more documentation here](https://partcad.readthedocs.io/en/latest/?badge=latest).
 
 ## Installation
 
-The recommended method to install PartCAD for most users is:
+### Extension for Visual Studio Code
+
+This extension can be installed by searching for `PartCAD` in VS Code extension search form, or by browsing [its VS Code marketplace page](https://marketplace.visualstudio.com/items?itemName=OpenVMP.partcad).
+
+### Command-Line Interface
+
+The recommended method to install PartCAD CLI tools for most users is:
 
 ```shell
-pip install partcad-cli
+pip install -U partcad-cli
 ```
 
 For contributors:
@@ -33,13 +36,14 @@ For contributors:
 ```shell
 git clone https://github.com/openvmp/partcad.git
 cd partcad
-python3 -m pip install -e ./partcad
-python3 -m pip install -e ./partcad-cli
+python3 -m pip install -U -e ./partcad
+python3 -m pip install -U -e ./partcad-cli
 ```
 
 PartCAD works best when [conda](https://docs.conda.io/) is installed.
 If that doesn't help (e.g. MacOS+arm64) then try ``mamba``.
 On Windows, PartCAD requires at least a `conda` environment.
+On Ubuntu, try `apt install libcairo2-dev` if `pip install` fails to install `cairo`.
 
 ## Architecture
 

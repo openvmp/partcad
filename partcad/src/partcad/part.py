@@ -45,7 +45,7 @@ class Part(shape.Shape):
     async def get_shape(self):
         async with self.lock:
             if self.shape is None:
-                self.shape = await pc_thread.run(self.instantiate, self)
+                self.shape = await pc_thread.run_async(self.instantiate, self)
             return self.shape
 
     def ref_inc(self):

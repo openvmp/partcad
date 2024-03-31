@@ -20,6 +20,9 @@ from . import logging as pc_logging
 from . import wrapper
 from . import part_factory_file as pff
 
+sys.path.append(os.path.join(os.path.dirname(__file__), "wrappers"))
+from cq_serialize import register as register_cq_helper
+
 
 class PartFactoryStep(pff.PartFactoryFile):
     # How many STEP files should be loaded directly simultaneously (without
@@ -51,7 +54,7 @@ class PartFactoryStep(pff.PartFactoryFile):
 
             self.runtime = None
 
-    def instantiate(self, part):
+    async def instantiate(self, part):
         with pc_logging.Action("STEP", part.project_name, part.name):
             do_subprocess = False
 
@@ -76,11 +79,12 @@ class PartFactoryStep(pff.PartFactoryFile):
                 wrapper_path = wrapper.get("step.py")
 
                 request = {"build_parameters": {}}
+                register_cq_helper()
                 picklestring = pickle.dumps(request)
                 request_serialized = base64.b64encode(picklestring).decode()
 
-                self.runtime.ensure("cadquery")
-                response_serialized, errors = self.runtime.run(
+                await self.runtime.ensure("cadquery")
+                response_serialized, errors = await self.runtime.run(
                     [
                         wrapper_path,
                         os.path.abspath(self.path),
@@ -91,6 +95,7 @@ class PartFactoryStep(pff.PartFactoryFile):
                 sys.stderr.write(errors)
 
                 response = base64.b64decode(response_serialized)
+                register_cq_helper()
                 result = pickle.loads(response)
 
                 if not result["success"]:
@@ -98,7 +103,7 @@ class PartFactoryStep(pff.PartFactoryFile):
                     raise Exception(result["exception"])
                 shape = result["shape"]
             else:
-                # Thanks for CadQuery deficiencies in handling of GIL,
+                # Thanks for OCP deficiencies in handling of GIL,
                 # as soon as 'importStep()' is called, all of other Python
                 # threads are going to be frozen, so we need to give other
                 # threads an opportunity to spawn processes to stay busy during

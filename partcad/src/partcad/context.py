@@ -376,7 +376,9 @@ class Context(project_config.Configuration):
         project = self.get_project(project_path)
         project.render(format=format, output_dir=output_dir)
 
-    def get_python_runtime(self, version, python_runtime=None):
+    def get_python_runtime(self, version=None, python_runtime=None):
+        if version is None:
+            version = "%d.%d" % (sys.version_info.major, sys.version_info.minor)
         if python_runtime is None:
             python_runtime = user_config.python_runtime
         runtime_name = python_runtime + "-" + version

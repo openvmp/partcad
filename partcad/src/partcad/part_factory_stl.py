@@ -28,7 +28,7 @@ class PartFactoryStl(pff.PartFactoryFile):
             # Complement the config object here if necessary
             self._create(part_config)
 
-    def instantiate(self, part):
+    async def instantiate(self, part):
         with pc_logging.Action("STL", part.project_name, part.name):
             shape = b3d.Mesher().read(self.path)[0].wrapped
 

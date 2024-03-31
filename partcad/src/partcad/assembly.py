@@ -31,6 +31,8 @@ class Assembly(shape.Shape):
         super().__init__(config)
 
         self.desc = None
+        if "desc" in config:
+            self.desc = config["desc"]
         if "location" in config:
             self.location = config["location"]
         else:

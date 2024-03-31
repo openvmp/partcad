@@ -19,8 +19,8 @@ class NonePythonRuntime(runtime_python.PythonRuntime):
             os.makedirs(self.path)
             self.initialized = True
 
-    def run(self, cmd, stdin=""):
-        return super().run(
+    async def run(self, cmd, stdin=""):
+        return await super().run(
             [
                 "python" if os.name != "nt" else "pythonw",
                 # "python%s" % self.version, # This doesn't work on Windows

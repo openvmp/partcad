@@ -17,9 +17,7 @@ from . import wrapper
 from . import logging as pc_logging
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "wrappers"))
-from cq_serialize import (
-    register as register_cq_helper,
-)  # import this one for `pickle` to use
+from cq_serialize import register as register_cq_helper
 
 
 class PartFactoryCadquery(pfp.PartFactoryPython):
@@ -31,7 +29,7 @@ class PartFactoryCadquery(pfp.PartFactoryPython):
             # Complement the config object here if necessary
             self._create(part_config)
 
-    def instantiate(self, part):
+    async def instantiate(self, part):
         with pc_logging.Action("CadQuery", part.project_name, part.name):
             wrapper_path = wrapper.get("cadquery.py")
 
@@ -40,11 +38,12 @@ class PartFactoryCadquery(pfp.PartFactoryPython):
                 for param_name, param in self.part_config["parameters"].items():
                     request["build_parameters"][param_name] = param["default"]
 
+            register_cq_helper()
             picklestring = pickle.dumps(request)
             request_serialized = base64.b64encode(picklestring).decode()
 
-            self.runtime.ensure("cadquery")
-            response_serialized, errors = self.runtime.run(
+            await self.runtime.ensure("cadquery")
+            response_serialized, errors = await self.runtime.run(
                 [
                     wrapper_path,
                     os.path.abspath(self.path),
@@ -55,6 +54,7 @@ class PartFactoryCadquery(pfp.PartFactoryPython):
             sys.stderr.write(errors)
 
             response = base64.b64decode(response_serialized)
+            register_cq_helper()
             result = pickle.loads(response)
 
             if not result["success"]:

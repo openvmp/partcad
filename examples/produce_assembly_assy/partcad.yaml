@@ -3,8 +3,10 @@ assemblies:
     type: assy
   logo:
     type: assy
+    desc: PartCAD logo
   logo_embedded:
     type: assy
+    desc: PartCAD logo using embedded assemblies
   partcad_logo:
     type: alias
     source: logo

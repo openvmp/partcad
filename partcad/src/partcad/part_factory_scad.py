@@ -7,6 +7,7 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import asyncio
 import os
 import shutil
 import subprocess
@@ -35,7 +36,7 @@ class PartFactoryScad(pff.PartFactoryFile):
 
             self.project_dir = source_project.config_dir
 
-    def instantiate(self, part):
+    async def instantiate(self, part):
         with pc_logging.Action("OpenSCAD", part.project_name, part.name):
             scad_path = shutil.which("openscad")
             if scad_path is None:
@@ -44,7 +45,7 @@ class PartFactoryScad(pff.PartFactoryFile):
                 )
 
             stl_path = tempfile.mktemp(".stl")
-            p = subprocess.run(
+            p = await asyncio.create_subprocess_exec(
                 [
                     scad_path,
                     "--export-format",
@@ -53,9 +54,11 @@ class PartFactoryScad(pff.PartFactoryFile):
                     stl_path,
                     self.path,
                 ],
-                capture_output=True,
-                # TODO(clairbee): cwd=self.project_dir,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             )
+            p.communicate()
 
             shape = b3d.Mesher().read(stl_path)[0].wrapped
             os.unlink(stl_path)

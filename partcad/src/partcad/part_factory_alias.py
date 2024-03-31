@@ -65,7 +65,7 @@ class PartFactoryAlias(pf.PartFactory):
 
             pc_logging.debug("Initializing an alias to %s" % self.source)
 
-    def instantiate(self, part):
+    async def instantiate(self, part):
         with pc_logging.Action("Alias", part.project_name, part.name):
 
             source = self.ctx._get_part(self.source)
@@ -75,4 +75,4 @@ class PartFactoryAlias(pf.PartFactory):
 
             self.ctx.stats_parts_instantiated += 1
 
-            return source.instantiate(part)
+            return await source.instantiate(part)

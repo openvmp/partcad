@@ -57,5 +57,4 @@ path, request = wrapper_common.handle_input()
 # Call build123d through CQGI
 model = process(path, request)
 
-output = wrapper_common.handle_output(model)
-print(output)
+wrapper_common.handle_output(model)

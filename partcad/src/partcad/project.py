@@ -108,6 +108,17 @@ class Project(project_config.Configuration):
         self.init_parts()
         self.init_assemblies()
 
+    # TODO(clairbee): Implement get_cover()
+    # def get_cover(self):
+    #     if not "cover" in self.config_obj or self.config_obj["cover"] is None:
+    #         return None
+    #     if isinstance(self.config_obj["cover"], str):
+    #         return os.path.join(self.config_dir, self.config_obj["cover"])
+    #     elif "package" in self.config_obj["cover"]:
+    #         return self.ctx.get_project(
+    #             self.path + "/" + self.config_obj["cover"]["package"]
+    #         ).get_cover()
+
     def get_child_project_names(self):
         children = list()
         subfolders = [f.name for f in os.scandir(self.config_dir) if f.is_dir()]
@@ -765,21 +776,21 @@ class Project(project_config.Configuration):
                         render_gltf = False
 
                     if render_svg:
-                        tasks.append(part.render_svg_async(self))
+                        tasks.append(part.render_svg_async(self.ctx, self))
                     if render_png:
-                        tasks.append(part.render_png_async(self))
+                        tasks.append(part.render_png_async(self.ctx, self))
                     if render_step:
-                        tasks.append(part.render_step_async(self))
+                        tasks.append(part.render_step_async(self.ctx, self))
                     if render_stl:
-                        tasks.append(part.render_stl_async(self))
+                        tasks.append(part.render_stl_async(self.ctx, self))
                     if render_3mf:
-                        tasks.append(part.render_3mf_async(self))
+                        tasks.append(part.render_3mf_async(self.ctx, self))
                     if render_threejs:
-                        tasks.append(part.render_threejs_async(self))
+                        tasks.append(part.render_threejs_async(self.ctx, self))
                     if render_obj:
-                        tasks.append(part.render_obj_async(self))
+                        tasks.append(part.render_obj_async(self.ctx, self))
                     if render_gltf:
-                        tasks.append(part.render_gltf_async(self))
+                        tasks.append(part.render_gltf_async(self.ctx, self))
 
             for assembly_name in assemblies:
                 assembly = self.get_assembly(assembly_name)
@@ -854,21 +865,23 @@ class Project(project_config.Configuration):
                         render_gltf = False
 
                     if render_svg:
-                        tasks.append(assembly.render_svg_async(self))
+                        tasks.append(assembly.render_svg_async(self.ctx, self))
                     if render_png:
-                        tasks.append(assembly.render_png_async(self))
+                        tasks.append(assembly.render_png_async(self.ctx, self))
                     if render_step:
-                        tasks.append(assembly.render_step_async(self))
+                        tasks.append(assembly.render_step_async(self.ctx, self))
                     if render_stl:
-                        tasks.append(assembly.render_stl_async(self))
+                        tasks.append(assembly.render_stl_async(self.ctx, self))
                     if render_3mf:
-                        tasks.append(assembly.render_3mf_async(self))
+                        tasks.append(assembly.render_3mf_async(self.ctx, self))
                     if render_threejs:
-                        tasks.append(assembly.render_threejs_async(self))
+                        tasks.append(
+                            assembly.render_threejs_async(self.ctx, self)
+                        )
                     if render_obj:
-                        tasks.append(assembly.render_obj_async(self))
+                        tasks.append(assembly.render_obj_async(self.ctx, self))
                     if render_gltf:
-                        tasks.append(assembly.render_gltf_async(self))
+                        tasks.append(assembly.render_gltf_async(self.ctx, self))
 
             await asyncio.gather(*tasks)
 

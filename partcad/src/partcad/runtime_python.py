@@ -6,6 +6,7 @@
 #
 # Licensed under Apache License, Version 2.0.
 
+import asyncio
 import hashlib
 import os
 import pathlib
@@ -28,15 +29,20 @@ class PythonRuntime(runtime.Runtime):
         # the asyncio event loop. So a threading lock is appropriate here.
         self.lock = threading.RLock()
 
-    def run(self, cmd, stdin=""):
+    async def run(self, cmd, stdin=""):
         pc_logging.debug("Running: %s", cmd)
-        p = subprocess.Popen(
-            cmd,
+        # p = subprocess.Popen(
+        p = await asyncio.create_subprocess_exec(
+            # cmd,
+            cmd[0],
+            *cmd[1:],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            shell=False,
+            # TODO(clairbee): creationflags=subprocess.CREATE_NO_WINDOW,
         )
-        stdout, stderr = p.communicate(
+        stdout, stderr = await p.communicate(
             input=stdin.encode(),
             # TODO(clairbee): add timeout
         )
@@ -54,17 +60,24 @@ class PythonRuntime(runtime.Runtime):
 
         return stdout, stderr
 
-    def ensure(self, python_package):
+    async def ensure(self, python_package):
+        # TODO(clairbee): add support for versioned packages
+        # TODO(clairbee): expire the guard file after a certain time
+
         guard_path = os.path.join(
             self.path, ".partcad.installed." + python_package
         )
         with self.lock:
             if not os.path.exists(guard_path):
                 with pc_logging.Action("PipInst", self.version, python_package):
-                    self.run(["-m", "pip", "install", python_package])
+                    await self.run(
+                        ["-m", "pip", "install", "-U", python_package]
+                    )
                 pathlib.Path(guard_path).touch()
 
     def prepare_for_package(self, project):
+        # TODO(clairbee): expire the guard file after a certain time
+
         # Check if this project has python requirements
         requirements_path = os.path.join(project.path, "requirements.txt")
         if os.path.exists(requirements_path):
@@ -80,7 +93,15 @@ class PythonRuntime(runtime.Runtime):
                     with pc_logging.Action(
                         "PipReqs", self.version, project.name
                     ):
-                        self.run(
-                            ["-m", "pip", "install", "-r", requirements_path]
+                        asyncio.get_running_loop().run(
+                            self.run(
+                                [
+                                    "-m",
+                                    "pip",
+                                    "install",
+                                    "-r",
+                                    requirements_path,
+                                ]
+                            )
                         )
                     pathlib.Path(flag_path).touch()
