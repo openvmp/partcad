@@ -42,7 +42,7 @@ def test_part_get_step_1():
 def test_part_get_step_2():
     """Load a STEP part from the context by the project and part names"""
     ctx = pc.Context("examples/produce_part_step")
-    bolt = ctx._get_part(":bolt")
+    bolt = ctx.get_part(":bolt")
     assert bolt is not None
 
     wrapped = asyncio.run(bolt.get_wrapped())
@@ -52,7 +52,7 @@ def test_part_get_step_2():
 def test_part_get_stl():
     """Load a STL part"""
     ctx = pc.Context("examples/produce_part_stl")
-    part = ctx._get_part(":cube")
+    part = ctx.get_part(":cube")
     assert part is not None
 
     wrapped = asyncio.run(part.get_wrapped())
@@ -62,7 +62,7 @@ def test_part_get_stl():
 def test_part_get_3mf():
     """Load a 3MF part"""
     ctx = pc.Context("examples/produce_part_3mf")
-    part = ctx._get_part(":cube")
+    part = ctx.get_part(":cube")
     assert part is not None
 
     wrapped = asyncio.run(part.get_wrapped())
@@ -74,7 +74,7 @@ def test_part_get_scad():
     scad_path = shutil.which("openscad")
     if not scad_path is None:
         ctx = pc.Context("examples/produce_part_scad")
-        part = ctx._get_part(":cube")
+        part = ctx.get_part(":cube")
         assert part is not None
 
         wrapped = asyncio.run(part.get_wrapped())
@@ -87,7 +87,7 @@ def test_part_get_3():
     """Instantiate a project by a local import config and load a part"""
     ctx = pc.Context()  # Empty config
     _ = pc.ProjectFactoryLocal(ctx, None, test_config_local)
-    cylinder = ctx._get_part("/primitive_local:cylinder")
+    cylinder = ctx.get_part("/primitive_local:cylinder")
     assert cylinder is not None
     assert cylinder.get_wrapped() is not None
 
@@ -111,7 +111,7 @@ def test_part_lazy_loading():
     """Test for lazy loading of geometry data"""
     ctx = pc.Context()  # Empty config
     _ = pc.ProjectFactoryLocal(ctx, None, test_config_local)
-    cylinder = ctx._get_part("/primitive_local:cylinder")
+    cylinder = ctx.get_part("/primitive_local:cylinder")
     assert cylinder.shape is None
 
     wrapped = asyncio.run(cylinder.get_wrapped())
@@ -123,7 +123,7 @@ def test_part_aliases():
     ctx = pc.Context()  # Empty config
     _ = pc.ProjectFactoryLocal(ctx, None, test_config_local)
     # "box" is an alias for "cube"
-    box = ctx._get_part("/primitive_local:box")
+    box = ctx.get_part("/primitive_local:box")
     assert box is not None
     assert box.shape is None
 
@@ -134,9 +134,9 @@ def test_part_aliases():
 def test_part_example_cadquery_primitive():
     """Instantiate all parts from the example: part_cadquery_primitive"""
     ctx = pc.init("examples")
-    cube = ctx._get_part("/produce_part_cadquery_primitive:cube")
+    cube = ctx.get_part("/produce_part_cadquery_primitive:cube")
     assert cube is not None
-    cylinder = ctx._get_part("/produce_part_cadquery_primitive:cylinder")
+    cylinder = ctx.get_part("/produce_part_cadquery_primitive:cylinder")
     assert cylinder is not None
 
     wrapped = asyncio.run(cylinder.get_wrapped())
@@ -146,9 +146,9 @@ def test_part_example_cadquery_primitive():
 def test_part_example_cadquery_logo():
     """Instantiate all parts from the example: part_cadquery_logo"""
     ctx = pc.init("examples")
-    bone = ctx._get_part("/produce_part_cadquery_logo:bone")
+    bone = ctx.get_part("/produce_part_cadquery_logo:bone")
     assert bone is not None
-    head_half = ctx._get_part("/produce_part_cadquery_logo:head_half")
+    head_half = ctx.get_part("/produce_part_cadquery_logo:head_half")
     assert head_half is not None
 
     wrapped = asyncio.run(head_half.get_wrapped())
@@ -158,7 +158,7 @@ def test_part_example_cadquery_logo():
 def test_part_example_build123d_primitive():
     """Instantiate all parts from the example: part_build123d_primitive"""
     ctx = pc.init("examples")
-    cube = ctx._get_part("/produce_part_build123d_primitive:cube")
+    cube = ctx.get_part("/produce_part_build123d_primitive:cube")
     assert cube is not None
 
     wrapped = ctx.get_part_shape("/produce_part_build123d_primitive:cube")

@@ -93,15 +93,17 @@ class PythonRuntime(runtime.Runtime):
                     with pc_logging.Action(
                         "PipReqs", self.version, project.name
                     ):
-                        asyncio.get_running_loop().run(
-                            self.run(
-                                [
-                                    "-m",
-                                    "pip",
-                                    "install",
-                                    "-r",
-                                    requirements_path,
-                                ]
-                            )
+                        coro = self.run(
+                            [
+                                "-m",
+                                "pip",
+                                "install",
+                                "-r",
+                                requirements_path,
+                            ]
                         )
+                        try:
+                            asyncio.get_event_loop().run_until_complete(coro)
+                        except:
+                            asyncio.run(coro)
                     pathlib.Path(flag_path).touch()

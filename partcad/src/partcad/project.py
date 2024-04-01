@@ -98,8 +98,10 @@ class Project(project_config.Configuration):
         self.assemblies = {}
         self.assembly_locks = {}
 
-        if "desc" in self.config_obj and isinstance(
-            self.config_obj["desc"], str
+        if (
+            "desc" in self.config_obj
+            and not self.config_obj["desc"] is None
+            and isinstance(self.config_obj["desc"], str)
         ):
             self.desc = self.config_obj["desc"]
         else:

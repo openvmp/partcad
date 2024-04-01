@@ -33,9 +33,15 @@ error = lambda *args, **kwargs: logging.getLogger("partcad").error(
 critical = lambda *args, **kwargs: logging.getLogger("partcad").critical(
     *args, **kwargs
 )
-exception = lambda *args, **kwargs: logging.getLogger("partcad").exception(
-    *args, **kwargs
-)
+
+
+# Some pytest versions/configurations/plugins mess with the exception method
+# so lambdas don't work
+def exception(
+    msg,
+    *args,
+):
+    logging.getLogger("partcad").exception(msg, *args)
 
 
 def default_process_start(self_ops, op: str, package: str, item: str = None):

@@ -36,6 +36,8 @@ def handle_input():
     #   - Read until EOF
     input_str = sys.stdin.read()
     #   - Unpack the content received via stdin
+
+    # TODO(clairbee): is .encode() needed here?
     request_bytes = base64.b64decode(input_str.encode())
 
     register_cq_helper()

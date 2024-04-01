@@ -15,9 +15,9 @@ import partcad as pc
 
 def test_assembly_primitive():
     ctx = pc.init("examples")
-    part1 = ctx._get_part("/produce_part_cadquery_primitive:cube")
+    part1 = ctx.get_part("/produce_part_cadquery_primitive:cube")
     assert part1 is not None
-    part2 = ctx._get_part("/produce_part_cadquery_primitive:cylinder")
+    part2 = ctx.get_part("/produce_part_cadquery_primitive:cylinder")
     assert part2 is not None
 
     model = pc.Assembly({"name": "example1"})
