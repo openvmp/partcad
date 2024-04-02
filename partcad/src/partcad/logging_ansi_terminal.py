@@ -155,7 +155,7 @@ class AnsiTerminalProgressHandler(logging.Handler):
                     th.join()
 
                     if len(output) > 0:
-                        print(output, end="", file=self.stream, flush=True)
+                        self.stream.write(output)
                         self.stream.flush()
                     return
 

@@ -38,7 +38,9 @@ def process(path, request):
             .bounding_box()
             .size
         )
-        scale = 512 / max_dimension
+        if max_dimension == 0:
+            max_dimension = 4
+        scale = 512.0 / max_dimension
         exporter = b3d.ExportSVG(
             scale=scale,
             precision=10,

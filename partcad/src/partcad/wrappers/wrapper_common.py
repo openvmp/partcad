@@ -38,7 +38,7 @@ def handle_input():
     #   - Unpack the content received via stdin
 
     # TODO(clairbee): is .encode() needed here?
-    request_bytes = base64.b64decode(input_str.encode())
+    request_bytes = base64.b64decode(input_str)
 
     register_cq_helper()
     request = pickle.loads(request_bytes)

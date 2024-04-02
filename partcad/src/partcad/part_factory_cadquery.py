@@ -31,13 +31,21 @@ class PartFactoryCadquery(pfp.PartFactoryPython):
 
     async def instantiate(self, part):
         with pc_logging.Action("CadQuery", part.project_name, part.name):
+            # Finish initialization of PythonRuntime
+            # which was too expensive to do in the constructor
+            await self.prepare_python()
+
+            # Get the path to the wrapper script
+            # which needs to be executed
             wrapper_path = wrapper.get("cadquery.py")
 
+            # Build the request
             request = {"build_parameters": {}}
             if "parameters" in self.part_config:
                 for param_name, param in self.part_config["parameters"].items():
                     request["build_parameters"][param_name] = param["default"]
 
+            # Serialize the request
             register_cq_helper()
             picklestring = pickle.dumps(request)
             request_serialized = base64.b64encode(picklestring).decode()

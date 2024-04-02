@@ -75,7 +75,7 @@ class PythonRuntime(runtime.Runtime):
                     )
                 pathlib.Path(guard_path).touch()
 
-    def prepare_for_package(self, project):
+    async def prepare_for_package(self, project):
         # TODO(clairbee): expire the guard file after a certain time
 
         # Check if this project has python requirements
@@ -93,7 +93,7 @@ class PythonRuntime(runtime.Runtime):
                     with pc_logging.Action(
                         "PipReqs", self.version, project.name
                     ):
-                        coro = self.run(
+                        await self.run(
                             [
                                 "-m",
                                 "pip",
@@ -102,8 +102,4 @@ class PythonRuntime(runtime.Runtime):
                                 requirements_path,
                             ]
                         )
-                        try:
-                            asyncio.get_event_loop().run_until_complete(coro)
-                        except:
-                            asyncio.run(coro)
                     pathlib.Path(flag_path).touch()

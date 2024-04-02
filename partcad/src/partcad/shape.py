@@ -21,7 +21,6 @@ from .render import *
 from .plugins import *
 from .shape_config import ShapeConfiguration
 from . import logging as pc_logging
-from .runtime import Runtime
 from . import sync_threads as pc_thread
 from . import wrapper
 
@@ -168,10 +167,12 @@ class Shape(ShapeConfiguration):
         result = pickle.loads(response)
         if not result["success"]:
             pc_logging.error(
-                "RenderSVG faled: %s: %s" % (self.name, result["exception"])
+                "RenderSVG failed: %s: %s" % (self.name, result["exception"])
             )
         if "exception" in result and not result["exception"] is None:
-            pc_logging.exception(result["exception"])
+            pc_logging.exception(
+                "RenderSVG exception: %s" % result["exception"]
+            )
 
         self.svg_path = filepath
 
@@ -193,9 +194,6 @@ class Shape(ShapeConfiguration):
         else:
             render_opts = {}
 
-        if "render" in self.config and not self.config["render"] is None:
-            render_opts = render_cfg_merge(render_opts, self.config["render"])
-
         if kind in render_opts and not render_opts[kind] is None:
             if isinstance(render_opts[kind], str):
                 opts = {"prefix": render_opts[kind]}
@@ -203,6 +201,17 @@ class Shape(ShapeConfiguration):
                 opts = render_opts[kind]
         else:
             opts = {}
+
+        if (
+            "render" in self.config
+            and not self.config["render"] is None
+            and kind in self.config["render"]
+            and not self.config["render"][kind] is None
+        ):
+            shape_opts = self.config["render"][kind]
+            if isinstance(shape_opts, str):
+                shape_opts = {"prefix": shape_opts}
+            opts = render_cfg_merge(opts, shape_opts)
 
         # Using the project's config defaults if any
         if filepath is None:
@@ -242,7 +251,10 @@ class Shape(ShapeConfiguration):
             # with other consumers of self._get_svg_path()
             svg_path = await self._get_svg_path(ctx=ctx, project=project)
             if not svg_path is None and svg_path != filepath:
-                shutil.copyfile(svg_path, filepath)
+                if os.path.exists(svg_path):
+                    shutil.copyfile(svg_path, filepath)
+                else:
+                    pc_logging.error("SVG file was not created by the wrapper")
 
     def render_svg(
         self,

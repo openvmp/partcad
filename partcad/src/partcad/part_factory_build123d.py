@@ -31,9 +31,18 @@ class PartFactoryBuild123d(pfp.PartFactoryPython):
 
     async def instantiate(self, part):
         with pc_logging.Action("Build123d", part.project_name, part.name):
+            # Finish initialization of PythonRuntime
+            # which was too expensive to do in the constructor
+            await self.prepare_python()
+
+            # Get the path to the wrapper script
+            # which needs to be executed
             wrapper_path = wrapper.get("build123d.py")
 
+            # Build the request
             request = {"build_parameters": {}}
+
+            # Serialize the request
             register_cq_helper()
             picklestring = pickle.dumps(request)
             request_serialized = base64.b64encode(picklestring).decode()

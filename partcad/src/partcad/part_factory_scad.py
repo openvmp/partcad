@@ -46,7 +46,7 @@ class PartFactoryScad(pff.PartFactoryFile):
 
             stl_path = tempfile.mktemp(".stl")
             p = await asyncio.create_subprocess_exec(
-                [
+                *[
                     scad_path,
                     "--export-format",
                     "binstl",
@@ -58,7 +58,7 @@ class PartFactoryScad(pff.PartFactoryFile):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-            p.communicate()
+            await p.communicate()
 
             shape = b3d.Mesher().read(stl_path)[0].wrapped
             os.unlink(stl_path)
