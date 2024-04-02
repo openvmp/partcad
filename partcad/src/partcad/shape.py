@@ -10,8 +10,11 @@ import cadquery as cq
 import build123d as b3d
 
 import asyncio
+import base64
 import os
+import pickle
 import shutil
+import sys
 import tempfile
 
 from .render import *
@@ -19,6 +22,10 @@ from .plugins import *
 from .shape_config import ShapeConfiguration
 from . import logging as pc_logging
 from . import sync_threads as pc_thread
+from . import wrapper
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "wrappers"))
+from cq_serialize import register as register_cq_helper
 
 
 class Shape(ShapeConfiguration):
@@ -105,64 +112,74 @@ class Shape(ShapeConfiguration):
     def show(self, show_object=None):
         asyncio.run(self.show_async(show_object))
 
-    async def render_svg_somewhere(self, project=None, filepath=None):
+    async def render_svg_somewhere(
+        self,
+        ctx,
+        project=None,
+        filepath=None,
+        line_weight=None,
+        viewport_origin=None,
+    ):
         """Renders an SVG file somewhere and ignore the project settings"""
         if filepath is None:
             filepath = tempfile.mktemp(".svg")
 
-        # cq_obj = await self.get_cadquery()
+        svg_opts, _ = self.render_getopts("svg", ".svg", project, filepath)
 
-        # opts = DEFAULT_RENDER_SVG_OPTS
-        # bb = cq_obj.BoundingBox()
-        # xlen = bb.xlen
-        # ylen = bb.ylen
-        # zlen = bb.zlen
-        # len = max(xlen, ylen, zlen)
-        # if len > 300.0:
-        #     len = 300.0
-        # opts["strokeWidth"] = len / 150.0
+        if line_weight is None:
+            if "lineWeight" in svg_opts and not svg_opts["lineWeight"] is None:
+                line_weight = svg_opts["lineWeight"]
+            else:
+                line_weight = 1.0
 
-        # def do_render_svg():
-        #     nonlocal cq_obj, filepath, opts
-        #     cq_obj = cq_obj.rotate((0, 0, 0), (1, -1, 0.75), 180)
-        #     cq.exporters.export(cq_obj, filepath, opt=opts)
+        if viewport_origin is None:
+            if (
+                "viewportOrigin" in svg_opts
+                and not svg_opts["viewportOrigin"] is None
+            ):
+                viewport_origin = svg_opts["viewportOrigin"]
+            else:
+                viewport_origin = [100, -100, 100]
 
-        b3d_obj = await self.get_build123d()
+        obj = await self.get_wrapped()
+        wrapper_path = wrapper.get("render_svg.py")
+        request = {
+            "wrapped": obj,
+            "line_weight": line_weight,
+            "viewport_origin": viewport_origin,
+        }
+        register_cq_helper()
+        picklestring = pickle.dumps(request)
+        request_serialized = base64.b64encode(picklestring).decode()
 
-        def do_render_svg():
-            nonlocal b3d_obj, filepath
+        runtime = ctx.get_python_runtime(python_runtime="none")
+        await runtime.ensure("build123d")
+        response_serialized, errors = await runtime.run(
+            [
+                wrapper_path,
+                os.path.abspath(filepath),
+            ],
+            request_serialized,
+        )
+        sys.stderr.write(errors)
 
-            view_port_origin = (100, -100, 100)
-            visible, hidden = b3d_obj.project_to_viewport(view_port_origin)
-            max_dimension = max(
-                *b3d.Compound(children=visible + hidden).bounding_box().size
+        response = base64.b64decode(response_serialized)
+        result = pickle.loads(response)
+        if not result["success"]:
+            pc_logging.error(
+                "RenderSVG failed: %s: %s" % (self.name, result["exception"])
             )
-            exporter = b3d.ExportSVG(scale=100 / max_dimension)
-            exporter.add_layer(
-                "Visible",
-                line_color=(64, 192, 64),
-                line_weight=1.0,
+        if "exception" in result and not result["exception"] is None:
+            pc_logging.exception(
+                "RenderSVG exception: %s" % result["exception"]
             )
-            exporter.add_layer(
-                "Hidden",
-                line_color=(32, 64, 32),
-                line_type=b3d.LineType.ISO_DOT,
-            )
-            try:
-                exporter.add_shape(visible, layer="Visible")
-                exporter.add_shape(hidden, layer="Hidden")
-            except:
-                pass
-            exporter.write(filepath)
-
-        await pc_thread.run(do_render_svg)
 
         self.svg_path = filepath
 
-    async def _get_svg_path(self, project):
+    async def _get_svg_path(self, ctx, project):
         async with self.svg_lock:
             if self.svg_path is None:
-                await self.render_svg_somewhere(project, None)
+                await self.render_svg_somewhere(ctx=ctx, project=project)
             return self.svg_path
 
     def render_getopts(
@@ -177,9 +194,6 @@ class Shape(ShapeConfiguration):
         else:
             render_opts = {}
 
-        if "render" in self.config and not self.config["render"] is None:
-            render_opts = render_cfg_merge(render_opts, self.config["render"])
-
         if kind in render_opts and not render_opts[kind] is None:
             if isinstance(render_opts[kind], str):
                 opts = {"prefix": render_opts[kind]}
@@ -187,6 +201,17 @@ class Shape(ShapeConfiguration):
                 opts = render_opts[kind]
         else:
             opts = {}
+
+        if (
+            "render" in self.config
+            and not self.config["render"] is None
+            and kind in self.config["render"]
+            and not self.config["render"][kind] is None
+        ):
+            shape_opts = self.config["render"][kind]
+            if isinstance(shape_opts, str):
+                shape_opts = {"prefix": shape_opts}
+            opts = render_cfg_merge(opts, shape_opts)
 
         # Using the project's config defaults if any
         if filepath is None:
@@ -215,6 +240,7 @@ class Shape(ShapeConfiguration):
 
     async def render_svg_async(
         self,
+        ctx,
         project=None,
         filepath=None,
     ):
@@ -223,18 +249,24 @@ class Shape(ShapeConfiguration):
 
             # This creates a temporary file, but it allows to reuse the file
             # with other consumers of self._get_svg_path()
-            svg_path = await self._get_svg_path(project)
-            shutil.copyfile(svg_path, filepath)
+            svg_path = await self._get_svg_path(ctx=ctx, project=project)
+            if not svg_path is None and svg_path != filepath:
+                if os.path.exists(svg_path):
+                    shutil.copyfile(svg_path, filepath)
+                else:
+                    pc_logging.error("SVG file was not created by the wrapper")
 
     def render_svg(
         self,
+        ctx,
         project=None,
         filepath=None,
     ):
-        asyncio.run(self.render_svg_async(project, filepath))
+        asyncio.run(self.render_svg_async(ctx, project, filepath))
 
     async def render_png_async(
         self,
+        ctx,
         project=None,
         filepath=None,
         width=None,
@@ -261,7 +293,7 @@ class Shape(ShapeConfiguration):
                     height = DEFAULT_RENDER_HEIGHT
 
             # Render the vector image
-            svg_path = await self._get_svg_path(project)
+            svg_path = await self._get_svg_path(ctx=ctx, project=project)
 
             def do_render_png():
                 nonlocal project, svg_path, width, height, filepath
@@ -273,15 +305,19 @@ class Shape(ShapeConfiguration):
 
     def render_png(
         self,
+        ctx,
         project=None,
         filepath=None,
         width=None,
         height=None,
     ):
-        asyncio.run(self.render_png_async(project, filepath, width, height))
+        asyncio.run(
+            self.render_png_async(ctx, project, filepath, width, height)
+        )
 
     async def render_step_async(
         self,
+        ctx,
         project=None,
         filepath=None,
     ):
@@ -302,13 +338,15 @@ class Shape(ShapeConfiguration):
 
     def render_step(
         self,
+        ctx,
         project=None,
         filepath=None,
     ):
-        asyncio.run(self.render_step_async(project, filepath))
+        asyncio.run(self.render_step_async(ctx, project, filepath))
 
     async def render_stl_async(
         self,
+        ctx,
         project=None,
         filepath=None,
         tolerance=None,
@@ -354,6 +392,7 @@ class Shape(ShapeConfiguration):
 
     def render_stl(
         self,
+        ctx,
         project=None,
         filepath=None,
         tolerance=None,
@@ -361,12 +400,13 @@ class Shape(ShapeConfiguration):
     ):
         asyncio.run(
             self.render_stl_async(
-                project, filepath, tolerance, angularTolerance
+                ctx, project, filepath, tolerance, angularTolerance
             )
         )
 
     async def render_3mf_async(
         self,
+        ctx,
         project=None,
         filepath=None,
         tolerance=None,
@@ -412,6 +452,7 @@ class Shape(ShapeConfiguration):
 
     def render_3mf(
         self,
+        ctx,
         project=None,
         filepath=None,
         tolerance=None,
@@ -419,12 +460,13 @@ class Shape(ShapeConfiguration):
     ):
         asyncio.run(
             self.render_3mf_async(
-                project, filepath, tolerance, angularTolerance
+                ctx, project, filepath, tolerance, angularTolerance
             )
         )
 
     async def render_threejs_async(
         self,
+        ctx,
         project=None,
         filepath=None,
         tolerance=None,
@@ -471,6 +513,7 @@ class Shape(ShapeConfiguration):
 
     def render_threejs(
         self,
+        ctx,
         project=None,
         filepath=None,
         tolerance=None,
@@ -478,12 +521,13 @@ class Shape(ShapeConfiguration):
     ):
         asyncio.run(
             self.render_threejs_async(
-                project, filepath, tolerance, angularTolerance
+                ctx, project, filepath, tolerance, angularTolerance
             )
         )
 
     async def render_obj_async(
         self,
+        ctx,
         project=None,
         filepath=None,
         tolerance=None,
@@ -512,31 +556,41 @@ class Shape(ShapeConfiguration):
                 else:
                     angularTolerance = 0.1
 
-            cq_obj = await self.get_cadquery()
+            obj = await self.get_wrapped()
+            wrapper_path = wrapper.get("render_obj.py")
+            request = {
+                "wrapped": obj,
+                "tolerance": tolerance,
+                "angularTolerance": angularTolerance,
+            }
+            register_cq_helper()
+            picklestring = pickle.dumps(request)
+            request_serialized = base64.b64encode(picklestring).decode()
 
-            def do_render_obj():
-                nonlocal cq_obj, project, filepath, tolerance, angularTolerance
-                try:
-                    vertices, triangles = cq_obj.tessellate(
-                        tolerance, angularTolerance
-                    )
+            runtime = ctx.get_python_runtime(python_runtime="none")
+            await runtime.ensure("cadquery")
+            response_serialized, errors = await runtime.run(
+                [
+                    wrapper_path,
+                    os.path.abspath(filepath),
+                ],
+                request_serialized,
+            )
+            sys.stderr.write(errors)
 
-                    with open(filepath, "w") as f:
-                        f.write("# OBJ file\n")
-                        for v in vertices:
-                            f.write("v %.4f %.4f %.4f\n" % (v.x, v.y, v.z))
-                        for p in triangles:
-                            f.write("f")
-                            for i in p:
-                                f.write(" %d" % (i + 1))
-                            f.write("\n")
-                except:
-                    pc_logging.error("Exception while exporting to " + filepath)
+            response = base64.b64decode(response_serialized)
+            result = pickle.loads(response)
 
-            await pc_thread.run(do_render_obj)
+            if not result["success"]:
+                pc_logging.error(
+                    "RenderOBJ faled: %s: %s" % (self.name, result["exception"])
+                )
+            if "exception" in result and not result["exception"] is None:
+                pc_logging.exception(result["exception"])
 
     def render_obj(
         self,
+        ctx,
         project=None,
         filepath=None,
         tolerance=None,
@@ -544,11 +598,77 @@ class Shape(ShapeConfiguration):
     ):
         asyncio.run(
             self.render_obj_async(
-                project, filepath, tolerance, angularTolerance
+                ctx, project, filepath, tolerance, angularTolerance
             )
         )
 
-    async def render_txt_async(self, project=None, filepath=None):
+    async def render_gltf_async(
+        self,
+        ctx,
+        project=None,
+        filepath=None,
+        binary=None,
+        tolerance=None,
+        angularTolerance=None,
+    ):
+        with pc_logging.Action("RenderGLTF", self.project_name, self.name):
+            gltf_opts, filepath = self.render_getopts(
+                "gltf", ".json", project, filepath
+            )
+
+            if tolerance is None:
+                if (
+                    "tolerance" in gltf_opts
+                    and not gltf_opts["tolerance"] is None
+                ):
+                    tolerance = gltf_opts["tolerance"]
+                else:
+                    tolerance = 0.1
+
+            if angularTolerance is None:
+                if (
+                    "angularTolerance" in gltf_opts
+                    and not gltf_opts["angularTolerance"] is None
+                ):
+                    angularTolerance = gltf_opts["angularTolerance"]
+                else:
+                    angularTolerance = 0.1
+
+            if binary is None:
+                if "binary" in gltf_opts and not gltf_opts["binary"] is None:
+                    binary = gltf_opts["binary"]
+                else:
+                    binary = False
+
+            b3d_obj = await self.get_build123d()
+
+            def do_render_gltf():
+                nonlocal b3d_obj, project, filepath, tolerance, angularTolerance
+                b3d.export_gltf(
+                    b3d_obj,
+                    filepath,
+                    binary=binary,
+                    linear_deflection=tolerance,
+                    angular_deflection=angularTolerance,
+                )
+
+            await pc_thread.run(do_render_gltf)
+
+    def render_gltf(
+        self,
+        ctx,
+        project=None,
+        filepath=None,
+        tolerance=None,
+        angularTolerance=None,
+    ):
+        asyncio.run(
+            self.render_gltf_async(
+                ctx, project, filepath, tolerance, angularTolerance
+            )
+        )
+
+    async def render_txt_async(self, ctx, project=None, filepath=None):
         with pc_logging.Action("RenderTXT", self.project_name, self.name):
             if filepath is None:
                 filepath = self.path + "/bom.txt"
@@ -560,10 +680,10 @@ class Shape(ShapeConfiguration):
             await self._render_txt_real(file)
             file.close()
 
-    def render_txt(self, project=None, filepath=None):
-        asyncio.run(self.render_txt_async(project, filepath))
+    def render_txt(self, ctx, project=None, filepath=None):
+        asyncio.run(self.render_txt_async(ctx, project, filepath))
 
-    async def render_markdown_async(self, project=None, filepath=None):
+    async def render_markdown_async(self, ctx, project=None, filepath=None):
         with pc_logging.Action("RenderMD", self.project_name, self.name):
             if filepath is None:
                 filepath = self.path + "/README.md"
@@ -586,5 +706,5 @@ It already takes into account the number of items per SKU.
             )
             bom_file.close()
 
-    def render_markdown(self, project=None, filepath=None):
-        asyncio.run(self.render_markdown_async(project, filepath))
+    def render_markdown(self, ctx, project=None, filepath=None):
+        asyncio.run(self.render_markdown_async(ctx, project, filepath))

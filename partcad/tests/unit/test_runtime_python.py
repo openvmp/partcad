@@ -8,6 +8,7 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import asyncio
 import pytest
 import sys
 
@@ -23,7 +24,7 @@ def test_runtime_python_version_3_9_none():
     user_config.python_runtime = "none"
     ctx = pc.Context("partcad/tests")
     runtime = ctx.get_python_runtime("3.9")
-    version_string, errors = runtime.run(["--version"])
+    version_string, errors = asyncio.run(runtime.run(["--version"]))
     assert errors == ""
     assert version_string.startswith("Python 3.9")
 
@@ -36,7 +37,7 @@ def test_runtime_python_version_3_10_none():
     user_config.python_runtime = "none"
     ctx = pc.Context("partcad/tests")
     runtime = ctx.get_python_runtime("3.10")
-    version_string, errors = runtime.run(["--version"])
+    version_string, errors = asyncio.run(runtime.run(["--version"]))
     assert errors == ""
     assert version_string.startswith("Python 3.10")
 
@@ -49,7 +50,7 @@ def test_runtime_python_version_3_11_none():
     user_config.python_runtime = "none"
     ctx = pc.Context("partcad/tests")
     runtime = ctx.get_python_runtime("3.11")
-    version_string, errors = runtime.run(["--version"])
+    version_string, errors = asyncio.run(runtime.run(["--version"]))
     assert errors == ""
     assert version_string.startswith("Python 3.11")
 
@@ -58,7 +59,7 @@ def test_runtime_python_version_3_9_conda():
     user_config.python_runtime = "conda"
     ctx = pc.Context("partcad/tests")
     runtime = ctx.get_python_runtime("3.9")
-    version_string, errors = runtime.run(["--version"])
+    version_string, errors = asyncio.run(runtime.run(["--version"]))
     assert errors == ""
     assert version_string.startswith("Python 3.9")
 
@@ -67,7 +68,7 @@ def test_runtime_python_version_3_10_conda():
     user_config.python_runtime = "conda"
     ctx = pc.Context("partcad/tests")
     runtime = ctx.get_python_runtime("3.10")
-    version_string, errors = runtime.run(["--version"])
+    version_string, errors = asyncio.run(runtime.run(["--version"]))
     assert errors == ""
     assert version_string.startswith("Python 3.10")
 
@@ -76,6 +77,6 @@ def test_runtime_python_version_3_11_conda():
     user_config.python_runtime = "conda"
     ctx = pc.Context("partcad/tests")
     runtime = ctx.get_python_runtime("3.11")
-    version_string, errors = runtime.run(["--version"])
+    version_string, errors = asyncio.run(runtime.run(["--version"]))
     assert errors == ""
     assert version_string.startswith("Python 3.11")

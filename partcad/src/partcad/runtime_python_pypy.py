@@ -26,15 +26,23 @@ class PyPyPythonRuntime(runtime_python.PythonRuntime):
             os.makedirs(self.path)
             try:
                 subprocess.run(
-                    ["conda", "create", "-p", self.path, "pypy", "python=%s" % version]
+                    [
+                        "conda",
+                        "create",
+                        "-p",
+                        self.path,
+                        "pypy",
+                        "python=%s" % version,
+                    ]
                 )
                 subprocess.run(["conda", "install", "-p", self.path, "scipy"])
             except Exception as e:
                 shutil.rmtree(self.path)
                 raise e
 
-    def run(self, cmd, stdin=""):
-        return super().run(
-            ["conda", "run", "--no-capture-output", "-p", self.path, "pypy"] + cmd,
+    async def run(self, cmd, stdin=""):
+        return await super().run(
+            ["conda", "run", "--no-capture-output", "-p", self.path, "pypy"]
+            + cmd,
             stdin,
         )

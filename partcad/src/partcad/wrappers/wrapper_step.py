@@ -34,5 +34,4 @@ path, request = wrapper_common.handle_input()
 # Call CadQuery
 model = process(path, request)
 
-output = wrapper_common.handle_output(model)
-print(output)
+wrapper_common.handle_output(model)

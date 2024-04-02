@@ -40,6 +40,13 @@ def resolve_resource_path(current_project_name, pattern: str):
     return project_pattern, item_pattern
 
 
+def normalize_resource_path(current_project_name, pattern: str):
+    project_pattern, item_pattern = resolve_resource_path(
+        current_project_name, pattern
+    )
+    return f"{project_pattern}:{item_pattern}"
+
+
 def total_size(obj, verbose=False):
     """sum size of object & members."""
     if isinstance(obj, BLACKLIST):

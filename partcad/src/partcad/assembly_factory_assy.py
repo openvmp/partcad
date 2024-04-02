@@ -16,7 +16,7 @@ import yaml
 from .assembly import Assembly, AssemblyChild
 from . import assembly_factory_file as aff
 from . import logging as pc_logging
-from .utils import resolve_resource_path
+from .utils import normalize_resource_path
 
 
 class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
@@ -146,6 +146,9 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
                     assy_name = node["package"] + ":" + assy_name
                 elif not ":" in assy_name:
                     assy_name = ":" + assy_name
+                assy_name = normalize_resource_path(
+                    self.project.name, assy_name
+                )
                 item = self.ctx._get_assembly(assy_name, params)
                 if item is None:
                     pc_logging.error("Assembly not found: %s" % name)
@@ -156,10 +159,17 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
                     part_name = node["package"] + ":" + part_name
                 elif not ":" in part_name:
                     part_name = ":" + part_name
+                part_name = normalize_resource_path(
+                    self.project.name, part_name
+                )
                 item = self.ctx._get_part(part_name, params)
                 if item is None:
-                    pc_logging.error("Part not found: %s" % name)
-                    raise Exception("Part not found")
+                    pc_logging.error(
+                        "Part not found: %s in %s" % (name, self.name)
+                    )
+                    raise Exception(
+                        "Part not found: %s in %s" % (name, self.name)
+                    )
             else:
                 item = None
 

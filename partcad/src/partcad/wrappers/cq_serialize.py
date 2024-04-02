@@ -20,11 +20,95 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+# Also influenced by https://github.com/gumyr/build123d/blob/dev/src/build123d/persistence.py
+
+"""
+build123d pickle support
+
+name: persistence.py
+by:   Jojain & bernhard-42
+date: September 8th, 2023
+
+desc:
+    This python module enables build123d objects to be pickled.
+
+license:
+
+    Copyright 2023 Jojain & bernhard-42
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+"""
+
 import copyreg
 from io import BytesIO
+from typing import Any
 
 import cadquery as cq
 import OCP
+from OCP.TopAbs import TopAbs_Orientation, TopAbs_ShapeEnum
+from OCP.BinTools import BinTools
+from OCP.gp import gp_Quaternion, gp_Trsf, gp_Vec
+from OCP.TopLoc import TopLoc_Location
+from OCP.TopoDS import (
+    TopoDS,
+    TopoDS_Compound,
+    TopoDS_CompSolid,
+    TopoDS_Edge,
+    TopoDS_Face,
+    TopoDS_Shape,
+    TopoDS_Shell,
+    TopoDS_Solid,
+    TopoDS_Vertex,
+    TopoDS_Wire,
+)
+
+import OCP.TopAbs as ta
+
+downcast_LUT = {
+    ta.TopAbs_VERTEX: TopoDS.Vertex_s,
+    ta.TopAbs_EDGE: TopoDS.Edge_s,
+    ta.TopAbs_WIRE: TopoDS.Wire_s,
+    ta.TopAbs_FACE: TopoDS.Face_s,
+    ta.TopAbs_SHELL: TopoDS.Shell_s,
+    ta.TopAbs_SOLID: TopoDS.Solid_s,
+    ta.TopAbs_COMPOUND: TopoDS.Compound_s,
+    ta.TopAbs_COMPSOLID: TopoDS.CompSolid_s,
+}
+
+
+def shapetype(obj: TopoDS_Shape) -> TopAbs_ShapeEnum:
+    """Return TopoDS_Shape's TopAbs_ShapeEnum"""
+    if obj.IsNull():
+        raise ValueError("Null TopoDS_Shape object")
+
+    return obj.ShapeType()
+
+
+def downcast(obj: TopoDS_Shape) -> TopoDS_Shape:
+    """Downcasts a TopoDS object to suitable specialized type
+
+    Args:
+      obj: TopoDS_Shape:
+
+    Returns:
+
+    """
+
+    f_downcast: Any = downcast_LUT[shapetype(obj)]
+    return_value = f_downcast(obj)
+
+    return return_value
 
 
 def _inflate_shape(data: bytes):
@@ -36,6 +120,20 @@ def _reduce_shape(shape: cq.Shape):
     with BytesIO() as stream:
         shape.exportBrep(stream)
         return _inflate_shape, (stream.getvalue(),)
+
+
+def _inflate_topods(data: bytes):
+    with BytesIO(data) as bio:
+        shape = TopoDS_Shape()
+        builder = OCP.BRep.BRep_Builder()
+        OCP.BRepTools.BRepTools.Read_s(shape, bio, builder)
+        return downcast(shape)
+
+
+def _reduce_topods(shape):
+    with BytesIO() as bio:
+        OCP.BRepTools.BRepTools.Write_s(shape, bio)
+        return _inflate_topods, (bio.getvalue(),)
 
 
 def _inflate_transform(*values: float):
@@ -75,48 +173,6 @@ def _reduce_mat(mat: OCP.gp.gp_Mat):
         mat.Column(2),
         mat.Column(3),
     )
-
-
-def _inflate_compound(data: bytes):
-    with BytesIO(data) as bio:
-        shape = OCP.TopoDS.TopoDS_Compound()
-        builder = OCP.BRep.BRep_Builder()
-        OCP.BRepTools.BRepTools.Read_s(shape, bio, builder)
-        return shape
-
-
-def _reduce_compound(compound: OCP.TopoDS.TopoDS_Compound):
-    with BytesIO() as stream:
-        OCP.BRepTools.BRepTools.Write_s(compound, stream)
-        return _inflate_compound, (stream.getvalue(),)
-
-
-def _inflate_solid(data: bytes):
-    with BytesIO(data) as bio:
-        shape = OCP.TopoDS.TopoDS_Solid()
-        builder = OCP.BRep.BRep_Builder()
-        OCP.BRepTools.BRepTools.Read_s(shape, bio, builder)
-        return shape
-
-
-def _reduce_solid(compound: OCP.TopoDS.TopoDS_Solid):
-    with BytesIO() as stream:
-        OCP.BRepTools.BRepTools.Write_s(compound, stream)
-        return _inflate_solid, (stream.getvalue(),)
-
-
-def _inflate_shell(data: bytes):
-    with BytesIO(data) as bio:
-        shape = OCP.TopoDS.TopoDS_Shell()
-        builder = OCP.BRep.BRep_Builder()
-        OCP.BRepTools.BRepTools.Read_s(shape, bio, builder)
-        return shape
-
-
-def _reduce_shell(compound: OCP.TopoDS.TopoDS_Shell):
-    with BytesIO() as stream:
-        OCP.BRepTools.BRepTools.Write_s(compound, stream)
-        return _inflate_shell, (stream.getvalue(),)
 
 
 def _inflate_ax3(*values: float):
@@ -186,6 +242,16 @@ def register():
     copyreg.pickle(
         cq.Location, lambda loc: (cq.Location, (loc.wrapped.Transformation(),))
     )
-    copyreg.pickle(OCP.TopoDS.TopoDS_Compound, _reduce_compound)
-    copyreg.pickle(OCP.TopoDS.TopoDS_Solid, _reduce_solid)
-    copyreg.pickle(OCP.TopoDS.TopoDS_Shell, _reduce_shell)
+
+    for cls in (
+        TopoDS_Shape,
+        TopoDS_Compound,
+        TopoDS_CompSolid,
+        TopoDS_Solid,
+        TopoDS_Shell,
+        TopoDS_Face,
+        TopoDS_Wire,
+        TopoDS_Edge,
+        TopoDS_Vertex,
+    ):
+        copyreg.pickle(cls, _reduce_topods)

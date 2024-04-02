@@ -20,7 +20,7 @@ def test_render_svg_part_1():
     cube = prj.get_part("cube")
     assert cube is not None
     try:
-        cube.render_svg(project=prj)
+        cube.render_svg(ctx, project=prj)
     except Exception as e:
         assert False, "Valid render request caused an exception: %s" % e
 
@@ -32,7 +32,7 @@ def test_render_svg_assy_1():
     assy = prj.get_assembly("logo")
     assert assy is not None
     try:
-        assy.render_svg(project=prj)
+        assy.render_svg(ctx, project=prj)
     except Exception as e:
         assert False, "Valid render request caused an exception: %s" % e
 
@@ -44,7 +44,7 @@ def test_render_svg_assy_2():
     assy = prj.get_assembly("logo_embedded")
     assert assy is not None
     try:
-        assy.render_svg(project=prj)
+        assy.render_svg(ctx, project=prj)
     except Exception as e:
         assert False, "Valid render request caused an exception: %s" % e
 

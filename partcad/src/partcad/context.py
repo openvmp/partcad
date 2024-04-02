@@ -369,14 +369,16 @@ class Context(project_config.Configuration):
             self._get_assembly(assembly_spec, params).get_build123d()
         )
 
-    def render(self, format=None, output_dir=None):
-        path = self.get_current_project_path()
-        pc_logging.debug("Rendering %s..." % path)
-        prj = self.get_project(path)
-        # prj = self.projects[path]
-        prj.render(format=format, output_dir=output_dir)
+    def render(self, project_path=None, format=None, output_dir=None):
+        if project_path is None:
+            project_path = self.get_current_project_path()
+        pc_logging.info("Rendering all objects in %s..." % project_path)
+        project = self.get_project(project_path)
+        project.render(format=format, output_dir=output_dir)
 
-    def get_python_runtime(self, version, python_runtime=None):
+    def get_python_runtime(self, version=None, python_runtime=None):
+        if version is None:
+            version = "%d.%d" % (sys.version_info.major, sys.version_info.minor)
         if python_runtime is None:
             python_runtime = user_config.python_runtime
         runtime_name = python_runtime + "-" + version

@@ -20,7 +20,7 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
 
         self.conda_path = shutil.which("conda")
 
-    def run(self, cmd, stdin=""):
+    async def run(self, cmd, stdin=""):
         with self.lock:
             if not self.initialized:
                 with pc_logging.Action("Conda", "create", self.version):
@@ -49,7 +49,9 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
                         )
                         _, stderr = p.communicate()
                         if not stderr is None and stderr != b"":
-                            pc_logging.error("conda env install error: %s" % stderr)
+                            pc_logging.error(
+                                "conda env install error: %s" % stderr
+                            )
 
                         # Install pip into the newly created conda environment
                         p = subprocess.Popen(
@@ -68,21 +70,23 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
                         )
                         _, stderr = p.communicate()
                         if not stderr is None and stderr != b"":
-                            pc_logging.error("conda pip install error: %s" % stderr)
+                            pc_logging.error(
+                                "conda pip install error: %s" % stderr
+                            )
 
                         self.initialized = True
                     except Exception as e:
                         shutil.rmtree(self.path)
                         raise e
 
-        return super().run(
+        return await super().run(
             [
                 self.conda_path,
                 "run",
                 "--no-capture-output",
                 "-p",
                 self.path,
-                "python",
+                "python" if os.name != "nt" else "pythonw",
                 # "python%s" % self.version,  # This doesn't work on Windows
             ]
             + cmd,

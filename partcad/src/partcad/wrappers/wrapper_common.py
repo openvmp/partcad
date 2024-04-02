@@ -11,7 +11,7 @@
 
 import base64
 
-# import fcntl # TODO(clairbee): replace it with whatever works on Windows if needed
+# import fcntl  # TODO(clairbee): replace it with whatever works on Windows if needed
 import os
 import pickle
 import sys
@@ -26,9 +26,9 @@ def handle_input():
 
     # Handle the input
     # - Comand line parameters
-    path = sys.argv[1]
+    path = os.path.normpath(sys.argv[1])
     if len(sys.argv) > 2:
-        os.chdir(sys.argv[2])
+        os.chdir(os.path.normpath(sys.argv[2]))
     # - Content passed via stdin
     # #   - Make stdin blocking so that we can read until EOF
     # flag = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
@@ -36,7 +36,11 @@ def handle_input():
     #   - Read until EOF
     input_str = sys.stdin.read()
     #   - Unpack the content received via stdin
-    request_bytes = base64.b64decode(input_str.encode())
+
+    # TODO(clairbee): is .encode() needed here?
+    request_bytes = base64.b64decode(input_str)
+
+    register_cq_helper()
     request = pickle.loads(request_bytes)
     return path, request
 
@@ -46,4 +50,4 @@ def handle_output(model):
     register_cq_helper()
     picklestring = pickle.dumps(model)
     response = base64.b64encode(picklestring)
-    return response.decode()
+    print(response.decode())

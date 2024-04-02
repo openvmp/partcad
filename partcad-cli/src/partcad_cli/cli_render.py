@@ -10,6 +10,7 @@
 import argparse
 
 import partcad.logging as pc_logging
+import partcad.utils as pc_utils
 
 
 def cli_help_render(subparsers: argparse.ArgumentParser):
@@ -36,7 +37,7 @@ def cli_help_render(subparsers: argparse.ArgumentParser):
         dest="format",
         type=str,
         nargs="?",
-        choices=["svg", "png", "step", "stl", "3mf", "threejs", "obj"],
+        choices=["svg", "png", "step", "stl", "3mf", "threejs", "obj", "gltf"],
     )
 
     parser_render.add_argument(
@@ -74,13 +75,21 @@ def cli_render(args, ctx):
     ctx.option_create_dirs = args.create_dirs
 
     if args.package is None:
-        package = "this"
-    else:
-        package = args.package
+        args.package = ""
+    if not args.object is None:
+        if not ":" in args.object:
+            args.object = ":" + args.object
+        args.package, args.object = pc_utils.resolve_resource_path(
+            ctx.get_current_project_path(), args.object
+        )
 
     if args.object is None:
         # Render all parts and assemblies configured to be auto-rendered in this project
-        ctx.render(format=args.format, output_dir=args.output_dir)
+        ctx.render(
+            project_path=args.package,
+            format=args.format,
+            output_dir=args.output_dir,
+        )
     else:
         # Render the requested part or assembly
         parts = []
@@ -90,7 +99,7 @@ def cli_render(args, ctx):
         else:
             parts.append(args.object)
 
-        prj = ctx.get_project(package)
+        prj = ctx.get_project(args.package)
         prj.render(
             parts=parts,
             assemblies=assemblies,

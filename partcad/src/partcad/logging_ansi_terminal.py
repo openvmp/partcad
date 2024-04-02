@@ -18,6 +18,18 @@ import threading
 
 from .logging import ops, error
 
+COLOR_DEBUG = "\033[94m"
+COLOR_INFO = "\033[92m\033[1m"
+COLOR_WARN = "\033[93m"
+COLOR_ERROR = "\033[91m"
+COLOR_CRIT = "\033[91m\033[1m"
+COLOR_NONE = "\033[0m"
+
+COLOR_ACTION = "\033[1m"
+
+WRAP = "\033[?7h"
+NO_WRAP = "\033[?7l"
+
 
 def ansi_process_start(op: str, package: str, item: str = None):
     logging.getLogger("partcad").critical(
@@ -143,7 +155,7 @@ class AnsiTerminalProgressHandler(logging.Handler):
                     th.join()
 
                     if len(output) > 0:
-                        print(output, end="", file=self.stream, flush=True)
+                        self.stream.write(output)
                         self.stream.flush()
                     return
 
@@ -179,15 +191,15 @@ class AnsiTerminalProgressHandler(logging.Handler):
         if not record is None:
             if not ignore_message:
                 if record.levelno == logging.DEBUG:
-                    output += "\033[94mDEBUG:\033[0m "
+                    output += COLOR_DEBUG + "DEBUG:" + COLOR_NONE + " "
                 elif record.levelno == logging.INFO:
-                    output += "\033[92m\033[1mINFO:\033[0m "
+                    output += COLOR_INFO + "INFO: " + COLOR_NONE + " "
                 elif record.levelno == logging.WARN:
-                    output += "\033[93mWARN:\033[0m "
+                    output += COLOR_WARN + "WARN:" + COLOR_NONE + " "
                 elif record.levelno == logging.ERROR:
-                    output += "\033[91mERROR:\033[0m "
+                    output += COLOR_ERROR + "ERROR:" + COLOR_NONE + " "
                 elif record.levelno == logging.CRITICAL:
-                    output += "\033[91m\033[1mCRIT:\033[0m "
+                    output += COLOR_CRIT + "CRIT:" + COLOR_NONE + " "
 
                 msg = self.format(record)
                 output += "%s\n" % msg
@@ -195,15 +207,17 @@ class AnsiTerminalProgressHandler(logging.Handler):
         if not self.process is None:
             seconds = int(now - self.process_start)
 
-            output += (
-                "\033[92m\033[1m[ %d / %d ]\033[0m \033[1m%s\033[0m %s; %ds\n"
-                % (
-                    self.actions_running,
-                    self.actions_total,
-                    self.process,
-                    self.process_target,
-                    seconds,
-                )
+            output += NO_WRAP
+            output += "%s[ %d / %d ]%s %s%s%s %s; %ds\n" % (
+                COLOR_INFO,
+                self.actions_running,
+                self.actions_total,
+                COLOR_NONE,
+                COLOR_ACTION,
+                self.process,
+                COLOR_NONE,
+                self.process_target,
+                seconds,
             )
             self.footer_size = 1
 
@@ -212,19 +226,23 @@ class AnsiTerminalProgressHandler(logging.Handler):
             )
             sorted_actions = sorted_actions[: self.MAX_LINES]
             for action in sorted_actions:
-                output += "\t\033[1m[%s]\033[0m %s [%ds]\n" % (
+                output += "%s\t[%s]%s %s [%ds]\n" % (
+                    COLOR_ACTION,
                     action["op"],
+                    COLOR_NONE,
                     action["target"],
                     now - action["start"],
                 )
                 self.footer_size += 1
+            output += WRAP
         else:
             self.footer_size = 0
 
         self.last_output = now
         self.thread_lock.release()
         if len(output) > 0:
-            print(output, end="", file=self.stream, flush=True)
+            self.stream.write(output)
+            self.stream.flush()
 
         return
 
@@ -236,6 +254,7 @@ queue_handler: AnsiTerminalProgressHandler = None
 def fini():
     global listener
     if not listener is None:
+        atexit.unregister(fini)
         listener.stop()
         listener = None
 

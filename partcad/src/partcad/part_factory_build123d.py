@@ -17,9 +17,7 @@ from . import wrapper
 from . import logging as pc_logging
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "wrappers"))
-from cq_serialize import (
-    register as register_cq_helper,
-)  # import this one for `pickle` to use
+from cq_serialize import register as register_cq_helper
 
 
 class PartFactoryBuild123d(pfp.PartFactoryPython):
@@ -31,21 +29,32 @@ class PartFactoryBuild123d(pfp.PartFactoryPython):
             # Complement the config object here if necessary
             self._create(part_config)
 
-    def instantiate(self, part):
+    async def instantiate(self, part):
         with pc_logging.Action("Build123d", part.project_name, part.name):
+            # Finish initialization of PythonRuntime
+            # which was too expensive to do in the constructor
+            await self.prepare_python()
+
+            # Get the path to the wrapper script
+            # which needs to be executed
             wrapper_path = wrapper.get("build123d.py")
 
+            # Build the request
             request = {"build_parameters": {}}
+
+            # Serialize the request
+            register_cq_helper()
             picklestring = pickle.dumps(request)
             request_serialized = base64.b64encode(picklestring).decode()
 
-            self.runtime.ensure("build123d")
-            response_serialized, errors = self.runtime.run(
+            await self.runtime.ensure("build123d")
+            response_serialized, errors = await self.runtime.run(
                 [wrapper_path, self.path], request_serialized
             )
             sys.stderr.write(errors)
 
             response = base64.b64decode(response_serialized)
+            register_cq_helper()
             result = pickle.loads(response)
 
             if not result["success"]:
