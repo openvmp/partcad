@@ -15,7 +15,7 @@ PartCAD maintains information about mechanical parts and
 how they come together to form larger assemblies.
 The same parts are reused in multiple assemblies and multiple projects.
 
-Find [more documentation here](https://partcad.readthedocs.io/en/latest/?badge=latest).
+Find [more documentation here](https://partcad.readthedocs.io/en/latest/?badge=latest) and visit [our website](https://partcad.org/).
 
 ## Installation
 

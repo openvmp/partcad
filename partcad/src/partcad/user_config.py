@@ -62,5 +62,23 @@ class UserConfig:
         else:
             self.force_update = False
 
+        # option: googleApiKey
+        # description: GOOGLE API key for AI services
+        # values: <string>
+        # default: None
+        if "googleApiKey" in self.config_obj:
+            self.google_api_key = self.config_obj["googleApiKey"]
+        else:
+            self.google_api_key = None
+
+        # option: openaiApiKey
+        # description: OpenAI API key for AI services
+        # values: <string>
+        # default: None
+        if "openaiApiKey" in self.config_obj:
+            self.openai_api_key = self.config_obj["openaiApiKey"]
+        else:
+            self.openai_api_key = None
+
 
 user_config = UserConfig()

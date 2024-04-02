@@ -708,3 +708,11 @@ It already takes into account the number of items per SKU.
 
     def render_markdown(self, ctx, project=None, filepath=None):
         asyncio.run(self.render_markdown_async(ctx, project, filepath))
+
+    async def get_summary_async(self, project=None):
+        if "summary" in self.config and not self.config["summary"] is None:
+            return self.config["summary"]
+        return None
+
+    def get_summary(self, project=None):
+        asyncio.run(self.get_summary_async(project))

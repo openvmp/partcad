@@ -13,13 +13,14 @@ Browse available models
 Online
 ------
 
-The web UI to browse the public PartCAD repository will be available at ``partcad.org`` but, it is not yet published.
+The web UI to browse the public PartCAD repository is available at
+`partcad.org <https://partcad.org/>`_.
 
 Visual Studio Code extension
 ----------------------------
 
 The PartCAD extension is
-[available](https://marketplace.visualstudio.com/items?itemName=OpenVMP.partcad)
+`available <https://marketplace.visualstudio.com/items?itemName=OpenVMP.partcad>`_
 in VS Code extension marketplace.
 
 Command line tools
@@ -146,8 +147,8 @@ script:
 Python: build123d
 -----------------
 
-Here are some examples how to fetch PartCAD models from within a ``build123d``
-script:
+Here are some examples of how to fetch PartCAD models from within a
+``build123d`` script:
 
   .. code-block:: python
 
@@ -259,7 +260,7 @@ The most powerful way to define parts is by using modeling frameworks such as
 CadQuery and build123d. PartCAD uses CQGI to load models
 (in other words: intercepts `show_object()` calls).
 
-  .. code-block:: python
+  .. code-block:: yaml
 
     # partcad.yaml
     parts:
@@ -267,6 +268,37 @@ CadQuery and build123d. PartCAD uses CQGI to load models
             type: cadquery # part1.py is used
         optional-path/part2:
             type: build123d # optional-path/part2.py is used
+
+Part: AI-generated
+------------------
+
+PartCAD can generate CadQuery and OpenSCAD scripts using GenAI models from
+Google and OpenAI.
+This is the fastest way to bootstrap most designs.
+Empty the generated file and iteratively improve the prompts until the desired
+script functionality is achieved.
+Alternatively, drop the AI parameters and continue improving the script manually.
+
+  .. code-block:: yaml
+
+    # partcad.yaml
+    parts:
+        part1:
+            type: ai-cadquery # part1.py is created
+            model: gemini-pro
+            prompt: A cube
+        part2:
+            type: ai-openscad # part2.scad is created
+            model: gpt-3.5-turbo
+            prompt: A cylinder
+
+The following configuration is required:
+
+  .. code-block:: yaml
+
+    # ~/.partcad/config.yaml
+    googleApiKey: <...>
+    openaiApiKey: <...>
 
 Assembly
 --------

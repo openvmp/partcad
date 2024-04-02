@@ -73,7 +73,7 @@ def test_part_get_scad():
     """Load an OpenSCAD part"""
     scad_path = shutil.which("openscad")
     if not scad_path is None:
-        ctx = pc.Context("examples/produce_part_scad")
+        ctx = pc.Context("examples/produce_part_openscad")
         part = ctx.get_part(":cube")
         assert part is not None
 

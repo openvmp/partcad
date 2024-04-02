@@ -21,11 +21,19 @@ from cq_serialize import register as register_cq_helper
 
 
 class PartFactoryCadquery(pfp.PartFactoryPython):
-    def __init__(self, ctx, source_project, target_project, part_config):
+    def __init__(
+        self, ctx, source_project, target_project, part_config, can_create=False
+    ):
         with pc_logging.Action(
             "InitCadQuery", target_project.name, part_config["name"]
         ):
-            super().__init__(ctx, source_project, target_project, part_config)
+            super().__init__(
+                ctx,
+                source_project,
+                target_project,
+                part_config,
+                can_create=can_create,
+            )
             # Complement the config object here if necessary
             self._create(part_config)
 

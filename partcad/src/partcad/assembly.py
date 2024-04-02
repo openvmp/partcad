@@ -12,7 +12,8 @@ import typing
 
 import build123d as b3d
 
-from . import shape
+from .shape import Shape
+from .shape_ai import ShapeWithAi
 from . import sync_threads as pc_thread
 from . import logging as pc_logging
 
@@ -24,7 +25,7 @@ class AssemblyChild:
         self.location = location
 
 
-class Assembly(shape.Shape):
+class Assembly(ShapeWithAi):
     path: typing.Optional[str] = None
 
     def __init__(self, config={}):
@@ -57,7 +58,7 @@ class Assembly(shape.Shape):
     # add is a non-thread-safe method for end users to create custom Assemblies
     def add(
         self,
-        child_item: shape.Shape,  # pc.Part or pc.Assembly
+        child_item: Shape,  # pc.Part or pc.Assembly
         name=None,
         loc=b3d.Location((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), 0.0),
     ):

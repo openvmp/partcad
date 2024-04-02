@@ -9,3 +9,5 @@ packaging>=23.1
 setuptools
 jinja2
 requests
+google.generativeai
+openai

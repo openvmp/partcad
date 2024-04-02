@@ -1,0 +1,24 @@
+parts:
+  cube:
+    type: ai-cadquery
+    model: gemini-pro
+    prompt: A cube
+    properties:
+      length: 10
+  prism:
+    type: ai-cadquery
+    model: gpt-3.5-turbo
+    prompt: A hexagonal prism
+    properties:
+      length: 10
+  tetrahedron:
+    type: ai-cadquery
+    model: gpt-3.5-turbo
+    tokens: 4000
+    top_p: 0.9
+    prompt: A tetrahedron
+    properties:
+      length: 10
+
+render:
+  svg:

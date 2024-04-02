@@ -82,12 +82,23 @@ Parts
 
 PartCAD has an evergrowing list of ways to define the part model:
 
-- `STEP <https://en.wikipedia.org/wiki/ISO_10303>`_
-- `STL <https://en.wikipedia.org/wiki/STL_(file_format)>`_
-- `3MF <https://en.wikipedia.org/wiki/3D_Manufacturing_Format>`_
-- `OpenSCAD <https://en.wikipedia.org/wiki/OpenSCAD>`_
-- `CadQuery <https://github.com/CadQuery/cadquery>`_
-- `build123d <https://github.com/gumyr/build123d>`_
+- Files
+
+  - `STEP <https://en.wikipedia.org/wiki/ISO_10303>`_
+  - `STL <https://en.wikipedia.org/wiki/STL_(file_format)>`_
+  - `3MF <https://en.wikipedia.org/wiki/3D_Manufacturing_Format>`_
+
+- Scripts
+
+  - `OpenSCAD <https://en.wikipedia.org/wiki/OpenSCAD>`_
+  - `CadQuery <https://github.com/CadQuery/cadquery>`_
+  - `build123d <https://github.com/gumyr/build123d>`_
+
+- AI-generated scripts
+
+  - OpenSCAD
+  - CadQuery
+  - build123d (builder and algebra modes, under development)
 
 Parts are declared in ``partcad.yaml`` using the following syntax:
 
@@ -95,9 +106,13 @@ Parts are declared in ``partcad.yaml`` using the following syntax:
 
     parts:
       <part name>:
-        type: <openscad|cadquery|build123d|step|stl|3mf>
+        type: <openscad|cadquery|build123d|ai-openscad|ai-cadquery|ai-build123d|step|stl|3mf>
         path: <(optional) the source file path>
         binary: <(stl only) use the binary format>
+        prompt: <(ai only) the prompt describing the model>
+        model: <(ai only) the model to use, gemini|gemini-pro|gpt-3.5-turbo|gpt-4|...>
+        tokens: <(ai only) the limit of token context>
+        top_p: <(ai only, openai only) the top_p parameter>
         parameters:  # OpenSCAD, CadQuery and build123d only
           <param name>:
             type: <str|float|int|bool>
@@ -109,6 +124,13 @@ Here are some examples:
 +--------------------------------------------------------------------------------------+-------------------------+-------------------------------------------------------------------------------------------------------------------------+
 | Example                                                                              | Configuration           | Result                                                                                                                  |
 +======================================================================================+=========================+=========================================================================================================================+
+|                                                                                      | .. code-block:: yaml    | .. image:: https://github.com/openvmp/partcad/blob/main/examples/produce_part_ai_cadquery/cube.svg?raw=true             |
+| AI-generated CadQuery script                                                         |                         |   :width: 128                                                                                                           |
+|                                                                                      |   parts:                |                                                                                                                         |
+|                                                                                      |     bolt:               |                                                                                                                         |
+|                                                                                      |       type: ai-cadquery |                                                                                                                         |
+|                                                                                      |       prompt: A cube    |                                                                                                                         |
++--------------------------------------------------------------------------------------+-------------------------+-------------------------------------------------------------------------------------------------------------------------+
 |                                                                                      | .. code-block:: yaml    | .. image:: https://github.com/openvmp/partcad/blob/main/examples/produce_part_cadquery_primitive/cylinder.svg?raw=true  |
 || `CadQuery <https://github.com/CadQuery/cadquery>`_ or                               |                         |   :width: 128                                                                                                           |
 || `build123d <https://github.com/gumyr/build123d>`_ script                            |   parts:                |                                                                                                                         |
@@ -116,7 +138,7 @@ Here are some examples:
 |                                                                                      |       type: cadquery    |                                                                                                                         |
 |                                                                                      |       # type: build123d |                                                                                                                         |
 +--------------------------------------------------------------------------------------+-------------------------+-------------------------------------------------------------------------------------------------------------------------+
-|| `OpenSCAD <https://en.wikipedia.org/wiki/OpenSCAD>`_ script                         | .. code-block:: yaml    | .. image:: https://github.com/openvmp/partcad/blob/main/examples/produce_part_scad/cube.svg?raw=true                    |
+|| `OpenSCAD <https://en.wikipedia.org/wiki/OpenSCAD>`_ script                         | .. code-block:: yaml    | .. image:: https://github.com/openvmp/partcad/blob/main/examples/produce_part_openscad/cube.svg?raw=true                |
 || in ``cube.scad``                                                                    |                         |   :width: 128                                                                                                           |
 |                                                                                      |   parts:                |                                                                                                                         |
 |                                                                                      |     cube:               |                                                                                                                         |

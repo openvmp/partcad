@@ -1,6 +1,22 @@
 Additional Features
 ###################
 
+=============
+Generative AI
+=============
+
+PartCAD is capable of using generative AI to create parts.
+The generated part definitions are persisted as Python or CAD scripts.
+If needed, the part definition can be regenerated from the prompt.
+
+Google and OpenAI models are supported. The following configuration is required:
+
+  .. code-block:: yaml
+
+    # ~/.partcad/config.yaml
+    googleApiKey: <...>
+    openaiApiKey: <...>
+
 ========
 Security
 ========

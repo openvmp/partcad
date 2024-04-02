@@ -14,9 +14,16 @@ from .runtime_python import PythonRuntime
 class PartFactoryPython(pff.PartFactoryFile):
     runtime: PythonRuntime
 
-    def __init__(self, ctx, source_project, target_project, part_config):
+    def __init__(
+        self, ctx, source_project, target_project, part_config, can_create=False
+    ):
         super().__init__(
-            ctx, source_project, target_project, part_config, extension=".py"
+            ctx,
+            source_project,
+            target_project,
+            part_config,
+            extension=".py",
+            can_create=can_create,
         )
 
         self.runtime = self.ctx.get_python_runtime(self.project.python_version)

@@ -18,7 +18,13 @@ class PartFactoryFile(pf.PartFactory):
     part: p.Part
 
     def __init__(
-        self, ctx, source_project, target_project, part_config, extension=""
+        self,
+        ctx,
+        source_project,
+        target_project,
+        part_config,
+        extension="",
+        can_create=False,
     ):
         super().__init__(ctx, source_project, target_project, part_config)
 
@@ -33,7 +39,11 @@ class PartFactoryFile(pf.PartFactory):
                 % source_project.config_dir
             )
         self.path = os.path.join(source_project.config_dir, self.path)
-        if not os.path.isfile(self.path):
+
+        exists = os.path.exists(self.path)
+        if not can_create and not exists:
+            raise Exception("ERROR: The part path (%s) must exist" % self.path)
+        if exists and not os.path.isfile(self.path):
             raise Exception(
                 "ERROR: The part path (%s) must be a file" % self.path
             )

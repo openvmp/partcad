@@ -25,6 +25,9 @@ from . import part_factory_scad as pfscad
 from . import part_factory_step as pfs
 from . import part_factory_stl as pfstl
 from . import part_factory_3mf as pf3
+from .part_factory_ai_cadquery import PartFactoryAiCadquery
+from .part_factory_ai_build123d import PartFactoryAiBuild123d
+from .part_factory_ai_openscad import PartFactoryAiScad
 from . import part_factory_cadquery as pfc
 from . import part_factory_build123d as pfb
 from . import part_factory_alias as pfa
@@ -173,6 +176,12 @@ class Project(project_config.Configuration):
                 "ERROR: Part type is not specified: %s: %s"
                 % (part_name, config)
             )
+        elif config["type"] == "ai-cadquery":
+            PartFactoryAiCadquery(self.ctx, source_project, self, config)
+        elif config["type"] == "ai-build123d":
+            PartFactoryAiBuild123d(self.ctx, source_project, self, config)
+        elif config["type"] == "ai-openscad":
+            PartFactoryAiScad(self.ctx, source_project, self, config)
         elif config["type"] == "cadquery":
             pfc.PartFactoryCadquery(self.ctx, source_project, self, config)
         elif config["type"] == "build123d":
@@ -616,7 +625,12 @@ class Project(project_config.Configuration):
         return True, path, name
 
     def _add_component(
-        self, kind: str, path: str, section: str, ext_by_kind
+        self,
+        kind: str,
+        path: str,
+        section: str,
+        ext_by_kind: dict[str, str],
+        component_config,
     ) -> bool:
         if kind in ext_by_kind:
             ext = ext_by_kind[kind]
@@ -633,7 +647,7 @@ class Project(project_config.Configuration):
             config = yaml.load(fp)
             fp.close()
 
-        obj = {"type": kind}
+        obj = {"type": kind, **component_config}
         if name == path:
             obj["path"] = path
 
@@ -656,18 +670,30 @@ class Project(project_config.Configuration):
 
         return True
 
-    def add_part(self, kind: str, path: str) -> bool:
+    def add_part(self, kind: str, path: str, config={}) -> bool:
         pc_logging.info("Adding the part %s of type %s" % (path, kind))
         ext_by_kind = {
             "cadquery": "py",
             "build123d": "py",
         }
-        return self._add_component(kind, path, "parts", ext_by_kind)
+        return self._add_component(
+            kind,
+            path,
+            "parts",
+            ext_by_kind,
+            config,
+        )
 
-    def add_assembly(self, kind: str, path: str) -> bool:
+    def add_assembly(self, kind: str, path: str, config={}) -> bool:
         pc_logging.info("Adding the assembly %s of type %s" % (path, kind))
         ext_by_kind = {}
-        return self._add_component(kind, path, "assemblies", ext_by_kind)
+        return self._add_component(
+            kind,
+            path,
+            "assemblies",
+            ext_by_kind,
+            config,
+        )
 
     async def render_async(
         self, parts=None, assemblies=None, format=None, output_dir=None

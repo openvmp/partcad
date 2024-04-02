@@ -19,6 +19,13 @@ def cli_help_inspect(subparsers):
     )
 
     parser_inspect.add_argument(
+        "-V",
+        help="Produce a verbal output instead of a visual one",
+        dest="verbal",
+        action="store_true",
+    )
+
+    parser_inspect.add_argument(
         "-P",
         "--package",
         help="Package to retrieve the object from",
@@ -86,4 +93,9 @@ def cli_inspect(args, ctx):
                 % (args.object, args.package)
             )
     else:
-        obj.show()
+        if args.verbal:
+            pc_logging.info(
+                "Summary: %s" % obj.get_summary(project=args.package)
+            )
+        else:
+            obj.show()

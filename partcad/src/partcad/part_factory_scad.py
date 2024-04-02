@@ -20,7 +20,9 @@ from . import logging as pc_logging
 
 
 class PartFactoryScad(pff.PartFactoryFile):
-    def __init__(self, ctx, source_project, target_project, part_config):
+    def __init__(
+        self, ctx, source_project, target_project, part_config, can_create=False
+    ):
         with pc_logging.Action(
             "InitOpenSCAD", target_project.name, part_config["name"]
         ):
@@ -30,6 +32,7 @@ class PartFactoryScad(pff.PartFactoryFile):
                 target_project,
                 part_config,
                 extension=".scad",
+                can_create=can_create,
             )
             # Complement the config object here if necessary
             self._create(part_config)
@@ -59,6 +62,11 @@ class PartFactoryScad(pff.PartFactoryFile):
                 stderr=subprocess.PIPE,
             )
             await p.communicate()
+
+            if not os.path.exists(stl_path) or os.path.getsize(stl_path) == 0:
+                raise Exception(
+                    "OpenSCAD failed to generate the STL file. Please, check the script."
+                )
 
             shape = b3d.Mesher().read(stl_path)[0].wrapped
             os.unlink(stl_path)

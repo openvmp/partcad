@@ -21,11 +21,19 @@ from cq_serialize import register as register_cq_helper
 
 
 class PartFactoryBuild123d(pfp.PartFactoryPython):
-    def __init__(self, ctx, source_project, target_project, part_config):
+    def __init__(
+        self, ctx, source_project, target_project, part_config, can_create=False
+    ):
         with pc_logging.Action(
             "InitBuild123d", target_project.name, part_config["name"]
         ):
-            super().__init__(ctx, source_project, target_project, part_config)
+            super().__init__(
+                ctx,
+                source_project,
+                target_project,
+                part_config,
+                can_create=can_create,
+            )
             # Complement the config object here if necessary
             self._create(part_config)
 
@@ -41,6 +49,9 @@ class PartFactoryBuild123d(pfp.PartFactoryPython):
 
             # Build the request
             request = {"build_parameters": {}}
+            if "parameters" in self.part_config:
+                for param_name, param in self.part_config["parameters"].items():
+                    request["build_parameters"][param_name] = param["default"]
 
             # Serialize the request
             register_cq_helper()

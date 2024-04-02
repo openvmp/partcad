@@ -11,11 +11,11 @@ import asyncio
 import math
 import typing
 
-from . import shape
+from .shape_ai import ShapeWithAi
 from . import sync_threads as pc_thread
 
 
-class Part(shape.Shape):
+class Part(ShapeWithAi):
     path: typing.Optional[str] = None
 
     def __init__(self, config: object = {}, shape=None):
