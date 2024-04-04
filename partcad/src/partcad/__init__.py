@@ -13,6 +13,7 @@ from .globals import (
     _partcad_context,
     render,
 )
+from .ai import models
 from .consts import *
 from .context import Context
 from .assembly import Assembly

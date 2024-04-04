@@ -695,6 +695,48 @@ class Project(project_config.Configuration):
             config,
         )
 
+    def set_part_config(self, part_name, part_config):
+        if "name" in part_config:
+            del part_config["name"]
+        if "orig_name" in part_config:
+            del part_config["orig_name"]
+
+        yaml = ruamel.yaml.YAML()
+        yaml.preserve_quotes = True
+        with open(self.config_path) as fp:
+            config = yaml.load(fp)
+            fp.close()
+
+        if "parts" in config:
+            parts = config["parts"]
+            parts[part_name] = part_config
+        else:
+            config["parts"] = {part_name: part_config}
+
+        with open(self.config_path, "w") as fp:
+            yaml.dump(config, fp)
+            fp.close()
+
+    def update_part_config(
+        self, part_name, part_config_update: dict[str, typing.Any]
+    ):
+        yaml = ruamel.yaml.YAML()
+        yaml.preserve_quotes = True
+        with open(self.config_path) as fp:
+            config = yaml.load(fp)
+            fp.close()
+
+        if "parts" in config:
+            parts = config["parts"]
+            if part_name in parts:
+                part_config = parts[part_name]
+                for key, value in part_config_update.items():
+                    part_config[key] = value
+
+                with open(self.config_path, "w") as fp:
+                    yaml.dump(config, fp)
+                    fp.close()
+
     async def render_async(
         self, parts=None, assemblies=None, format=None, output_dir=None
     ):

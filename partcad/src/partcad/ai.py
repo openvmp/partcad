@@ -14,6 +14,14 @@ from . import logging as pc_logging
 from .user_config import user_config
 
 
+models = [
+    "gpt-3.5-turbo",
+    "gpt-4",
+    "gemini-pro",
+    "gemini-pro-vision",
+]
+
+
 class Ai(AiGoogle, AiOpenAI):
     def generate_content(
         self,

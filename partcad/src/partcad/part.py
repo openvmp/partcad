@@ -22,7 +22,6 @@ class Part(ShapeWithAi):
         super().__init__(config)
 
         self.shape = shape
-        self.lock = asyncio.Lock()
 
         self.desc = None
         if "desc" in config:

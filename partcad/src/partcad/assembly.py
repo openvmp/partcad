@@ -39,7 +39,6 @@ class Assembly(ShapeWithAi):
         else:
             self.location = None
         self.shape = None
-        self.lock = asyncio.Lock()
 
         # self.children contains all child parts and assemblies before they turn into 'self.shape'
         self.children = []
