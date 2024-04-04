@@ -12,6 +12,7 @@ import build123d as b3d
 import asyncio
 import base64
 import os
+import pathlib
 import pickle
 import shutil
 import sys
@@ -37,6 +38,7 @@ class Shape(ShapeConfiguration):
 
     def __init__(self, config):
         super().__init__(config)
+        self.lock = asyncio.Lock()
         self.shape = None
         self.compound = None
 
@@ -69,9 +71,28 @@ class Shape(ShapeConfiguration):
         b3d_solid.wrapped = await self.get_wrapped()
         return b3d_solid
 
+    def regenerate(self):
+        if hasattr(self, "generate"):
+            # Invalidate the shape
+            # async with self.lock:
+            self.shape = None
+
+            # # Truncate the source code file
+            # # This will trigger the regeneration of the file on instantiation
+            # p = pathlib.Path(self.path)
+            # p.unlink(missing_ok=True)
+            # p.touch()
+            self.generate()
+        else:
+            pc_logging.error("No generation function found")
+
     async def show_async(self, show_object=None):
         with pc_logging.Action("Show", self.project_name, self.name):
-            shape = await self.get_wrapped()
+            try:
+                shape = await self.get_wrapped()
+            except Exception as e:
+                pc_logging.error(e)
+
             if shape is not None:
                 if show_object is None:
                     import importlib

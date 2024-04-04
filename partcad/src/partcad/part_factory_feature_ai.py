@@ -31,14 +31,16 @@ class PartFactoryFeatureAi(Ai):
             part_config["model"] = "gemini-pro"
 
     def on_init_ai(self):
+        self.part.generate = lambda: self.create_file()
+
         if (
             not os.path.exists(self.part_config["path"])
             or os.path.getsize(self.part_config["path"]) == 0
         ):
             self.create_file()
 
-    def generate(self, part):
-        part.invalidate()
+    def regenerate(self, part):
+        part.shape = None
         self.create_file()
 
     def create_file(self):
