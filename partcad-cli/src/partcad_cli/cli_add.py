@@ -37,7 +37,16 @@ def cli_help_add(subparsers):
         "kind",
         help="Type of the part",
         type=str,
-        choices=["cadquery", "build123d", "scad", "step", "stl", "3mf"],
+        choices=[
+            "cadquery",
+            "build123d",
+            "scad",
+            "step",
+            "stl",
+            "3mf",
+            "ai-cadquery",
+            "ai-openscad",
+        ],
     )
     parser_add_part.add_argument(
         "path",

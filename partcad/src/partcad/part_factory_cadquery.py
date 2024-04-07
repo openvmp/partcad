@@ -39,6 +39,12 @@ class PartFactoryCadquery(pfp.PartFactoryPython):
 
     async def instantiate(self, part):
         with pc_logging.Action("CadQuery", part.project_name, part.name):
+            if not os.path.exists(part.path) or os.path.getsize(part.path) == 0:
+                pc_logging.error(
+                    "CadQuery script is empty or does not exist: %s" % part.path
+                )
+                return None
+
             # Finish initialization of PythonRuntime
             # which was too expensive to do in the constructor
             await self.prepare_python()
@@ -62,20 +68,28 @@ class PartFactoryCadquery(pfp.PartFactoryPython):
             response_serialized, errors = await self.runtime.run(
                 [
                     wrapper_path,
-                    os.path.abspath(self.path),
+                    os.path.abspath(part.path),
                     os.path.abspath(self.project.config_dir),
                 ],
                 request_serialized,
             )
-            sys.stderr.write(errors)
+            if len(errors) > 0:
+                error_lines = errors.split("\n")
+                for error_line in error_lines:
+                    part.error("%s: %s" % (part.name, error_line))
 
-            response = base64.b64decode(response_serialized)
-            register_cq_helper()
-            result = pickle.loads(response)
+            try:
+                response = base64.b64decode(response_serialized)
+                register_cq_helper()
+                result = pickle.loads(response)
+            except Exception as e:
+                part.error(
+                    "Exception while deserializing %s: %s" % (part.name, e)
+                )
+                return None
 
             if not result["success"]:
-                pc_logging.error("%s: %s" % (self.name, result["exception"]))
-                # raise Exception(result["exception"])
+                part.error("%s: %s" % (part.name, result["exception"]))
                 return None
 
             self.ctx.stats_parts_instantiated += 1

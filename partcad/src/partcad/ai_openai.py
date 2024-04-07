@@ -11,6 +11,7 @@ import base64
 import mimetypes
 from pathlib import Path
 import threading
+from typing import Any
 
 import openai as openai_genai
 
@@ -20,6 +21,13 @@ from .user_config import user_config
 lock = threading.Lock()
 OPENAI_API_KEY = None
 openai_client = None
+
+model_tokens = {
+    "gpt-3": 4000,
+    "gpt-3.5-turbo": 4096,
+    "gpt-4": 8000,  # 32600,
+    "gpt-4-vision-preview": 8192,
+}
 
 
 def openai_once():
@@ -37,27 +45,32 @@ def openai_once():
         if OPENAI_API_KEY is None:
             error = "OpenAI API key is not set"
             pc_logging.error(error)
-            # raise Exception(error)
             return False
 
     return True
 
 
 class AiOpenAI:
-    def create_content_openai(
+    def generate_openai(
         self,
         model: str,
         prompt: str,
         image_filenames: list[str] = [],
-        tokens: int = None,
-        top_p: float = None,
+        config: dict[str, Any] = {},
+        options_num: int = 1,
     ):
         if not openai_once():
             return None
 
-        if tokens is None:
-            # TODO(clairbee): detect the model's max value
-            tokens = 2048
+        if "tokens" in config:
+            tokens = config["tokens"]
+        else:
+            tokens = model_tokens[model]
+
+        if "top_p" in config:
+            top_p = config["top_p"]
+        else:
+            top_p = None
 
         content = [
             {"type": "text", "text": prompt},
@@ -85,25 +98,22 @@ class AiOpenAI:
                 {"role": "user", "content": content},
             ],
             stream=False,
+            n=options_num,
             max_tokens=tokens,
             top_p=top_p,
             model=model,
         )
 
+        products = []
         try:
-            script = cc.choices[0].message.content
+            for choice in cc.choices:
+                if hasattr(choice, "role") and choice.role == "system":
+                    continue
 
-            # Remove code blocks
-            script = "\n".join(
-                list(
-                    filter(
-                        lambda l: False if l.startswith("```") else True,
-                        script.split("\n"),
-                    )
-                )
-            )
+                script = choice.message.content
 
-            return script
+                products.append(script)
         except Exception as e:
             pc_logging.exception(e)
-            return None
+
+        return products

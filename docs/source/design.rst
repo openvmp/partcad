@@ -107,10 +107,10 @@ Parts are declared in ``partcad.yaml`` using the following syntax:
     parts:
       <part name>:
         type: <openscad|cadquery|build123d|ai-openscad|ai-cadquery|ai-build123d|step|stl|3mf>
+        desc: <(optional) textual description, also used by AI>
         path: <(optional) the source file path>
         binary: <(stl only) use the binary format>
-        prompt: <(ai only) the prompt describing the model>
-        model: <(ai only) the model to use, gemini|gemini-pro|gpt-3.5-turbo|gpt-4|...>
+        provider: <(ai only) the model provider to use, google|openai>
         tokens: <(ai only) the limit of token context>
         top_p: <(ai only, openai only) the top_p parameter>
         parameters:  # OpenSCAD, CadQuery and build123d only

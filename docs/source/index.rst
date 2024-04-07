@@ -3,15 +3,16 @@ PartCAD
 #######
 
 `PartCAD <https://github.com/openvmp/partcad>`_
-is the first build system and package manager for CAD models,
+is the first build system and package manager for CAD models
 and a framework for creating assemblies.
+It complements Git with everything necessary to substitute
+commercial Product Lifecycle Management (PLM) tools.
 
-PartCAD allows maintenance information about mechanical parts,
-how they come together to form larger assemblies
-and to reuse the same parts in multiple assemblies, and multiple projects.
-The implementation of parts can change over time
-(e.g. optimize or migrate to ``build123d`` from ``STEP``) without the need to
-update all of the part consumers.
+PartCAD maintains information about mechanical parts and
+how they come together to form larger assemblies.
+The same parts are reused in multiple assemblies and multiple projects.
+And all of that is supercharged by the ultimate versioning and collaboration features of Git.
+
 
 .. toctree::
    :maxdepth: 2

@@ -145,6 +145,12 @@ class Shape(ShapeConfiguration):
         if filepath is None:
             filepath = tempfile.mktemp(".svg")
 
+        obj = await self.get_wrapped()
+        if obj is None:
+            # pc_logging.error("The shape failed to instantiate")
+            self.svg_path = None
+            return
+
         svg_opts, _ = self.render_getopts("svg", ".svg", project, filepath)
 
         if line_weight is None:
@@ -162,7 +168,6 @@ class Shape(ShapeConfiguration):
             else:
                 viewport_origin = [100, -100, 100]
 
-        obj = await self.get_wrapped()
         wrapper_path = wrapper.get("render_svg.py")
         request = {
             "wrapped": obj,
