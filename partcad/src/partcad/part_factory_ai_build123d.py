@@ -27,8 +27,10 @@ class PartFactoryAiBuild123d(PartFactoryBuild123d, PartFactoryFeatureAi):
             PartFactoryFeatureAi.__init__(
                 self,
                 part_config,
+                "build123d",
                 "build123d script (in %s)" % mode,
-                """Import the module "math" if necessary.
+                """Import all the required modules
+(including 'math' and 'build123d' itself).
 Do not export anything.
 Use show_object() to display the part.
 """,

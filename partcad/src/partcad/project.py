@@ -603,7 +603,7 @@ class Project(project_config.Configuration):
             yaml.dump(config, fp)
             fp.close()
 
-    def _validate_path(self, path, extension) -> (bool, str, str):
+    def _validate_path(self, path, extension) -> tuple[bool, str, str]:
         if not os.path.isabs(path):
             path = os.path.abspath(path)
         root = self.config_dir
@@ -675,6 +675,8 @@ class Project(project_config.Configuration):
         ext_by_kind = {
             "cadquery": "py",
             "build123d": "py",
+            "ai-cadquery": "py",
+            "ai-openscad": "scad",
         }
         return self._add_component(
             kind,

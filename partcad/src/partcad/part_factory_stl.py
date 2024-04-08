@@ -30,7 +30,11 @@ class PartFactoryStl(pff.PartFactoryFile):
 
     async def instantiate(self, part):
         with pc_logging.Action("STL", part.project_name, part.name):
-            shape = b3d.Mesher().read(self.path)[0].wrapped
+            try:
+                shape = b3d.Mesher().read(self.path)[0].wrapped
+            except:
+                # First, make sure it's not the known problem in Mesher
+                shape = b3d.import_stl(self.path)
 
             self.ctx.stats_parts_instantiated += 1
 

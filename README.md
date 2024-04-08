@@ -8,12 +8,15 @@
 [![Documentation Status](https://readthedocs.org/projects/partcad/badge/?version=latest)](https://partcad.readthedocs.io/en/latest/?badge=latest)
 <a href="https://discord.gg/AXbP47zYw5"><img alt="Discord" src="https://img.shields.io/discord/1091497262733074534?logo=discord&logoColor=white&label=Discord&labelColor=353c43&color=31c151"></a>
 
-PartCAD is the first package manager for CAD models,
+PartCAD is the first package manager for CAD models
 and a framework for managing assemblies.
+It complements Git with everything necessary to substitute
+commercial Product Lifecycle Management (PLM) tools.
 
 PartCAD maintains information about mechanical parts and
 how they come together to form larger assemblies.
 The same parts are reused in multiple assemblies and multiple projects.
+And all of that is supercharged by the ultimate versioning and collaboration features of Git.
 
 Find [more documentation here](https://partcad.readthedocs.io/en/latest/?badge=latest) and visit [our website](https://partcad.org/).
 

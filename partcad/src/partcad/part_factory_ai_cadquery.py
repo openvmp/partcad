@@ -23,9 +23,12 @@ class PartFactoryAiCadquery(PartFactoryCadquery, PartFactoryFeatureAi):
             PartFactoryFeatureAi.__init__(
                 self,
                 part_config,
+                "cadquery",
                 "CadQuery 2.0 script",
-                """Import the module "math" if necessary.
+                """Generate a complete functioning script, not just a code snippet.
+Import all the required modules (including 'math' and 'cadquery' itself).
 Do not use methods: tetrahedron, hexahedron.
+Do not generate comments.
 Do not export anything.
 Use "show_object()" to display the part.
 """,

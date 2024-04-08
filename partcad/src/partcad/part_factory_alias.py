@@ -75,4 +75,6 @@ class PartFactoryAlias(pf.PartFactory):
 
             self.ctx.stats_parts_instantiated += 1
 
+            if not source.path is None:
+                part.path = source.path
             return await source.instantiate(part)

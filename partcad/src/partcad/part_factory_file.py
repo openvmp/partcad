@@ -15,7 +15,7 @@ from . import logging as pc_logging
 
 
 class PartFactoryFile(pf.PartFactory):
-    part: p.Part
+    extension: str
 
     def __init__(
         self,
@@ -27,6 +27,7 @@ class PartFactoryFile(pf.PartFactory):
         can_create=False,
     ):
         super().__init__(ctx, source_project, target_project, part_config)
+        self.extension = extension
 
         if "path" in part_config:
             self.path = part_config["path"]

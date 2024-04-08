@@ -41,6 +41,12 @@ class PartFactoryScad(pff.PartFactoryFile):
 
     async def instantiate(self, part):
         with pc_logging.Action("OpenSCAD", part.project_name, part.name):
+            if not os.path.exists(part.path) or os.path.getsize(part.path) == 0:
+                pc_logging.error(
+                    "OpenSCAD script is empty or does not exist: %s" % part.path
+                )
+                return None
+
             scad_path = shutil.which("openscad")
             if scad_path is None:
                 raise Exception(
@@ -55,20 +61,33 @@ class PartFactoryScad(pff.PartFactoryFile):
                     "binstl",
                     "-o",
                     stl_path,
-                    self.path,
+                    part.path,
                 ],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-            await p.communicate()
+            _, errors = await p.communicate()
+            if len(errors) > 0:
+                error_lines = errors.decode().split("\n")
+                for error_line in error_lines:
+                    pc_logging.debug("%s: %s" % (part.name, error_line))
 
             if not os.path.exists(stl_path) or os.path.getsize(stl_path) == 0:
-                raise Exception(
+                part.error(
                     "OpenSCAD failed to generate the STL file. Please, check the script."
                 )
+                return None
 
-            shape = b3d.Mesher().read(stl_path)[0].wrapped
+            try:
+                shape = b3d.Mesher().read(stl_path)[0].wrapped
+            except:
+                try:
+                    # First, make sure it's not the known problem in Mesher
+                    shape = b3d.import_stl(stl_path).wrapped
+                except Exception as e:
+                    part.error("%s: %s" % (part.name, e))
+                    return None
             os.unlink(stl_path)
 
             self.ctx.stats_parts_instantiated += 1

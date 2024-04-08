@@ -23,7 +23,14 @@ class PartFactoryAiScad(PartFactoryScad, PartFactoryFeatureAi):
             PartFactoryFeatureAi.__init__(
                 self,
                 part_config,
+                "scad",
                 "OpenSCAD script",
+                """Generate a complete functioning script, not just a code snippet.
+There are no other non-standard modules available to import.
+Define all necessary functions and constants.
+Do not generate comments.
+Do not export anything.
+""",
             )
             PartFactoryScad.__init__(
                 self,
