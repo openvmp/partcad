@@ -113,6 +113,8 @@ Parts are declared in ``partcad.yaml`` using the following syntax:
         provider: <(ai only) the model provider to use, google|openai>
         tokens: <(ai only) the limit of token context>
         top_p: <(ai only, openai only) the top_p parameter>
+        images: <(optional, ai only) representative images as input for AI>
+          - <image path>
         parameters:  # OpenSCAD, CadQuery and build123d only
           <param name>:
             type: <str|float|int|bool>
