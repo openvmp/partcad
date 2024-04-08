@@ -294,11 +294,16 @@ IMPORTANT: Output the %s itself and do not add any text or comments before or af
         pc_logging.debug("Part created: %.2f KB" % (total_size(part) / 1024.0))
 
         def render(part):
-            coro = part.get_shape()
-            with pc_logging.Action("Instantiate", part.project_name, part.name):
-                shape = asyncio.run(coro)
-            if not shape is None:
-                part.render_png(self.ctx, None, output_path)
+            try:
+                coro = part.get_shape()
+                with pc_logging.Action(
+                    "Instantiate", part.project_name, part.name
+                ):
+                    shape = asyncio.run(coro)
+                if not shape is None:
+                    part.render_png(self.ctx, None, output_path)
+            except Exception as e:
+                part.error("Failed to render the image: %s" % e)
 
         try:
             # Given we don't know whether the current thread is already

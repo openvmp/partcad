@@ -84,7 +84,7 @@ class PartFactoryScad(pff.PartFactoryFile):
             except:
                 try:
                     # First, make sure it's not the known problem in Mesher
-                    shape = b3d.import_stl(stl_path)
+                    shape = b3d.import_stl(stl_path).wrapped
                 except Exception as e:
                     part.error("%s: %s" % (part.name, e))
                     return None
