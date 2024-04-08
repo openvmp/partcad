@@ -285,12 +285,14 @@ Alternatively, drop the AI parameters and continue improving the script manually
     parts:
         part1:
             type: ai-cadquery # part1.py is created
-            model: gemini-pro
-            prompt: A cube
+            desc: A cube
+            provider: google
         part2:
             type: ai-openscad # part2.scad is created
-            model: gpt-3.5-turbo
-            prompt: A cylinder
+            desc: A flat screen TV
+            provider: openai
+            images:
+              - product_photo.png
 
 The following configuration is required:
 
