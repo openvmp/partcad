@@ -139,16 +139,19 @@ class Context(project_config.Configuration):
                 return None
 
             imported_project = self.projects[name]
-            if imported_project is None or imported_project.broken:
-                pc_logging.error("Failed to import the project: %s" % name)
-                del self.projects[name]
+            if imported_project is None:
+                pc_logging.error("Failed to import the package: %s" % name)
                 del self._projects_being_loaded[name]
                 return None
-            del self._projects_being_loaded[name]
+            if imported_project.broken:
+                pc_logging.error(
+                    "Failed to parse the package's 'partcad.yaml': %s" % name
+                )
 
             self.stats_packages += 1
             self.stats_packages_instantiated += 1
 
+            del self._projects_being_loaded[name]
             return imported_project
 
     def get_project_abs_path(self, rel_project_path: str):
@@ -260,6 +263,10 @@ class Context(project_config.Configuration):
         self._import_all_recursive(self.projects[consts.ROOT])
 
     def _import_all_recursive(self, project):
+        if project.broken:
+            pc_logging.info("Ignoring the broken package: %s" % project.name)
+            return
+
         # First, iterate all explicitly mentioned "import"s.
         # Do it before iterating subdirectories, as it may kick off a long
         # background task.
@@ -305,6 +312,7 @@ class Context(project_config.Configuration):
                 self._import_all_recursive(next_project)
 
     def get_all_packages(self):
+        # TODO(clairbee): leverage root_project.get_child_project_names()
         self.import_all()
         return self.get_packages()
 
