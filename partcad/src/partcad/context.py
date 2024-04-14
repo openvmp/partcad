@@ -138,12 +138,17 @@ class Context(project_config.Configuration):
                 del self._projects_being_loaded[name]
                 return None
 
+            imported_project = self.projects[name]
+            if imported_project is None or imported_project.broken:
+                pc_logging.error("Failed to import the project: %s" % name)
+                del self.projects[name]
+                del self._projects_being_loaded[name]
+                return None
+            del self._projects_being_loaded[name]
+
             self.stats_packages += 1
             self.stats_packages_instantiated += 1
 
-            imported_project = self.projects[name]
-
-            del self._projects_being_loaded[name]
             return imported_project
 
     def get_project_abs_path(self, rel_project_path: str):

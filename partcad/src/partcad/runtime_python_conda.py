@@ -20,7 +20,7 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
 
         self.conda_path = shutil.which("conda")
 
-    async def run(self, cmd, stdin=""):
+    async def run(self, cmd, stdin="", cwd=None):
         with self.lock:
             if not self.initialized:
                 with pc_logging.Action("Conda", "create", self.version):
@@ -91,4 +91,5 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
             ]
             + cmd,
             stdin,
+            cwd=cwd,
         )

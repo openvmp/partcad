@@ -38,5 +38,6 @@ class AssemblyFactory:
         self.assembly.instantiate = lambda assembly_self: self.instantiate(
             assembly_self
         )
+        self.assembly.info = lambda: self.info(self.assembly)
 
         self.ctx.stats_assemblies += 1

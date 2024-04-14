@@ -11,44 +11,73 @@
 # to invoke `cadquery` scripts.
 
 import os
+import re
 import sys
 
 from cadquery import cqgi
 
 sys.path.append(os.path.dirname(__file__))
 import wrapper_common
+import py_stubs.ocp_vscode  # Make 'sys.modules["py_stub.ocp_vscode"]' available
 
 
 def process(path, request):
     build_parameters = {}
+    if "patch" in request:
+        patch = request["patch"]
+    else:
+        patch = {}
     if "build_parameters" in request:
         build_parameters = request["build_parameters"]
 
     script = open(path, "r").read()
+    for old, new in patch.items():
+        script = re.sub(old, new, script, flags=re.MULTILINE)
+
     if "import partcad" in script:
         script = (
             "import logging\nlogging.basicConfig(level=60)\n"  # Disable PartCAD logging
             + script
         )
+
+    # Ignore ocp_vscode as it is of no use in the sandboxed environment
+    # and it produces a lot of sporadic output to stdout and stderr
+    sys.modules["ocp_vscode"] = sys.modules["py_stubs.ocp_vscode"]
+    if "from ocp_vscode import " in script:
+        script = re.sub(
+            r"(from ocp_vscode import .*)\n",
+            "saved_show_object_early=show_object\n\\1\nimport ocp_vscode\nocp_vscode.saved_show_object=saved_show_object_early\n",
+            script,
+        )
+    if "import ocp_vscode" in script:
+        script = script.replace(
+            "import ocp_vscode",
+            "import ocp_vscode\nocp_vscode.saved_show_object=show_object\n#",
+        )
+
+    # Execute the script
     script_object = cqgi.parse(script)
-    result = script_object.build(build_parameters=build_parameters)
+    build_result = script_object.build(build_parameters=build_parameters)
 
-    if not result.success:
+    if not build_result.success:
         sys.stderr.write("Exception: ")
-        sys.stderr.write(str(result.exception))
+        sys.stderr.write(str(build_result.exception))
 
-    shape = None if not result.first_result else result.first_result.shape
-    if hasattr(shape, "val"):
-        shape = shape.val()
-    if hasattr(shape, "toCompound"):
-        shape = shape.toCompound()
-    if hasattr(shape, "wrapped"):
-        shape = shape.wrapped
+    shapes = []
+    for result in build_result.results:
+        shape = result.shape
+        if hasattr(shape, "val"):
+            shape = shape.val()
+        if hasattr(shape, "toCompound"):
+            shape = shape.toCompound()
+        if hasattr(shape, "wrapped"):
+            shape = shape.wrapped
+        shapes.append(shape)
 
     return {
-        "success": result.success,
-        "exception": result.exception,
-        "shape": shape,
+        "success": build_result.success,
+        "exception": build_result.exception,
+        "shapes": shapes,
     }
 
 

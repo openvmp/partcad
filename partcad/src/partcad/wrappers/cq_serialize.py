@@ -175,15 +175,48 @@ def _reduce_mat(mat: OCP.gp.gp_Mat):
     )
 
 
+def _inflate_ax1(*values: float):
+    ax1 = OCP.gp.gp_Ax1(values[0], values[1])
+    return ax1
+
+
+def _reduce_ax1(ax1: OCP.gp.gp_Ax1):
+    return _inflate_ax1, (
+        ax1.Location(),
+        ax1.Direction(),
+    )
+
+
 def _inflate_ax3(*values: float):
-    ax3 = OCP.gp.gp_Ax3()
-    ax3.SetLocation(values[0])
-    ax3.SetDirection(values[1])
+    ax3 = OCP.gp.gp_Ax3(values[0], values[1], values[2])
+    ax3.SetYDirection(values[3])
     return ax3
 
 
 def _reduce_ax3(ax3: OCP.gp.gp_Ax3):
-    return _inflate_ax3, (ax3.Location(), ax3.Direction())
+    return _inflate_ax3, (
+        ax3.Location(),
+        ax3.Direction(),
+        ax3.XDirection(),
+        ax3.YDirection(),
+    )
+
+
+def _inflate_pln(*values: float):
+    ax3 = OCP.gp.gp_Ax3(values[0], values[1], values[2])
+    ax3.SetYDirection(values[3])
+    pln = OCP.gp.gp_Pln(ax3)
+    return pln
+
+
+def _reduce_pln(pln: OCP.gp.gp_Pln):
+    ax3 = pln.Position()
+    return _inflate_pln, (
+        ax3.Location(),
+        ax3.Direction(),
+        ax3.XDirection(),
+        ax3.YDirection(),
+    )
 
 
 def _inflate_pnt(*values: float):
@@ -193,6 +226,15 @@ def _inflate_pnt(*values: float):
 
 def _reduce_pnt(pnt: OCP.gp.gp_Pnt):
     return _inflate_pnt, (pnt.X(), pnt.Y(), pnt.Z())
+
+
+def _inflate_vec(*values: float):
+    pnt = OCP.gp.gp_Vec(values[0], values[1], values[2])
+    return pnt
+
+
+def _reduce_vec(pnt: OCP.gp.gp_Vec):
+    return _inflate_vec, (pnt.X(), pnt.Y(), pnt.Z())
 
 
 def _inflate_dir(*values: float):
@@ -230,11 +272,14 @@ def register():
         copyreg.pickle(cls, _reduce_shape)
 
     copyreg.pickle(OCP.gp.gp_Pnt, _reduce_pnt)
+    copyreg.pickle(OCP.gp.gp_Vec, _reduce_vec)
     copyreg.pickle(OCP.gp.gp_Dir, _reduce_dir)
     copyreg.pickle(OCP.gp.gp_Mat, _reduce_mat)
     copyreg.pickle(OCP.gp.gp_XYZ, _reduce_xyz)
 
+    copyreg.pickle(OCP.gp.gp_Ax1, _reduce_ax1)
     copyreg.pickle(OCP.gp.gp_Ax3, _reduce_ax3)
+    copyreg.pickle(OCP.gp.gp_Pln, _reduce_pln)
 
     copyreg.pickle(cq.Vector, lambda vec: (cq.Vector, vec.toTuple()))
     copyreg.pickle(OCP.gp.gp_Trsf, _reduce_transform)

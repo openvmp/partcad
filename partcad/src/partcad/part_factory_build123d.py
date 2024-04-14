@@ -12,6 +12,16 @@ import os
 import pickle
 import sys
 
+from OCP.gp import gp_Ax1
+from OCP.TopoDS import (
+    TopoDS_Builder,
+    TopoDS_Compound,
+    TopoDS_Edge,
+    TopoDS_Wire,
+    TopoDS_Face,
+)
+from OCP.TopLoc import TopLoc_Location
+
 from . import part_factory_python as pfp
 from . import wrapper
 from . import logging as pc_logging
@@ -59,6 +69,14 @@ class PartFactoryBuild123d(pfp.PartFactoryPython):
             if "parameters" in self.part_config:
                 for param_name, param in self.part_config["parameters"].items():
                     request["build_parameters"][param_name] = param["default"]
+            patch = {}
+            if "show" in self.part_config:
+                patch["\\Z"] = "\nshow(%s)\n" % self.part_config["show"]
+            if "showObject" in self.part_config:
+                patch["\\Z"] = "\nshow_object(%s)\n" % self.part_config["show"]
+            if "patch" in self.part_config:
+                patch.update(self.part_config["patch"])
+            request["patch"] = patch
 
             # Serialize the request
             register_cq_helper()
@@ -66,11 +84,15 @@ class PartFactoryBuild123d(pfp.PartFactoryPython):
             request_serialized = base64.b64encode(picklestring).decode()
 
             await self.runtime.ensure("build123d")
+            await self.runtime.ensure("ocp-tessellate")
+            cwd = self.project.config_dir
+            if self.cwd is not None:
+                cwd = os.path.join(self.project.config_dir, self.cwd)
             response_serialized, errors = await self.runtime.run(
                 [
                     wrapper_path,
                     os.path.abspath(part.path),
-                    os.path.abspath(self.project.config_dir),
+                    os.path.abspath(cwd),
                 ],
                 request_serialized,
             )
@@ -80,6 +102,7 @@ class PartFactoryBuild123d(pfp.PartFactoryPython):
                     part.error("%s: %s" % (part.name, error_line))
 
             try:
+                # pc_logging.error("Response: %s" % response_serialized)
                 response = base64.b64decode(response_serialized)
                 register_cq_helper()
                 result = pickle.loads(response)
@@ -94,5 +117,51 @@ class PartFactoryBuild123d(pfp.PartFactoryPython):
                 return None
 
             self.ctx.stats_parts_instantiated += 1
+            part.components = []
 
-            return result["shape"]
+            if result["shapes"] is None:
+                return None
+            if len(result["shapes"]) == 0:
+                return None
+
+            builder = TopoDS_Builder()
+            compound = TopoDS_Compound()
+            builder.MakeCompound(compound)
+
+            def process(shapes, components_list):
+                for shape in shapes:
+                    # pc_logging.info("Returned: %s" % type(shape))
+                    try:
+                        if shape is None or isinstance(shape, str):
+                            # pc_logging.info("String: %s" % shape)
+                            continue
+
+                        if isinstance(shape, list):
+                            child_component_list = list()
+                            process(shape, child_component_list)
+                            components_list.append(child_component_list)
+                            continue
+
+                        # TODO(clairbee): add support for the below types
+                        if isinstance(shape, TopLoc_Location) or isinstance(
+                            shape, gp_Ax1
+                        ):
+                            continue
+
+                        components_list.append(shape)
+
+                        if (
+                            not isinstance(shape, TopoDS_Edge)  # 1D
+                            and not isinstance(shape, TopoDS_Wire)  # 1.5?D
+                            and not isinstance(shape, TopoDS_Face)  # 2D
+                        ):
+                            builder.Add(compound, shape)
+                    except Exception as e:
+                        pc_logging.error(
+                            "Error adding shape to compound: %s" % e
+                        )
+
+            process(result["shapes"], part.components)
+            # pc_logging.info("Created: %s" % type(compound))
+
+            return compound

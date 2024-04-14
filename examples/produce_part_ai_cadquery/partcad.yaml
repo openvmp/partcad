@@ -1,22 +1,22 @@
 parts:
   cube:
     type: ai-cadquery
-    model: gemini-pro
-    prompt: A cube
+    provider: google
+    desc: A cube
     properties:
       length: 10
   prism:
     type: ai-cadquery
-    model: gpt-3.5-turbo
-    prompt: A hexagonal prism
+    provider: openai
+    desc: A hexagonal prism
     properties:
       length: 10
   tetrahedron:
     type: ai-cadquery
-    model: gpt-3.5-turbo
+    provider: openai
     tokens: 4000
     top_p: 0.9
-    prompt: A tetrahedron
+    desc: A tetrahedron
     properties:
       length: 10
 
