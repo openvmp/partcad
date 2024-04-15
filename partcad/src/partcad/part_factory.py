@@ -10,9 +10,10 @@
 import typing
 
 from . import part as p
+from .shape_factory import ShapeFactory
 
 
-class PartFactory:
+class PartFactory(ShapeFactory):
     # TODO(clairbee): Make the next line work for part_factory_file only
     path: typing.Optional[str] = None
     part: p.Part
@@ -26,6 +27,7 @@ class PartFactory:
         target_project,
         part_config: object,
     ):
+        super().__init__()
         self.ctx = ctx
         self.project = source_project
         self.target_project = target_project
@@ -40,6 +42,7 @@ class PartFactory:
         )  # TODO(clairbee): pass it via the constructor
         # TODO(clairbee): Make the next line work for part_factory_file only
         part.instantiate = lambda part_self: self.instantiate(part_self)
+        part.info = lambda: self.info(part)
         return part
 
     def _create(self, part_config: object):

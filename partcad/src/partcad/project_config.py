@@ -26,6 +26,7 @@ class Configuration:
         self.config_obj = {}
         self.config_dir = config_path
         self.config_path = config_path
+        self.broken = False
 
         if os.path.isdir(config_path):
             self.config_path = os.path.join(
@@ -39,6 +40,7 @@ class Configuration:
                 "PartCAD configuration file is not found: '%s'"
                 % self.config_path
             )
+            self.broken = True
             return
 
         # Read the body of the configuration file

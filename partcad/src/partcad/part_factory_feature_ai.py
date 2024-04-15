@@ -35,8 +35,8 @@ class PartFactoryFeatureAi(Ai):
         self.script_type = script_type
         self.prompt_suffix = prompt_suffix
 
-        prompt = part_config.get("desc", None)
-        if prompt is None:
+        desc = part_config.get("desc", None)
+        if desc is None:
             error = "%s: Prompt is not set" % part_config["name"]
             pc_logging.error(error)
             raise Exception(error)
@@ -57,7 +57,7 @@ class PartFactoryFeatureAi(Ai):
         """This method must be executed at the very end of the part factory
         constructor to finalize the AI initialization. At the time of the call
         self.part and self.instantiate must be already defined."""
-        self.part.generate = lambda: self._create_file()
+        self.part.generate = lambda path: self._create_file(path)
 
         # If uncommented out, this makes the package initialization
         # unaccceptably slow
@@ -72,15 +72,12 @@ class PartFactoryFeatureAi(Ai):
     async def _instantiate_ai(self, part):
         """This is a wrapper for the instantiate method that ensures that
         the part is (re)generated before the instantiation."""
-        if (
-            not os.path.exists(self.part_config["path"])
-            or os.path.getsize(self.part_config["path"]) == 0
-        ):
-            self._create_file()
+        if not os.path.exists(part.path) or os.path.getsize(part.path) == 0:
+            self._create_file(part.path)
 
         return await self.instantiate_orig(part)
 
-    def _create_file(self):
+    def _create_file(self, path):
         """This method is called to (re)generate the part."""
 
         # Geometric modeling
@@ -149,7 +146,7 @@ class PartFactoryFeatureAi(Ai):
             script = self.select_best_image(script_candidates)
 
         if not script is None:
-            f = open(self.part_config["path"], "w")
+            f = open(path, "w")
             f.write(script)
             f.close()
 

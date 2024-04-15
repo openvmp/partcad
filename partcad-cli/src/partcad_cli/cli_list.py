@@ -160,7 +160,10 @@ def cli_list_parts(args, ctx):
                 line += "(%d)" % part.count
                 part_count = part_count + part.count
             line += " " + " " * (35 - len(part_name))
-            line += "%s" % part.desc
+
+            desc = part.desc
+            desc = desc.replace("\n", "\n" + " " * 44)
+            line += "%s" % desc
             output += line + "\n"
             part_kinds = part_kinds + 1
 
@@ -222,7 +225,10 @@ def cli_list_assemblies(args, ctx):
                 line += "(%d)" % assy.count
                 assy_count = assy_count + assy.count
             line += " " + " " * (35 - len(assy_name))
-            line += "%s" % assy.desc
+
+            desc = assy.desc
+            desc = desc.replace("\n", "\n" + " " * 44)
+            line += "%s" % desc
             output += line + "\n"
             assy_kinds = assy_kinds + 1
 

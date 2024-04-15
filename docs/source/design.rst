@@ -27,7 +27,10 @@ The configuration file syntax is as follows:
   .. code-block:: yaml 
 
     desc: <description>
+    url: <url for >
     partcad: <required PartCAD version spec string>
+    pythonVersion: <(optional) python version for sandboxing if applicable>
+    pythonRequirements: <(python scripts only) the list of dependencies to install>
 
     import:
         sub-package-name:
@@ -39,7 +42,6 @@ The configuration file syntax is as follows:
             revision: <(git only) the exact revision to import>
             web: <(optional) package or maintainer's url>
             poc: <(optional) maintainer's email>
-            pythonVersion: <(optional) python version for sandboxing if applicable>
 
     parts:
         <part declarations are placed here>
@@ -109,6 +111,10 @@ Parts are declared in ``partcad.yaml`` using the following syntax:
         type: <openscad|cadquery|build123d|ai-openscad|ai-cadquery|ai-build123d|step|stl|3mf>
         desc: <(optional) textual description, also used by AI>
         path: <(optional) the source file path>
+        cwd: <(scripts only) set current working directory for the script execution>
+        pythonRequirements: <(python scripts only) the list of dependencies to install>
+        patch: <(python scripts only) a list of regexp substitutions to apply>
+          "patern": "repl"
         binary: <(stl only) use the binary format>
         provider: <(ai only) the model provider to use, google|openai>
         tokens: <(ai only) the limit of token context>

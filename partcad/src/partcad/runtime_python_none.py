@@ -19,7 +19,7 @@ class NonePythonRuntime(runtime_python.PythonRuntime):
             os.makedirs(self.path)
             self.initialized = True
 
-    async def run(self, cmd, stdin=""):
+    async def run(self, cmd, stdin="", cwd=None):
         return await super().run(
             [
                 "python" if os.name != "nt" else "pythonw",
@@ -27,4 +27,5 @@ class NonePythonRuntime(runtime_python.PythonRuntime):
             ]
             + cmd,
             stdin,
+            cwd=cwd,
         )

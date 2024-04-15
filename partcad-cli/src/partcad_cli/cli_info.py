@@ -11,7 +11,6 @@ import asyncio
 from pprint import pformat
 
 import partcad.logging as pc_logging
-from partcad.utils import total_size
 
 
 def cli_help_info(subparsers):
@@ -89,10 +88,6 @@ def cli_info(args, ctx):
             )
     else:
         pc_logging.info("CONFIGURATION: %s" % pformat(obj.config))
-        asyncio.run(obj.get_wrapped())
-        pc_logging.info(
-            "RUNTIME PROPERTIES: %s"
-            % pformat(
-                {"Memory": "%.02f KB" % ((total_size(obj) + 1023) / 1024)}
-            )
-        )
+        info = obj.info()
+        for k, v in info.items():
+            pc_logging.info("INFO: %s: %s" % (k, pformat(v)))

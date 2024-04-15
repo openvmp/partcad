@@ -12,7 +12,6 @@ import build123d as b3d
 import asyncio
 import base64
 import os
-import pathlib
 import pickle
 import shutil
 import sys
@@ -21,6 +20,7 @@ import tempfile
 from .render import *
 from .plugins import *
 from .shape_config import ShapeConfiguration
+from .utils import total_size
 from . import logging as pc_logging
 from . import sync_threads as pc_thread
 from . import wrapper
@@ -40,6 +40,7 @@ class Shape(ShapeConfiguration):
         super().__init__(config)
         self.lock = asyncio.Lock()
         self.shape = None
+        self.components = []
         self.compound = None
 
         # Leave the svg path empty to get it created on demand
@@ -47,8 +48,21 @@ class Shape(ShapeConfiguration):
         self.svg_path = None
         self.svg_url = None
 
+    async def get_components(self):
+        if len(self.components) == 0:
+            # Maybe it's empty, maybe it's not generated yet
+            wrapped = await self.get_wrapped()
+
+            # If it's a compound, we can get the components
+            if len(self.components) == 0:
+                return [wrapped]
+        return self.components
+
     async def get_wrapped(self):
         shape = await self.get_shape()
+
+        # TODO(clairbee): apply 'offset' and 'scale' during instantiation and
+        #                 apply to both 'wrapped' and 'components'
         if "offset" in self.config:
             b3d_solid = b3d.Solid.make_box(1, 1, 1)
             b3d_solid.wrapped = shape
@@ -83,19 +97,19 @@ class Shape(ShapeConfiguration):
             # p = pathlib.Path(self.path)
             # p.unlink(missing_ok=True)
             # p.touch()
-            self.generate()
+            self.generate(self.path)
         else:
             pc_logging.error("No generation function found")
 
     async def show_async(self, show_object=None):
         with pc_logging.Action("Show", self.project_name, self.name):
-            try:
-                shape = await self.get_wrapped()
-            except Exception as e:
-                pc_logging.error(e)
+            if show_object is None:
+                try:
+                    components = await self.get_components()
+                except Exception as e:
+                    pc_logging.error(e)
 
-            if shape is not None:
-                if show_object is None:
+                if len(components) != 0:
                     import importlib
 
                     ocp_vscode = importlib.import_module("ocp_vscode")
@@ -111,7 +125,7 @@ class Shape(ShapeConfiguration):
                             )
                             # pc_logging.debug(self.shape)
                             ocp_vscode.show(
-                                shape,
+                                *components,
                                 progress=None,
                                 # TODO(clairbee): make showing (and the connection
                                 # to ocp_vscode) a part of the context, and memorize
@@ -125,7 +139,12 @@ class Shape(ShapeConfiguration):
                                 'No VS Code or "OCP CAD Viewer" extension detected.'
                             )
 
-                if show_object is not None:
+            if show_object is not None:
+                try:
+                    shape = await self.get_shape()
+                except Exception as e:
+                    pc_logging.error(e)
+                if shape is not None:
                     show_object(
                         shape,
                         options={},
@@ -133,6 +152,10 @@ class Shape(ShapeConfiguration):
 
     def show(self, show_object=None):
         asyncio.run(self.show_async(show_object))
+
+    def shape_info(self):
+        asyncio.run(self.get_wrapped())
+        return {"Memory": "%.02f KB" % ((total_size(self) + 1023.0) / 1024.0)}
 
     async def render_svg_somewhere(
         self,

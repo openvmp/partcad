@@ -29,9 +29,8 @@ class PythonRuntime(runtime.Runtime):
         # the asyncio event loop. So a threading lock is appropriate here.
         self.lock = threading.RLock()
 
-    async def run(self, cmd, stdin=""):
+    async def run(self, cmd, stdin="", cwd=None):
         pc_logging.debug("Running: %s", cmd)
-        # p = subprocess.Popen(
         p = await asyncio.create_subprocess_exec(
             # cmd,
             cmd[0],
@@ -41,6 +40,7 @@ class PythonRuntime(runtime.Runtime):
             stderr=subprocess.PIPE,
             shell=False,
             # TODO(clairbee): creationflags=subprocess.CREATE_NO_WINDOW,
+            cwd=cwd,
         )
         stdout, stderr = await p.communicate(
             input=stdin.encode(),
@@ -61,11 +61,13 @@ class PythonRuntime(runtime.Runtime):
         return stdout, stderr
 
     async def ensure(self, python_package):
-        # TODO(clairbee): add support for versioned packages
         # TODO(clairbee): expire the guard file after a certain time
 
+        python_package_hash = hashlib.sha256(
+            python_package.encode()
+        ).hexdigest()
         guard_path = os.path.join(
-            self.path, ".partcad.installed." + python_package
+            self.path, ".partcad.installed." + python_package_hash
         )
         with self.lock:
             if not os.path.exists(guard_path):
@@ -103,3 +105,14 @@ class PythonRuntime(runtime.Runtime):
                             ]
                         )
                     pathlib.Path(flag_path).touch()
+
+        # Install dependencies of the package
+        if "pythonRequirements" in project.config_obj:
+            for req in project.config_obj["pythonRequirements"]:
+                await self.ensure(req)
+
+    async def prepare_for_shape(self, config):
+        # Install dependencies of this part
+        if "pythonRequirements" in config:
+            for req in config["pythonRequirements"]:
+                await self.ensure(req)

@@ -125,6 +125,10 @@ class Project(project_config.Configuration):
     #         ).get_cover()
 
     def get_child_project_names(self):
+        if self.broken:
+            pc_logging.info("Ignoring the broken package: %s" % self.name)
+            return
+
         children = list()
         subfolders = [f.name for f in os.scandir(self.config_dir) if f.is_dir()]
         for subdir in list(subfolders):
