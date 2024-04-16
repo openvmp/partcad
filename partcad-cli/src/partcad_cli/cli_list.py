@@ -161,8 +161,10 @@ def cli_list_parts(args, ctx):
                 part_count = part_count + part.count
             line += " " + " " * (35 - len(part_name))
 
-            desc = part.desc
-            desc = desc.replace("\n", "\n" + " " * 44)
+            desc = part.desc if part.desc is not None else ""
+            desc = desc.replace(
+                "\n", "\n" + " " * (80 if args.recursive else 44)
+            )
             line += "%s" % desc
             output += line + "\n"
             part_kinds = part_kinds + 1
@@ -226,8 +228,10 @@ def cli_list_assemblies(args, ctx):
                 assy_count = assy_count + assy.count
             line += " " + " " * (35 - len(assy_name))
 
-            desc = assy.desc
-            desc = desc.replace("\n", "\n" + " " * 44)
+            desc = assy.desc if assy.desc is not None else ""
+            desc = desc.replace(
+                "\n", "\n" + " " * (80 if args.recursive else 44)
+            )
             line += "%s" % desc
             output += line + "\n"
             assy_kinds = assy_kinds + 1
