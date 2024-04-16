@@ -2,7 +2,7 @@
 
 PartCAD is the first package manager for CAD models
 and a framework for managing assemblies.
-It complements Git with everything necessary to substitute
+It aims to complement Git with everything necessary to substitute
 commercial Product Lifecycle Management (PLM) tools.
 
 PartCAD maintains information about mechanical parts and
