@@ -7,26 +7,25 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import os
 import typing
 
 from .assembly import Assembly
+from .shape_factory import ShapeFactory
 
 
-# TODO(clairbee): introduce ShapeFactory
-class AssemblyFactory:
+class AssemblyFactory(ShapeFactory):
     # TODO(clairbee): Make the next line work for assembly_factory_file only
     path: typing.Optional[str] = None
     assembly: Assembly
 
-    def __init__(self, ctx, project, assembly_config, extension=""):
-        self.ctx = ctx
-        self.project = project
-        self.assembly_config = assembly_config
-        self.name = assembly_config["name"]
-        self.orig_name = assembly_config["orig_name"]
+    def __init__(self, ctx, project, config, extension=""):
+        super().__init__(ctx, project, config)
+        self.name = config["name"]
+        self.orig_name = config["orig_name"]
 
-    def _create(self, assembly_config):
-        self.assembly = Assembly(assembly_config)
+    def _create(self, config):
+        self.assembly = Assembly(config)
         self.assembly.project_name = (
             self.project.name
         )  # TODO(clairbee): pass it via the constructor

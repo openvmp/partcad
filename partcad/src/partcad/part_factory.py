@@ -7,6 +7,7 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import os
 import typing
 
 from . import part as p
@@ -25,18 +26,15 @@ class PartFactory(ShapeFactory):
         ctx,
         source_project,
         target_project,
-        part_config: object,
+        config: object,
     ):
-        super().__init__()
-        self.ctx = ctx
-        self.project = source_project
+        super().__init__(ctx, source_project, config)
         self.target_project = target_project
-        self.part_config = part_config
-        self.name = part_config["name"]
-        self.orig_name = part_config["orig_name"]
+        self.name = config["name"]
+        self.orig_name = config["orig_name"]
 
-    def _create_part(self, part_config: object) -> p.Part:
-        part = p.Part(part_config)
+    def _create_part(self, config: object) -> p.Part:
+        part = p.Part(config)
         part.project_name = (
             self.target_project.name
         )  # TODO(clairbee): pass it via the constructor
@@ -45,8 +43,8 @@ class PartFactory(ShapeFactory):
         part.info = lambda: self.info(part)
         return part
 
-    def _create(self, part_config: object):
-        self.part = self._create_part(part_config)
+    def _create(self, config: object):
+        self.part = self._create_part(config)
         if self.path:
             self.part.path = self.path
 

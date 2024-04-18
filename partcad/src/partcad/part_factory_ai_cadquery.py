@@ -13,16 +13,14 @@ from . import logging as pc_logging
 
 
 class PartFactoryAiCadquery(PartFactoryCadquery, PartFactoryFeatureAi):
-    def __init__(self, ctx, source_project, target_project, part_config):
+    def __init__(self, ctx, source_project, target_project, config):
         # Override the path determined by the parent class to enable "enrich"
-        part_config["path"] = part_config["name"] + ".py"
+        config["path"] = config["name"] + ".py"
 
-        with pc_logging.Action(
-            "InitAiCq", target_project.name, part_config["name"]
-        ):
+        with pc_logging.Action("InitAiCq", target_project.name, config["name"]):
             PartFactoryFeatureAi.__init__(
                 self,
-                part_config,
+                config,
                 "cadquery",
                 "CadQuery 2.0 script",
                 """Generate a complete functioning script, not just a code snippet.
@@ -38,7 +36,7 @@ Use "show_object()" to display the part.
                 ctx,
                 source_project,
                 target_project,
-                part_config,
+                config,
                 can_create=True,
             )
 

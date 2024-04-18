@@ -9,12 +9,27 @@
 
 from . import factory
 
+from . import factory
+from .file_factory import FileFactory
 from .shape import Shape
 
 
 class ShapeFactory(factory.Factory):
-    def __init__(self) -> None:
+    fileFactory: FileFactory
+
+    def __init__(self, ctx, project, config) -> None:
         super().__init__()
+
+        self.ctx = ctx
+        self.project = project
+        self.config = config
+
+        if "fileFrom" in config:
+            self.fileFactory = factory.instantiate(
+                "file", config["fileFrom"], ctx, project, config
+            )
+        else:
+            self.fileFactory = None
 
     def info(self, shape):
         """This is the default implementation of the get_info method for factories."""

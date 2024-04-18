@@ -8,6 +8,7 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import asyncio
 import partcad as pc
 
 
@@ -16,7 +17,9 @@ def test_part_alias_get_1():
     ctx = pc.Context("examples/produce_part_step")
     bolt = ctx._get_part(":screw")
     assert bolt is not None
-    assert bolt.get_wrapped() is not None
+
+    wrapped = asyncio.run(bolt.get_wrapped())
+    assert wrapped is not None
 
 
 def test_part_alias_get_2():
@@ -24,7 +27,9 @@ def test_part_alias_get_2():
     ctx = pc.Context("examples/produce_part_step")
     bolt = ctx._get_part(":fastener")
     assert bolt is not None
-    assert bolt.get_wrapped() is not None
+
+    wrapped = asyncio.run(bolt.get_wrapped())
+    assert wrapped is not None
 
 
 def test_part_alias_get_3():
@@ -32,7 +37,9 @@ def test_part_alias_get_3():
     ctx = pc.Context("examples/produce_part_step")
     bolt = ctx._get_part(":hexhead")
     assert bolt is not None
-    assert bolt.get_wrapped() is not None
+
+    wrapped = asyncio.run(bolt.get_wrapped())
+    assert wrapped is not None
 
 
 # Add support for the following one

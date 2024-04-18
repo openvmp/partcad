@@ -232,7 +232,7 @@ class Project(project_config.Configuration):
         else:
             has_func_params = True
 
-        params: {str: typing.Any} = {}
+        params: dict[str, typing.Any] = {}
         if ";" in part_name:
             has_name_params = True
             base_part_name = part_name.split(";")[0]
@@ -403,7 +403,9 @@ class Project(project_config.Configuration):
             config = assembly_config.AssemblyConfiguration.normalize(
                 assembly_name, config
             )
-            factory.instantiate("assembly", self.ctx, self, config)
+            factory.instantiate(
+                "assembly", config["type"], self.ctx, self, config
+            )
 
     def get_assembly(
         self, assembly_name, func_params=None
@@ -413,7 +415,7 @@ class Project(project_config.Configuration):
         else:
             has_func_params = True
 
-        params: {str: typing.Any} = {}
+        params: dict[str, typing.Any] = {}
         if ";" in assembly_name:
             has_name_params = True
             base_assembly_name = assembly_name.split(";")[0]
@@ -469,7 +471,9 @@ class Project(project_config.Configuration):
                 config = assembly_config.AssemblyConfiguration.normalize(
                     assembly_name, config
                 )
-                factory.instantiate("assembly", self.ctx, self, config)
+                factory.instantiate(
+                    "assembly", config["type"], self.ctx, self, config
+                )
 
                 if (
                     not assembly_name in self.assemblies
@@ -565,7 +569,9 @@ class Project(project_config.Configuration):
             #     "Initializing a parametrized assembly using the following config: %s"
             #     % pformat(config)
             # )
-            factory.instantiate("assembly", self.ctx, self, config)
+            factory.instantiate(
+                "assembly", config["type"], self.ctx, self, config
+            )
 
             # See if it worked
             if not result_name in self.assemblies:
@@ -710,17 +716,17 @@ class Project(project_config.Configuration):
         yaml = ruamel.yaml.YAML()
         yaml.preserve_quotes = True
         with open(self.config_path) as fp:
-            config = yaml.load(fp)
+            package_config = yaml.load(fp)
             fp.close()
 
-        if "parts" in config:
-            parts = config["parts"]
+        if "parts" in package_config:
+            parts = package_config["parts"]
             parts[part_name] = part_config
         else:
-            config["parts"] = {part_name: part_config}
+            package_config["parts"] = {part_name: part_config}
 
         with open(self.config_path, "w") as fp:
-            yaml.dump(config, fp)
+            yaml.dump(package_config, fp)
             fp.close()
 
     def update_part_config(

@@ -13,20 +13,20 @@ from . import logging as pc_logging
 
 
 class PartFactoryAiBuild123d(PartFactoryBuild123d, PartFactoryFeatureAi):
-    def __init__(self, ctx, source_project, target_project, part_config):
+    def __init__(self, ctx, source_project, target_project, config):
         # Override the path determined by the parent class to enable "enrich"
-        part_config["path"] = part_config["name"] + ".py"
+        config["path"] = config["name"] + ".py"
 
         mode = "builder"
-        if "mode" in part_config and part_config["mode"] == "algebra":
+        if "mode" in config and config["mode"] == "algebra":
             mode = "algebra"
 
         with pc_logging.Action(
-            "InitAiB3d", target_project.name, part_config["name"]
+            "InitAiB3d", target_project.name, config["name"]
         ):
             PartFactoryFeatureAi.__init__(
                 self,
-                part_config,
+                config,
                 "build123d",
                 "build123d script (in %s)" % mode,
                 """Import all the required modules
@@ -40,7 +40,7 @@ Use show_object() to display the part.
                 ctx,
                 source_project,
                 target_project,
-                part_config,
+                config,
                 can_create=True,
             )
 

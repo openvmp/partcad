@@ -7,3 +7,5 @@ pytest-cov
 sphinx
 sphinx_rtd_theme
 readthedocs-sphinx-search
+aiofiles
+aiohttp
