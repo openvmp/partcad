@@ -19,25 +19,25 @@ class PartFactoryAlias(pf.PartFactory):
     source_project_name: typing.Optional[str]
     source: str
 
-    def __init__(self, ctx, source_project, target_project, part_config):
+    def __init__(self, ctx, source_project, target_project, config):
         with pc_logging.Action(
-            "InitAlias", target_project.name, part_config["name"]
+            "InitAlias", target_project.name, config["name"]
         ):
-            super().__init__(ctx, source_project, target_project, part_config)
+            super().__init__(ctx, source_project, target_project, config)
             # Complement the config object here if necessary
-            self._create(part_config)
+            self._create(config)
 
-            if "source" in part_config:
-                self.source_part_name = part_config["source"]
+            if "source" in config:
+                self.source_part_name = config["source"]
             else:
-                self.source_assembly_name = part_config["name"]
-                if not "project" in part_config:
+                self.source_assembly_name = config["name"]
+                if not "project" in config:
                     raise Exception(
                         "Alias needs either the source part name or the source project name"
                     )
 
-            if "project" in part_config:
-                self.source_project_name = part_config["project"]
+            if "project" in config:
+                self.source_project_name = config["project"]
                 if (
                     self.source_project_name == "this"
                     or self.source_project_name == ""

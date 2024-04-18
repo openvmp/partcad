@@ -14,19 +14,17 @@ import os
 import yaml
 
 from .assembly import Assembly, AssemblyChild
-from . import assembly_factory_file as aff
+from .assembly_factory_file import AssemblyFactoryFile
 from . import logging as pc_logging
 from .utils import normalize_resource_path
 
 
-class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
-    def __init__(self, ctx, project, assembly_config):
-        with pc_logging.Action(
-            "InitASSY", project.name, assembly_config["name"]
-        ):
-            super().__init__(ctx, project, assembly_config, extension=".assy")
+class AssemblyFactoryAssy(AssemblyFactoryFile):
+    def __init__(self, ctx, project, config):
+        with pc_logging.Action("InitASSY", project.name, config["name"]):
+            super().__init__(ctx, project, config, extension=".assy")
             # Complement the config object here if necessary
-            self._create(assembly_config)
+            self._create(config)
 
     def instantiate(self, assembly):
         # # This method is best executed on a thread but the current Python version
@@ -44,16 +42,16 @@ class AssemblyFactoryAssy(aff.AssemblyFactoryFile):
         asyncio.run(self.instantiate_async(assembly))
 
     async def instantiate_async(self, assembly):
+        await super().instantiate(assembly)
+
         with pc_logging.Action("ASSY", assembly.project_name, assembly.name):
             assy = {}
             if os.path.exists(self.path):
                 params = {}
-                if "parameters" in self.assembly_config:
-                    for param_name, param in self.assembly_config[
-                        "parameters"
-                    ].items():
+                if "parameters" in self.config:
+                    for param_name, param in self.config["parameters"].items():
                         params["param_" + param_name] = param["default"]
-                params["name"] = self.assembly_config["name"]
+                params["name"] = self.config["name"]
 
                 # Read the body of the configuration file
                 fp = open(self.path, "r")

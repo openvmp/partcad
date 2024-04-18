@@ -22,6 +22,7 @@ And all of that is supercharged by the ultimate versioning and collaboration fea
    installation.rst
    tutorial.rst
    design.rst
+   configuration.rst
    use_cases.rst
    features.rst
    troubleshooting.rst

@@ -9,26 +9,26 @@
 
 import build123d as b3d
 
-from . import part_factory_file as pff
+from .part_factory_file import PartFactoryFile
 from . import logging as pc_logging
 
 
-class PartFactoryStl(pff.PartFactoryFile):
-    def __init__(self, ctx, source_project, target_project, part_config):
-        with pc_logging.Action(
-            "InitSTL", target_project.name, part_config["name"]
-        ):
+class PartFactoryStl(PartFactoryFile):
+    def __init__(self, ctx, source_project, target_project, config):
+        with pc_logging.Action("InitSTL", target_project.name, config["name"]):
             super().__init__(
                 ctx,
                 source_project,
                 target_project,
-                part_config,
+                config,
                 extension=".stl",
             )
             # Complement the config object here if necessary
-            self._create(part_config)
+            self._create(config)
 
     async def instantiate(self, part):
+        await super().instantiate(part)
+
         with pc_logging.Action("STL", part.project_name, part.name):
             try:
                 shape = b3d.Mesher().read(self.path)[0].wrapped

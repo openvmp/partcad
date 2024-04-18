@@ -7,16 +7,24 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import os
-
 from . import project as p
 
 
 class ImportConfiguration:
     def __init__(self, config_obj={}):
         self.config_obj = config_obj
-        self.name = self.config_obj.get("name")
-        self.import_config_type = self.config_obj.get("type")
+        self.name = config_obj.get("name")
+        if not "type" in config_obj:
+            if "url" in config_obj:
+                if config_obj["url"].endswith(".tar.gz"):
+                    config_obj["type"] = "tar"
+                else:
+                    config_obj["type"] = "git"
+            elif "path" in config_obj:
+                config_obj["type"] = "local"
+            else:
+                raise ValueError("Import configuration type is not set")
+        self.import_config_type = config_obj.get("type")
 
 
 class ProjectFactory(ImportConfiguration):

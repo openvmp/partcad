@@ -30,18 +30,18 @@ class PartFactoryFeatureAi(Ai):
     script_type: str
     prompt_suffix: str
 
-    def __init__(self, part_config, part_type, script_type, prompt_suffix=""):
+    def __init__(self, config, part_type, script_type, prompt_suffix=""):
         self.part_type = part_type
         self.script_type = script_type
         self.prompt_suffix = prompt_suffix
 
-        desc = part_config.get("desc", None)
+        desc = config.get("desc", None)
         if desc is None:
-            error = "%s: Prompt is not set" % part_config["name"]
+            error = "%s: Prompt is not set" % config["name"]
             pc_logging.error(error)
             raise Exception(error)
 
-        self.ai_config = copy.deepcopy(part_config)
+        self.ai_config = copy.deepcopy(config)
         if not "numGeometricModeling" in self.ai_config:
             self.ai_config["numGeometricModeling"] = (
                 NUM_ALTERNATIVES_GEOMETRIC_MODELING
@@ -62,8 +62,8 @@ class PartFactoryFeatureAi(Ai):
         # If uncommented out, this makes the package initialization
         # unaccceptably slow
         # if (
-        #     not os.path.exists(self.part_config["path"])
-        #     or os.path.getsize(self.part_config["path"]) == 0
+        #     not os.path.exists(self.config["path"])
+        #     or os.path.getsize(self.config["path"]) == 0
         # ):
         #     self._create_file()
         self.instantiate_orig = self.instantiate
@@ -168,11 +168,11 @@ to reproduce the part with the following description:
             % self.ai_config["desc"]
         )
 
-        if "properties" in self.part_config:
+        if "properties" in self.config:
             properties = "\n".join(
                 [
                     "  %s: %s" % (k, v)
-                    for k, v in self.part_config["properties"].items()
+                    for k, v in self.config["properties"].items()
                 ]
             )
             prompt += (

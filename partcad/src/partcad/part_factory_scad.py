@@ -15,31 +15,33 @@ import tempfile
 
 import build123d as b3d
 
-from . import part_factory_file as pff
+from .part_factory_file import PartFactoryFile
 from . import logging as pc_logging
 
 
-class PartFactoryScad(pff.PartFactoryFile):
+class PartFactoryScad(PartFactoryFile):
     def __init__(
-        self, ctx, source_project, target_project, part_config, can_create=False
+        self, ctx, source_project, target_project, config, can_create=False
     ):
         with pc_logging.Action(
-            "InitOpenSCAD", target_project.name, part_config["name"]
+            "InitOpenSCAD", target_project.name, config["name"]
         ):
             super().__init__(
                 ctx,
                 source_project,
                 target_project,
-                part_config,
+                config,
                 extension=".scad",
                 can_create=can_create,
             )
             # Complement the config object here if necessary
-            self._create(part_config)
+            self._create(config)
 
             self.project_dir = source_project.config_dir
 
     async def instantiate(self, part):
+        await super().instantiate(part)
+
         with pc_logging.Action("OpenSCAD", part.project_name, part.name):
             if not os.path.exists(part.path) or os.path.getsize(part.path) == 0:
                 pc_logging.error(

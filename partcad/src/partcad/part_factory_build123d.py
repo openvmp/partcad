@@ -22,7 +22,7 @@ from OCP.TopoDS import (
 )
 from OCP.TopLoc import TopLoc_Location
 
-from . import part_factory_python as pfp
+from .part_factory_python import PartFactoryPython
 from . import wrapper
 from . import logging as pc_logging
 
@@ -30,24 +30,26 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "wrappers"))
 from cq_serialize import register as register_cq_helper
 
 
-class PartFactoryBuild123d(pfp.PartFactoryPython):
+class PartFactoryBuild123d(PartFactoryPython):
     def __init__(
-        self, ctx, source_project, target_project, part_config, can_create=False
+        self, ctx, source_project, target_project, config, can_create=False
     ):
         with pc_logging.Action(
-            "InitBuild123d", target_project.name, part_config["name"]
+            "InitBuild123d", target_project.name, config["name"]
         ):
             super().__init__(
                 ctx,
                 source_project,
                 target_project,
-                part_config,
+                config,
                 can_create=can_create,
             )
             # Complement the config object here if necessary
-            self._create(part_config)
+            self._create(config)
 
     async def instantiate(self, part):
+        await super().instantiate(part)
+
         with pc_logging.Action("Build123d", part.project_name, part.name):
             if not os.path.exists(part.path) or os.path.getsize(part.path) == 0:
                 pc_logging.error(
@@ -66,16 +68,16 @@ class PartFactoryBuild123d(pfp.PartFactoryPython):
 
             # Build the request
             request = {"build_parameters": {}}
-            if "parameters" in self.part_config:
-                for param_name, param in self.part_config["parameters"].items():
+            if "parameters" in self.config:
+                for param_name, param in self.config["parameters"].items():
                     request["build_parameters"][param_name] = param["default"]
             patch = {}
-            if "show" in self.part_config:
-                patch["\\Z"] = "\nshow(%s)\n" % self.part_config["show"]
-            if "showObject" in self.part_config:
-                patch["\\Z"] = "\nshow_object(%s)\n" % self.part_config["show"]
-            if "patch" in self.part_config:
-                patch.update(self.part_config["patch"])
+            if "show" in self.config:
+                patch["\\Z"] = "\nshow(%s)\n" % self.config["show"]
+            if "showObject" in self.config:
+                patch["\\Z"] = "\nshow_object(%s)\n" % self.config["show"]
+            if "patch" in self.config:
+                patch.update(self.config["patch"])
             request["patch"] = patch
 
             # Serialize the request

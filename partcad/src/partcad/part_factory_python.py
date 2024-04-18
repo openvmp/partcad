@@ -9,28 +9,27 @@
 
 import os
 
-from . import part_factory_file as pff
+from .part_factory_file import PartFactoryFile
 from .runtime_python import PythonRuntime
-from .shape import Shape
 
 
-class PartFactoryPython(pff.PartFactoryFile):
+class PartFactoryPython(PartFactoryFile):
     runtime: PythonRuntime
     cwd: str
 
     def __init__(
-        self, ctx, source_project, target_project, part_config, can_create=False
+        self, ctx, source_project, target_project, config, can_create=False
     ):
         super().__init__(
             ctx,
             source_project,
             target_project,
-            part_config,
+            config,
             extension=".py",
             can_create=can_create,
         )
-        if "cwd" in part_config:
-            self.cwd = part_config["cwd"]
+        if "cwd" in config:
+            self.cwd = config["cwd"]
         else:
             self.cwd = None
 
@@ -45,7 +44,7 @@ class PartFactoryPython(pff.PartFactoryFile):
 
         # Install dependencies of this package
         await self.runtime.prepare_for_package(self.project)
-        await self.runtime.prepare_for_shape(self.part_config)
+        await self.runtime.prepare_for_shape(self.config)
 
     def info(self, part):
         info: dict[str, object] = part.shape_info()
@@ -56,3 +55,6 @@ class PartFactoryPython(pff.PartFactoryFile):
             }
         )
         return info
+
+    async def instantiate(self, part):
+        await super().instantiate(part)

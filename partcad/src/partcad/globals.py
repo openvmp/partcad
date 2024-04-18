@@ -14,6 +14,7 @@ from .context import Context
 from .assembly import Assembly
 from .assembly_factory_assy import AssemblyFactoryAssy
 from .assembly_factory_alias import AssemblyFactoryAlias
+from .file_factory_url import FileFactoryUrl
 from .part import Part
 from . import consts
 from . import factory
@@ -25,6 +26,7 @@ _partcad_context_lock = threading.Lock()
 
 factory.register("assembly", "assy", AssemblyFactoryAssy)
 factory.register("assembly", "alias", AssemblyFactoryAlias)
+factory.register("file", "url", FileFactoryUrl)
 
 
 def init(config_path=None, search_root=True) -> Context:

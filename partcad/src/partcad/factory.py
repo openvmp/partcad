@@ -18,6 +18,7 @@ class Factory:
 all = {
     "assembly": {},
     "part": {},
+    "file": {},
 }
 
 
@@ -25,9 +26,9 @@ def register(kind: str, t: str, factory_class: Factory.__class__):
     all[kind][t] = factory_class
 
 
-def instantiate(kind: str, ctx, project, config):
-    t = config["type"]
+def instantiate(kind: str, t: str, ctx, project, config):
     if t in all[kind]:
-        all[kind][t](ctx, project, config)
+        # The return value is not always used
+        return all[kind][t](ctx, project, config)
     else:
         pc_logging.error("Invalid %s type encountered: %s" % (kind, config))

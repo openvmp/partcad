@@ -18,13 +18,13 @@ import time
 
 from . import logging as pc_logging
 from . import wrapper
-from . import part_factory_file as pff
+from .part_factory_file import PartFactoryFile
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "wrappers"))
 from cq_serialize import register as register_cq_helper
 
 
-class PartFactoryStep(pff.PartFactoryFile):
+class PartFactoryStep(PartFactoryFile):
     # How many STEP files should be loaded directly simultaneously (without
     # launching a subprocess), no matter the file size.
     MIN_SIMPLE_INFLIGHT = 1
@@ -38,23 +38,23 @@ class PartFactoryStep(pff.PartFactoryFile):
     count_inflight_simple = 0
     count_inflight_subprocess = 0
 
-    def __init__(self, ctx, source_project, target_project, part_config):
-        with pc_logging.Action(
-            "InitSTEP", target_project.name, part_config["name"]
-        ):
+    def __init__(self, ctx, source_project, target_project, config):
+        with pc_logging.Action("InitSTEP", target_project.name, config["name"]):
             super().__init__(
                 ctx,
                 source_project,
                 target_project,
-                part_config,
+                config,
                 extension=".step",
             )
             # Complement the config object here if necessary
-            self._create(part_config)
+            self._create(config)
 
             self.runtime = None
 
     async def instantiate(self, part):
+        await super().instantiate(part)
+
         with pc_logging.Action("STEP", part.project_name, part.name):
             do_subprocess = False
 
