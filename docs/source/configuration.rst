@@ -130,10 +130,35 @@ Interfaces are declared in ``partcad.yaml`` using the following syntax:
 Abstract interfaces can't be implemented by parts directly.
 They also can't be used for mating with other interfaces.
 
-Each port has the coordinates of the center of the port and the direction of the port.
+  .. image:: images/interface-m3.png
+    :width: 50%
+    :align: center
+
+Each port has the coordinates of the logical center of the port and the
+direction (orientation) of the port.
 Whenever two ports are meant to connect without any offset or angle
 (e.g. male and female connectors), their coordinates and directions should match
 (not inverted directions).
+The suggested convention is to use the Z-axis (blue) as the main direction.
+Male ports should have the Z-axis pointing outwards, while female ports should
+have the Z-axis pointing inwards.
+
+Sometimes there are multiple interchangeable ports within one interface.
+For example, take a look at the NEMA-17 mounting ports:
+
+  .. image:: images/interface-orientation.png
+    :width: 50%
+    :align: center
+
+It is desired that any mounting port of the motor can be connected to any
+mounting port of the bracket.
+That can be achieved by orienting the ports in a circular direction.
+See how the X-axis (red) is pointing to the next port clockwise (right-hand rule).
+If any pair of ports is aligned then all three other port pairs are aligned too.
+
+  .. image:: images/interface-orientation-2.png
+    :width: 50%
+    :align: center
 
 See the `feature_interfaces` example for more information.
 

@@ -115,7 +115,7 @@ class AssemblyFactoryAssy(AssemblyFactoryFile):
             if "connect" in link:
                 # wait for all previous nodes to get added first
                 await wait_for_tasks()
-            tasks.append(self.handle_node(assembly, link))
+            tasks.append(asyncio.create_task(self.handle_node(assembly, link)))
         await wait_for_tasks()
 
     async def handle_node(self, assembly, node):
