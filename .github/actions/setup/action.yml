@@ -33,16 +33,16 @@ runs:
       shell: bash
       run: |
         brew update --preinstall
-        cat "$(brew --repository)/Library/Taps/homebrew/homebrew-core/Formula/nlopt.rb" > .github/brew-formulae
-    - name: Configure Homebrew cache
-      if: matrix.os == 'macos-latest'
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/Library/Caches/Homebrew/nlopt--*
-          ~/Library/Caches/Homebrew/downloads/*--nlopt-*
-        key: brew-${{ hashFiles('.github/brew-formulae') }}
-        restore-keys: brew-
+        # cat "$(brew --repository)/Library/Taps/homebrew/homebrew-core/Formula/nlopt.rb" > .github/brew-formulae
+    # - name: Configure Homebrew cache
+    #   if: matrix.os == 'macos-latest'
+    #   uses: actions/cache@v2
+    #   with:
+    #     path: |
+    #       ~/Library/Caches/Homebrew/nlopt--*
+    #       ~/Library/Caches/Homebrew/downloads/*--nlopt-*
+    #     key: brew-${{ hashFiles('.github/brew-formulae') }}
+    #     restore-keys: brew-
     - name: Install Homebrew dependencies
       if: matrix.os == 'macos-latest'
       shell: bash
