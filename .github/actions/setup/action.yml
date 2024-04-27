@@ -28,29 +28,29 @@ runs:
     - name: install dev dependencies
       shell: bash
       run: |
-        pip install wheel mypy
-    - name: Update Homebrew
-      if: matrix.os == 'macos-latest'
-      shell: bash
-      run: |
-        brew update --preinstall
-        # cat "$(brew --repository)/Library/Taps/homebrew/homebrew-core/Formula/nlopt.rb" > .github/brew-formulae
-    # - name: Configure Homebrew cache
+        pip install wheel mypy numpy
+    # - name: Update Homebrew
     #   if: matrix.os == 'macos-latest'
-    #   uses: actions/cache@v2
-    #   with:
-    #     path: |
-    #       ~/Library/Caches/Homebrew/nlopt--*
-    #       ~/Library/Caches/Homebrew/downloads/*--nlopt-*
-    #     key: brew-${{ hashFiles('.github/brew-formulae') }}
-    #     restore-keys: brew-
-    - name: Install Homebrew dependencies
-      if: matrix.os == 'macos-latest'
-      shell: bash
-      run: |
-        # env HOMEBREW_NO_AUTO_UPDATE=1 brew install nlopt
-        HOMEBREW_NO_AUTO_UPDATE=1 brew install gcc
-        HOMEBREW_NO_AUTO_UPDATE=1 brew install nlopt
+    #   shell: bash
+    #   run: |
+    #     brew update --preinstall
+    #     # cat "$(brew --repository)/Library/Taps/homebrew/homebrew-core/Formula/nlopt.rb" > .github/brew-formulae
+    # # - name: Configure Homebrew cache
+    # #   if: matrix.os == 'macos-latest'
+    # #   uses: actions/cache@v2
+    # #   with:
+    # #     path: |
+    # #       ~/Library/Caches/Homebrew/nlopt--*
+    # #       ~/Library/Caches/Homebrew/downloads/*--nlopt-*
+    # #     key: brew-${{ hashFiles('.github/brew-formulae') }}
+    # #     restore-keys: brew-
+    # - name: Install Homebrew dependencies
+    #   if: matrix.os == 'macos-latest'
+    #   shell: bash
+    #   run: |
+    #     # env HOMEBREW_NO_AUTO_UPDATE=1 brew install nlopt
+    #     HOMEBREW_NO_AUTO_UPDATE=1 brew install gcc
+    #     HOMEBREW_NO_AUTO_UPDATE=1 brew install nlopt
 
     # cadquery-ocp hack for MacOS with ARM
     - name: install cadquery-ocp on MacOS (Python 3.10)
