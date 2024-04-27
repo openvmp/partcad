@@ -100,7 +100,7 @@ Activate Python
 ---------------
 
 If necessary, install the Python extension.
-Activate a Python environment (any version from 3.9 to 3.11).
+Activate a Python environment (3.10 or above).
 
 Install the extension
 ---------------------
