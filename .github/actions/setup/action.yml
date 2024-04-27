@@ -33,7 +33,7 @@ runs:
       if: matrix.os == 'macos-latest'
       shell: bash
       run: |
-        pip install numpy swig oct2py matlabengine
+        pip install numpy swig oct2py
     # - name: Update Homebrew
     #   if: matrix.os == 'macos-latest'
     #   shell: bash
