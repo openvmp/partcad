@@ -11,7 +11,7 @@ from . import factory
 
 from . import factory
 from .file_factory import FileFactory
-from .shape import Shape
+from .port import WithPorts
 
 
 class ShapeFactory(factory.Factory):
@@ -31,6 +31,8 @@ class ShapeFactory(factory.Factory):
         else:
             self.fileFactory = None
 
+        self.with_ports = WithPorts(config["name"], project, config)
+
     def info(self, shape):
         """This is the default implementation of the get_info method for factories."""
-        return super(Shape, shape).info(self)
+        return shape.shape_info()

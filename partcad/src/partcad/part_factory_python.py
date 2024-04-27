@@ -7,8 +7,6 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import os
-
 from .part_factory_file import PartFactoryFile
 from .runtime_python import PythonRuntime
 
@@ -28,11 +26,7 @@ class PartFactoryPython(PartFactoryFile):
             extension=".py",
             can_create=can_create,
         )
-        if "cwd" in config:
-            self.cwd = config["cwd"]
-        else:
-            self.cwd = None
-
+        self.cwd = config.get("cwd", None)
         self.runtime = self.ctx.get_python_runtime(self.project.python_version)
 
     async def prepare_python(self):

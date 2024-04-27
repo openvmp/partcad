@@ -7,7 +7,6 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import os
 import typing
 
 from .assembly import Assembly
@@ -38,5 +37,6 @@ class AssemblyFactory(ShapeFactory):
             assembly_self
         )
         self.assembly.info = lambda: self.info(self.assembly)
+        self.assembly.with_ports = self.with_ports
 
         self.ctx.stats_assemblies += 1

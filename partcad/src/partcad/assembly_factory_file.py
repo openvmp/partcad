@@ -10,14 +10,11 @@
 
 import os
 
-from . import assembly as p
-from . import assembly_factory as pf
+from .assembly_factory import AssemblyFactory
 from . import logging as pc_logging
 
 
-class AssemblyFactoryFile(pf.AssemblyFactory):
-    assembly: p.Assembly
-
+class AssemblyFactoryFile(AssemblyFactory):
     def __init__(self, ctx, project, config, extension=""):
         super().__init__(ctx, project, config)
 

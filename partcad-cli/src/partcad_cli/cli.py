@@ -126,6 +126,18 @@ def main():
                 cli_list_assemblies(args, ctx)
                 cli_list_parts(args, ctx)
 
+        elif args.command == "list-sketches":
+            with pc_logging.Process("ListSketches", "this"):
+                cli_list_sketches(args, ctx)
+
+        elif args.command == "list-interfaces":
+            with pc_logging.Process("ListInterfaces", "this"):
+                cli_list_interfaces(args, ctx)
+
+        elif args.command == "list-mates":
+            with pc_logging.Process("ListMates", "this"):
+                cli_list_mates(args, ctx)
+
         elif args.command == "list-parts":
             with pc_logging.Process("ListParts", "this"):
                 cli_list_parts(args, ctx)

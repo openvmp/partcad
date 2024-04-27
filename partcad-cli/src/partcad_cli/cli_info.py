@@ -37,6 +37,12 @@ def cli_help_info(subparsers):
     )
     group_type.add_argument(
         "-s",
+        help="The object is a sketch",
+        dest="sketch",
+        action="store_true",
+    )
+    group_type.add_argument(
+        "-S",
         help="The object is a scene",
         dest="scene",
         action="store_true",
@@ -75,6 +81,8 @@ def cli_info(args, ctx):
 
     if args.assembly:
         obj = ctx.get_assembly(path, params=params)
+    elif args.sketch:
+        obj = ctx.get_sketch(path, params=params)
     else:
         obj = ctx.get_part(path, params=params)
 

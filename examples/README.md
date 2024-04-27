@@ -8,6 +8,12 @@ There are many ways to produce a PartCAD model that can be consumed by others.
   - [AI-generated CadQuery scripts](./produce_part_ai_cadquery/)
   - [AI-generated OpenSCAD scripts](./produce_part_ai_openscad/)
 
+- Create and use 2D blueprints (sketches):
+  - [Primitive sketches](./produce_sketch_basic/)
+  - [DXF files](./produce_sketch_dxf/)
+  - [SVG files](./produce_sketch_svg/)
+  - [Parts (3D shapes) using 2D sketch and extrude](./produce_part_extrude/)
+
 - Import parts defined using Python CAD frameworks:
   - [Primitive shapes using CadQuery](./produce_part_cadquery_primitive/)
   - [PartCAD logo using CadQuery](./produce_part_cadquery_logo/)
@@ -23,13 +29,7 @@ There are many ways to produce a PartCAD model that can be consumed by others.
 
 ## Get (consume) existing models
 
-There are many ways to consume existing modules:
-
-- CLI: Export the model to a file:
-  - `pc render -t step [<package-path>]:<part>`
-
-- Visual Studio Code:  Show the model in OCP CAD Viewer:
-  - `pc inspect [<package-path>]:<part>`
+Below are some examples of consuming existing modules:
 
 - Python scripts that use CadQuery:
   - [Import PartCAD parts in CadQuery scripts](./consume_cadquery/)
@@ -45,3 +45,6 @@ There are many ways to consume existing modules:
 These examples showcase particular PartCAD features:
 
 - [Export to file](./feature_export)
+- [Interfaces and mating](./feature_interfaces)
+- [Part enrichment](./feature_enrich)
+- [Monorepo](./feature_monorepo)

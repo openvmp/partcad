@@ -20,6 +20,36 @@ child package called "sub-package" then such package will be called
 The package is described using the configuration file ``partcad.yaml`` placed
 in the package folder.
 
+Sketches
+--------
+
+PartCAD uses 2D sketches to create 3D models (e.g. via `extrude`) and to maintain
+various metadata (such as the geometry of interfaces between parts,
+arbitrary part metadata like camera view angles and so on).
+
+- Files
+
+  - DXF
+  - SVG
+
+- Scripts
+
+  - `build123d <https://github.com/gumyr/build123d>`_
+
+Interfaces
+----------
+
+PartCAD uses interfaces to define how parts and assemblies connect to each other.
+
+Each part may implement one or more interfaces, one or more instance of each.
+Interfaces may hierarchically inherit ports and other properties from each other.
+The information about compatibility between interfaces (mating)
+is optionally maintained as well.
+
+Whenever possible, PartCAD will be able to place parts and assemblies together
+with no coordinates provided by the user, based on the defined ports, interfaces
+and mating.
+
 Parts
 -----
 

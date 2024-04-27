@@ -36,17 +36,23 @@ class Shape(ShapeConfiguration):
     svg_url: str
     # shape: None | b3d.TopoDS_Shape | OCP.TopoDS.TopoDS_Solid
 
+    errors: list[str] = []
+
     def __init__(self, config):
         super().__init__(config)
         self.lock = asyncio.Lock()
         self.shape = None
         self.components = []
         self.compound = None
+        self.with_ports = None
+        # self.implements = {}
 
         # Leave the svg path empty to get it created on demand
         self.svg_lock = asyncio.Lock()
         self.svg_path = None
         self.svg_url = None
+
+        self.desc = config.get("desc", None)
 
     async def get_components(self):
         if len(self.components) == 0:
@@ -55,7 +61,13 @@ class Shape(ShapeConfiguration):
 
             # If it's a compound, we can get the components
             if len(self.components) == 0:
-                return [wrapped]
+                self.components = [wrapped]
+
+            if self.with_ports is not None:
+                ports_list = list(await self.with_ports.get_components())
+                if len(ports_list) != 0:
+                    self.components.append(ports_list)
+
         return self.components
 
     async def get_wrapped(self):
@@ -104,6 +116,7 @@ class Shape(ShapeConfiguration):
     async def show_async(self, show_object=None):
         with pc_logging.Action("Show", self.project_name, self.name):
             if show_object is None:
+                components = []
                 try:
                     components = await self.get_components()
                 except Exception as e:
@@ -155,7 +168,20 @@ class Shape(ShapeConfiguration):
 
     def shape_info(self):
         asyncio.run(self.get_wrapped())
-        return {"Memory": "%.02f KB" % ((total_size(self) + 1023.0) / 1024.0)}
+        info = {}
+        info["Memory"] = "%.02f KB" % ((total_size(self) + 1023.0) / 1024.0)
+
+        if self.with_ports is not None:
+            info["Ports"] = self.with_ports.info()
+
+        return info
+
+    def error(self, msg: str):
+        mute = self.config.get("mute", False)
+        if mute:
+            self.errors.append(msg)
+        else:
+            pc_logging.error(msg)
 
     async def render_svg_somewhere(
         self,

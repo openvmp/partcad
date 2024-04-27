@@ -34,6 +34,7 @@ __all__ = [
     "config",
     "context",
     "shape",
+    "geom",
     "part",
     "part_factory",
     "part_factory_step",
