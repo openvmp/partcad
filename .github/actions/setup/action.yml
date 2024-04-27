@@ -9,11 +9,12 @@ runs:
         python-version: ${{ matrix.python-version }}
         cache: pip
 
-    # # Miniconda
-    # - uses: conda-incubator/setup-miniconda@v3
-    #   with:
-    #     miniconda-version: latest
-    #     activate-environment: pc-conda-env
+    # Miniconda
+    - uses: conda-incubator/setup-miniconda@v3
+      with:
+        miniconda-version: latest
+        activate-environment: pc-conda-env
+        python-version: ${{ matrix.python-version }}
 
     - uses: actions/cache@v3
       id: cache
