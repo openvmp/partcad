@@ -30,6 +30,7 @@ runs:
         pip install wheel mypy
     - name: Update Homebrew
       if: matrix.os == 'macos-latest'
+      shell: bash
       run: |
         brew update --preinstall
         cat "$(brew --repository)/Library/Taps/homebrew/homebrew-core/Formula/nlopt.rb" > .github/brew-formulae
@@ -44,6 +45,7 @@ runs:
         restore-keys: brew-
     - name: Install Homebrew dependencies
       if: matrix.os == 'macos-latest'
+      shell: bash
       run: |
         env HOMEBREW_NO_AUTO_UPDATE=1 brew install nlopt
 
