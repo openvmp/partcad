@@ -9,12 +9,12 @@ runs:
         python-version: ${{ matrix.python-version }}
         cache: pip
 
-    # Miniconda
-    - uses: conda-incubator/setup-miniconda@v3
-      with:
-        miniconda-version: latest
-        activate-environment: pc-conda-env
-        python-version: ${{ matrix.python-version }}
+    # # Miniconda
+    # - uses: conda-incubator/setup-miniconda@v3
+    #   with:
+    #     miniconda-version: latest
+    #     activate-environment: pc-conda-env
+    #     python-version: ${{ matrix.python-version }}
 
     - uses: actions/cache@v3
       id: cache
@@ -28,7 +28,12 @@ runs:
     - name: install dev dependencies
       shell: bash
       run: |
-        pip install wheel mypy numpy swig
+        pip install wheel mypy
+    - name: install macos dev dependencies
+      if: matrix.os == 'macos-latest'
+      shell: bash
+      run: |
+        pip install numpy swig oct2py matlabengine
     # - name: Update Homebrew
     #   if: matrix.os == 'macos-latest'
     #   shell: bash
