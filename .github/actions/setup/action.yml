@@ -28,7 +28,7 @@ runs:
     - name: install dev dependencies
       shell: bash
       run: |
-        pip install wheel mypy numpy
+        pip install wheel mypy numpy swig
     # - name: Update Homebrew
     #   if: matrix.os == 'macos-latest'
     #   shell: bash
