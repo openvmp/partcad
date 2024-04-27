@@ -1,3 +1,4 @@
+cadquery-ocp>=7.7.2
 build123d>=0.5.0
 cadquery>=2.4.0
 numpy>=1.25.2
