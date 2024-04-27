@@ -7,8 +7,14 @@ runs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+        cache: pip
 
-    # TODO(clairbee): do we need to set up cache after miniconda?
+    # Miniconda
+    - uses: conda-incubator/setup-miniconda@v3
+      with:
+        miniconda-version: latest
+        activate-environment: pc-conda-env
+
     - uses: actions/cache@v3
       id: cache
       with:
@@ -16,12 +22,6 @@ runs:
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.*') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-
-    # Miniconda
-    - uses: conda-incubator/setup-miniconda@v3
-      with:
-        miniconda-version: latest
-        activate-environment: pc-conda-env
 
     # Install dev dependencies
     - name: install dev dependencies
