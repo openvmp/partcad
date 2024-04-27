@@ -12,6 +12,7 @@ import threading
 
 from . import consts
 from . import logging as pc_logging
+from .mating import Mating
 from . import project_config
 from . import runtime_python_all
 from . import project_factory_local as rfl
@@ -27,6 +28,10 @@ class Context(project_config.Configuration):
 
     stats_packages: int
     stats_packages_instantiated: int
+    stats_sketches: int
+    stats_sketches_instantiated: int
+    stats_interfaces: int
+    stats_interfaces_instantiated: int
     stats_parts: int
     stats_parts_instantiated: int
     stats_assemblies: int
@@ -66,12 +71,17 @@ class Context(project_config.Configuration):
 
         self.stats_packages = 0
         self.stats_packages_instantiated = 0
+        self.stats_interfaces = 0
+        self.stats_interfaces_instantiated = 0
+        self.stats_sketches = 0
+        self.stats_sketches_instantiated = 0
         self.stats_parts = 0
         self.stats_parts_instantiated = 0
         self.stats_assemblies = 0
         self.stats_assemblies_instantiated = 0
         self.stats_memory = 0
 
+        self.mates = {}
         # self.projects contains all projects known to this context
         self.projects = {}
         self._projects_being_loaded = {}
@@ -320,10 +330,199 @@ class Context(project_config.Configuration):
         return map(
             lambda pkg: {"name": pkg.name, "desc": pkg.desc},
             filter(
-                lambda x: len(x.parts) + len(x.assemblies) > 0,
+                lambda x: len(x.sketches) + len(x.parts) + len(x.assemblies)
+                > 0,
                 self.projects.values(),
             ),
         )
+
+    def add_mate(
+        self, source_interface, target_interface, mate_target_config: dict
+    ):
+        self._add_mate(
+            source_interface,
+            target_interface,
+            mate_target_config,
+            reverse=False,
+        )
+        self._add_mate(
+            target_interface,
+            source_interface,
+            mate_target_config,
+            reverse=True,
+        )
+
+    def _add_mate(
+        self,
+        source_interface,
+        target_interface,
+        mate_target_config: dict,
+        reverse: bool,
+    ):
+        source_interface_name = source_interface.full_name
+        target_interface_name = target_interface.full_name
+
+        if not source_interface_name in self.mates:
+            self.mates[source_interface_name] = {}
+        if target_interface_name in self.mates[source_interface_name]:
+            raise Exception(
+                "Mate already exists: %s -> %s"
+                % (source_interface_name, target_interface_name)
+            )
+
+        mate = Mating(
+            source_interface, target_interface, mate_target_config, reverse
+        )
+        self.mates[source_interface_name][target_interface_name] = mate
+
+    def find_mating_interfaces(self, source_shape, target_shape):
+        source_interfaces = set(source_shape.with_ports.interfaces.keys())
+        compatible_source_interfaces = set(
+            [
+                compatible_interface
+                for interface in source_interfaces
+                for compatible_interface in self.get_interface(
+                    interface
+                ).compatible_with
+            ]
+        )
+        real_source_interfaces = {
+            interface: set([interface]) for interface in source_interfaces
+        }
+        for interface in source_interfaces:
+            for compatible_interface in self.get_interface(
+                interface
+            ).compatible_with:
+                if not compatible_interface in real_source_interfaces:
+                    real_source_interfaces[compatible_interface] = set()
+                real_source_interfaces[compatible_interface].add(interface)
+        source_interfaces = source_interfaces.union(
+            compatible_source_interfaces
+        )
+        pc_logging.debug("Source interfaces: %s" % source_interfaces)
+
+        target_interfaces = set(target_shape.with_ports.interfaces.keys())
+        compatible_target_interfaces = set(
+            [
+                compatible_interface
+                for interface in target_interfaces
+                for compatible_interface in self.get_interface(
+                    interface
+                ).compatible_with
+            ]
+        )
+        real_target_interfaces = {
+            interface: set([interface]) for interface in target_interfaces
+        }
+        for interface in target_interfaces:
+            for compatible_interface in self.get_interface(
+                interface
+            ).compatible_with:
+                if not compatible_interface in real_target_interfaces:
+                    real_target_interfaces[compatible_interface] = set()
+                real_target_interfaces[compatible_interface].add(interface)
+        target_interfaces = target_interfaces.union(
+            compatible_target_interfaces
+        )
+        pc_logging.debug("Target interfaces: %s" % target_interfaces)
+
+        source_interfaces_mates = set(
+            [
+                peer_interface
+                for source_interface in source_interfaces
+                for peer_interface in self.mates.get(
+                    source_interface, {}
+                ).keys()
+            ]
+        )
+        target_interfaces_mates = set(
+            [
+                peer_interface
+                for target_interface in target_interfaces
+                for peer_interface in self.mates.get(
+                    target_interface, {}
+                ).keys()
+            ]
+        )
+        source_candidate_interfaces = source_interfaces.intersection(
+            target_interfaces_mates
+        )
+        real_source_candidate_interfaces = set()
+        for source_interface in source_candidate_interfaces:
+            real_source_candidate_interfaces = (
+                real_source_candidate_interfaces.union(
+                    real_source_interfaces[source_interface]
+                )
+            )
+        source_candidate_interfaces = real_source_candidate_interfaces
+        pc_logging.debug(
+            "Source candidate interfaces: %s" % source_candidate_interfaces
+        )
+
+        target_candidate_interfaces = target_interfaces.intersection(
+            source_interfaces_mates
+        )
+        real_target_candidate_interfaces = set()
+        for target_interface in target_candidate_interfaces:
+            real_target_candidate_interfaces = (
+                real_target_candidate_interfaces.union(
+                    real_target_interfaces[target_interface]
+                )
+            )
+        target_candidate_interfaces = real_target_candidate_interfaces
+        pc_logging.debug(
+            "Target candidate interfaces: %s" % target_candidate_interfaces
+        )
+
+        return source_candidate_interfaces, target_candidate_interfaces
+
+    def _get_sketch(self, sketch_spec, params=None):
+        project_name, sketch_name = resolve_resource_path(
+            self.current_project_path,
+            sketch_spec,
+        )
+        prj = self.get_project(project_name)
+        if prj is None:
+            pc_logging.error("Package %s not found" % project_name)
+            pc_logging.error("Packages found: %s" % str(self.projects))
+            return None
+        pc_logging.debug("Retrieving %s from %s" % (sketch_name, project_name))
+        return prj.get_sketch(sketch_name, params)
+
+    def get_sketch(self, sketch_spec, params=None):
+        return self._get_sketch(sketch_spec, params)
+
+    def get_sketch_shape(self, sketch_spec, params=None):
+        return asyncio.run(self._get_sketch(sketch_spec, params).get_wrapped())
+
+    def get_sketch_cadquery(self, sketch_spec, params=None):
+        return asyncio.run(self._get_sketch(sketch_spec, params).get_cadquery())
+
+    def get_sketch_build123d(self, sketch_spec, params=None):
+        return asyncio.run(
+            self._get_sketch(sketch_spec, params).get_build123d()
+        )
+
+    def _get_interface(self, interface_spec):
+        project_name, interface_name = resolve_resource_path(
+            self.current_project_path,
+            interface_spec,
+        )
+        prj = self.get_project(project_name)
+        if prj is None:
+            pc_logging.error("Package %s not found" % project_name)
+            pc_logging.error("Packages found: %s" % str(self.projects))
+            return None
+        pc_logging.debug(
+            "Retrieving %s from %s" % (interface_name, project_name)
+        )
+        return prj.get_interface(interface_name)
+
+    def get_interface(self, interface_spec):
+        return self._get_interface(interface_spec)
+
+    def get_interface_shape(self, interface_spec):
+        return asyncio.run(self._get_interface(interface_spec).get_wrapped())
 
     def _get_part(self, part_spec, params=None):
         project_name, part_name = resolve_resource_path(

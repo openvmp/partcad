@@ -1,0 +1,39 @@
+links:
+  - part: example-bracket
+  - part: example-motor
+    connect:
+      with: nema-17-motor-mount
+      name: example-bracket
+      to: nema-17-motor-bracket
+      toInstance: {{ param_placement }}-motor
+  - part: socket-head-m4-screw-6mm
+    connect:
+      # 'with' can be omitted, because there is only one interface in this part
+      name: example-bracket
+      to: m4-slotted-30-through-3
+      toInstance: L
+  - part: socket-head-m4-screw-6mm
+    connect:
+      name: example-bracket
+      to: m4-slotted-30-through-3
+      toInstance: R
+  - part: socket-head-m3-screw-6mm
+    connect:
+      name: example-bracket
+      to: m3-through-3
+      toInstance: {{ param_placement }}-screws-TL
+  - part: socket-head-m3-screw-6mm
+    connect:
+      name: example-bracket
+      to: m3-through-3
+      toInstance: {{ param_placement }}-screws-TR
+  - part: socket-head-m3-screw-6mm
+    connect:
+      name: example-bracket
+      to: m3-through-3
+      toInstance: {{ param_placement }}-screws-BL
+  - part: socket-head-m3-screw-6mm
+    connect:
+      name: example-bracket
+      to: m3-through-3
+      toInstance: {{ param_placement }}-screws-BR

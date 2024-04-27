@@ -1,0 +1,4 @@
+sketches:
+  svg_01:
+    type: svg
+    # use-wires: True

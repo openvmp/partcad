@@ -21,6 +21,18 @@ def cli_help_list(subparsers):
         "list-all",
         help="List available parts, assemblies and scenes",
     )
+    parser_list_sketches = subparsers.add_parser(
+        "list-sketches",
+        help="List available sketches",
+    )
+    parser_list_interfaces = subparsers.add_parser(
+        "list-interfaces",
+        help="List available interfaces",
+    )
+    parser_list_mates = subparsers.add_parser(
+        "list-mates",
+        help="List available mating interfaces",
+    )
     parser_list_parts = subparsers.add_parser(
         "list-parts",
         help="List available parts",
@@ -36,6 +48,24 @@ def cli_help_list(subparsers):
         dest="recursive",
         action="store_true",
     )
+    parser_list_sketches.add_argument(
+        "-r",
+        help="Recursively process all imported packages",
+        dest="recursive",
+        action="store_true",
+    )
+    parser_list_interfaces.add_argument(
+        "-r",
+        help="Recursively process all imported packages",
+        dest="recursive",
+        action="store_true",
+    )
+    parser_list_mates.add_argument(
+        "-r",
+        help="Recursively process all imported packages",
+        dest="recursive",
+        action="store_true",
+    )
     parser_list_parts.add_argument(
         "-r",
         help="Recursively process all imported packages",
@@ -56,6 +86,27 @@ def cli_help_list(subparsers):
         type=str,
         required=False,
     )
+    parser_list_sketches.add_argument(
+        "-u",
+        help="Only process objects used by the given assembly or scene.",
+        dest="used_by",
+        type=str,
+        required=False,
+    )
+    parser_list_interfaces.add_argument(
+        "-u",
+        help="Only process objects used by the given assembly or scene.",
+        dest="used_by",
+        type=str,
+        required=False,
+    )
+    parser_list_mates.add_argument(
+        "-u",
+        help="Only process objects used by the given assembly or scene.",
+        dest="used_by",
+        type=str,
+        required=False,
+    )
     parser_list_parts.add_argument(
         "-u",
         help="Only process objects used by the given assembly or scene.",
@@ -71,6 +122,24 @@ def cli_help_list(subparsers):
         required=False,
     )
 
+    parser_list_sketches.add_argument(
+        "package",
+        help="Package to retrieve the object from",
+        type=str,
+        nargs="?",
+    )
+    parser_list_interfaces.add_argument(
+        "package",
+        help="Package to retrieve the object from",
+        type=str,
+        nargs="?",
+    )
+    parser_list_mates.add_argument(
+        "package",
+        help="Package to retrieve the object from",
+        type=str,
+        nargs="?",
+    )
     parser_list_parts.add_argument(
         "package",
         help="Package to retrieve the object from",
@@ -113,6 +182,215 @@ def cli_list(args, ctx):
     pc.logging.info(output)
 
 
+def cli_list_sketches(args, ctx):
+    sketch_count = 0
+    sketch_kinds = 0
+
+    if args.used_by is not None:
+        pc.logging.info("Instantiating %s..." % args.used_by)
+        ctx.get_assembly(args.used_by)
+    else:
+        ctx.get_all_packages()
+
+    # TODO(clairbee): remove the following workaround after replacing 'print'
+    # with corresponding logging calls
+    time.sleep(2)
+
+    output = "PartCAD sketches:\n"
+    for project_name in ctx.projects:
+        if (
+            hasattr(args, "package")
+            and not args.package is None
+            and args.package != project_name
+        ):
+            continue
+
+        if project_name != ctx.get_current_project_path() and (
+            not args.recursive
+            and hasattr(args, "package")
+            and args.package is None
+        ):
+            continue
+
+        project = ctx.projects[project_name]
+
+        for sketch_name, sketch in project.sketches.items():
+            if args.used_by is not None and sketch.count == 0:
+                continue
+
+            line = "\t"
+            if args.recursive:
+                line += "%s" % project_name
+                line += " " + " " * (35 - len(project_name))
+            line += "%s" % sketch_name
+            if args.used_by is not None:
+                sketch = project.sketches[sketch_name]
+                line += "(%d)" % sketch.count
+                sketch_count = sketch_count + sketch.count
+            line += " " + " " * (35 - len(sketch_name))
+
+            desc = sketch.desc if sketch.desc is not None else ""
+            desc = desc.replace(
+                "\n", "\n" + " " * (80 if args.recursive else 44)
+            )
+            line += "%s" % desc
+            output += line + "\n"
+            sketch_kinds = sketch_kinds + 1
+
+    if sketch_kinds > 0:
+        if args.used_by is None:
+            output += "Total: %d\n" % sketch_kinds
+        else:
+            output += "Total: %d sketches of %d kinds\n" % (
+                sketch_count,
+                sketch_kinds,
+            )
+    else:
+        output += "\t<none>\n"
+    pc.logging.info(output)
+
+
+def cli_list_interfaces(args, ctx):
+    interface_count = 0
+    interface_kinds = 0
+
+    if args.used_by is not None:
+        pc.logging.info("Instantiating %s..." % args.used_by)
+        ctx.get_assembly(args.used_by)
+    else:
+        ctx.get_all_packages()
+
+    # TODO(clairbee): remove the following workaround after replacing 'print'
+    # with corresponding logging calls
+    time.sleep(2)
+
+    output = "PartCAD interfaces:\n"
+    for project_name in ctx.projects:
+        if (
+            hasattr(args, "package")
+            and not args.package is None
+            and args.package != project_name
+        ):
+            continue
+
+        if project_name != ctx.get_current_project_path() and (
+            not args.recursive
+            and hasattr(args, "package")
+            and args.package is None
+        ):
+            continue
+
+        project = ctx.projects[project_name]
+
+        for interface_name, interface in project.interfaces.items():
+            if args.used_by is not None and interface.count == 0:
+                continue
+
+            line = "\t"
+            if args.recursive:
+                line += "%s" % project_name
+                line += " " + " " * (35 - len(project_name))
+            line += "%s" % interface_name
+            if args.used_by is not None:
+                interface = project.interfaces[interface_name]
+                line += "(%d)" % interface.count
+                interface_count = interface_count + interface.count
+            line += " " + " " * (35 - len(interface_name))
+
+            desc = interface.desc if interface.desc is not None else ""
+            desc = desc.replace(
+                "\n", "\n" + " " * (80 if args.recursive else 44)
+            )
+            line += "%s" % desc
+            output += line + "\n"
+            interface_kinds = interface_kinds + 1
+
+    if interface_kinds > 0:
+        if args.used_by is None:
+            output += "Total: %d\n" % interface_kinds
+        else:
+            output += "Total: %d interfaces of %d kinds\n" % (
+                interface_count,
+                interface_kinds,
+            )
+    else:
+        output += "\t<none>\n"
+    pc.logging.info(output)
+
+
+def cli_list_mates(args, ctx):
+    mating_kinds = 0
+
+    if args.used_by is not None:
+        pc.logging.info("Instantiating %s..." % args.used_by)
+        ctx.get_assembly(args.used_by)
+    else:
+        ctx.get_all_packages()
+
+    # TODO(clairbee): remove the following workaround after replacing 'print'
+    # with corresponding logging calls
+    time.sleep(2)
+
+    output = "PartCAD mating interfaces:\n"
+    for source_interface_name in ctx.mates:
+        source_package_name = source_interface_name.split(":")[0]
+        short_source_interface_name = source_interface_name.split(":")[1]
+
+        for target_interface_name in ctx.mates[source_interface_name]:
+            target_package_name = target_interface_name.split(":")[0]
+            short_target_interface_name = target_interface_name.split(":")[1]
+
+            mating = ctx.mates[source_interface_name][target_interface_name]
+
+            if (
+                hasattr(args, "package")
+                and not args.package is None
+                and args.package != source_package_name
+                and args.package != target_package_name
+            ):
+                continue
+
+            if (
+                source_package_name != ctx.get_current_project_path()
+                and target_package_name != ctx.get_current_project_path()
+                and not args.recursive
+                and hasattr(args, "package")
+                and args.package is None
+            ):
+                continue
+
+            # source_project = ctx.projects[source_package_name]
+            # target_project = ctx.projects[target_package_name]
+
+            # source_interface = source_project.get_interface(
+            #     short_source_interface_name
+            # )
+            # target_interface = target_project.get_interface(
+            #     short_target_interface_name
+            # )
+
+            if args.used_by is not None and mating.count == 0:
+                continue
+
+            line = "\t"
+            line += "%s" % source_interface_name
+            line += " " + " " * (35 - len(source_interface_name))
+            line += "%s" % target_interface_name
+            line += " " + " " * (35 - len(target_interface_name))
+
+            desc = mating.desc if mating.desc is not None else ""
+            desc = desc.replace("\n", "\n\t" + " " * 72)
+            line += "%s" % desc
+            output += line + "\n"
+            mating_kinds = mating_kinds + 1
+
+    if mating_kinds > 0:
+        output += "Total: %d mating interfaces\n" % (mating_kinds,)
+    else:
+        output += "\t<none>\n"
+    pc.logging.info(output)
+
+
 def cli_list_parts(args, ctx):
     part_count = 0
     part_kinds = 0
@@ -142,8 +420,7 @@ def cli_list_parts(args, ctx):
             and args.package is None
         ):
             continue
-        if project_name.startswith("partcad-"):
-            continue
+
         project = ctx.projects[project_name]
 
         for part_name, part in project.parts.items():
@@ -209,8 +486,7 @@ def cli_list_assemblies(args, ctx):
             and args.package is None
         ):
             continue
-        if project_name.startswith("partcad-"):
-            continue
+
         project = ctx.projects[project_name]
 
         for assy_name, assy in project.assemblies.items():

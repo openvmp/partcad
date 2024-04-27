@@ -23,6 +23,7 @@ And all of that is supercharged by the ultimate versioning and collaboration fea
    tutorial.rst
    design.rst
    configuration.rst
+   assy.rst
    use_cases.rst
    features.rst
    troubleshooting.rst

@@ -1,0 +1,207 @@
+sketches:
+  m3:
+    type: basic
+    circle: 1.5 # 1.5mm radius equals to 3mm diameter
+  m4:
+    type: basic
+    circle: 2.0
+  m5:
+    type: basic
+    circle: 2.5
+
+interfaces:
+  m3:
+    desc: Abstract 3mm circular interface
+    abstract: True
+    ports:
+      m3:
+        location: [[0, 0, 0], [0, 0, 1], 0] # redandant, for demonstration
+        sketch: m3
+  m3-opening:
+    abstract: True
+    desc: Abstract 3mm circular opening
+    inherits:
+      m3: opening
+  m3-hole-4_5:
+    desc: 4.5mm deep hole of 3mm diameter
+    inherits:
+      m3-opening: 4.5mm-hole
+  m3-through:
+    abstract: True
+    desc: Abstract 3mm through hole
+    inherits:
+      m3-opening: through
+  m3-through-3:
+    desc: 3mm thick through hole of 3mm diameter
+    inherits:
+      m3-through: 3mm
+  m4:
+    desc: Abstract 4mm circular interface
+    abstract: True
+    ports:
+      m4:
+        sketch: m4
+  m4-opening:
+    desc: Abstract 4mm circular opening
+    abstract: True
+    inherits:
+      m4: opening
+  m4-through:
+    abstract: True
+    desc: Abstract 4mm through hole
+    inherits:
+      m4-opening: through
+  m4-through-3:
+    desc: 3mm thick through hole of 4mm diameter
+    inherits:
+      m4-through: 3mm
+  m4-slotted-30-through-3:
+    desc: 3mm thick 30mm long slotted hole of 4mm diameter (*unfinished*)
+    # TODO(clairbee): implement parametrized sketches, base interfaces for standard slotted holes, and inherit m4-slotted here
+    inherits:
+      m4-through-3: 30mm-slotted
+  m5:
+    desc: Abstract 5mm circular interface
+    abstract: True
+    ports:
+      m5:
+        sketch: m5
+
+  m3-screw:
+    desc: Abstract M3 screw
+    abstract: True
+    inherits:
+      m3: screw
+  m3-screw-6mm:
+    desc: 6mm long M3 screw
+    inherits:
+      m3-screw: 6mm-long
+    mates:
+      m3-through-3:
+        move-z:
+          min: -1 # TODO(clairbee): Is there a standard minimum depth?
+          max: 0
+          default: 0
+      m3-hole-4_5:
+        move-z:
+          min: -2 # TODO(clairbee): Is there a standard minimum depth?
+          max: -2
+          default: -2
+
+  m4-screw:
+    desc: Abstract M4 screw
+    abstract: True
+    inherits:
+      m4: screw
+  m4-screw-6mm:
+    desc: 6mm long M4 screw
+    inherits:
+      m4-screw: 6mm-long
+    mates:
+      m4-through-3:
+        move-z:
+          min: -1 # TODO(clairbee): Is there a standard minimum depth?
+          max: 0
+          default: 0
+
+  m5-bar:
+    desc: Abstract 5mm-wide bar
+    abstract: True
+    inherits:
+      m5: bar
+  m5-bar-22:
+    desc: 22mm-long 5mm-wide bar
+    inherits:
+      m5-bar: 22mm-long
+
+  nema-17-motor-mount:
+    desc: NEMA-17 motor mount
+    compound: True
+    inherits:
+      m3-hole-4_5:
+        TL: [[-15.5, 15.5, 0.0], [0.0, 0.0, 1.0], 270.0] # top left
+        TR: [[15.5, 15.5, 0.0], [0.0, 0.0, 1.0], 180.0] # top right
+        BL: [[-15.5, -15.5, 0.0], [0.0, 0.0, 1.0], 0.0] # bottom left
+        BR: [[15.5, -15.5, 0.0], [0.0, 0.0, 1.0], 90.0] # bottom right
+  nema-17-motor:
+    desc: NEMA-17 motor
+    inherits:
+      nema-17-motor-mount:
+      m5-bar-22: [[0.0, 0.0, -24.0], [0.0, 0.0, 1.0], 0.0]
+  nema-17-motor-bracket-3mm-screws:
+    desc: NEMA 17 motor bracket (3mm thick) for screws
+    inherits:
+      m3-through-3:
+        TL: [[-15.5, 15.5, 0.0], [0.0, 0.0, 1.0], 270.0] # top left
+        TR: [[15.5, 15.5, 0.0], [0.0, 0.0, 1.0], 180.0] # top right
+        BL: [[-15.5, -15.5, 0.0], [0.0, 0.0, 1.0], 0.0] # bottom left
+        BR: [[15.5, -15.5, 0.0], [0.0, 0.0, 1.0], 90.0] # bottom right
+  nema-17-motor-bracket:
+    desc: NEMA 17 motor bracket (3mm thick) for motor
+    inherits:
+      m3-through:
+        TL: [[-15.5, 15.5, 0.0], [0.0, 0.0, 1.0], 270.0] # top left
+        TR: [[15.5, 15.5, 0.0], [0.0, 0.0, 1.0], 180.0] # top right
+        BL: [[-15.5, -15.5, 0.0], [0.0, 0.0, 1.0], 0.0] # bottom left
+        BR: [[15.5, -15.5, 0.0], [0.0, 0.0, 1.0], 90.0] # bottom right
+    mates: nema-17-motor-mount
+
+parts:
+  socket-head-m3-screw-6mm:
+    desc: M3 socket head screw, 6mm long
+    url: https://www.gobilda.com/zinc-plated-steel-socket-head-screw-m3-x-0-5mm-6mm-length-6-pack/
+    type: step
+    implements:
+      m3-screw-6mm: [[0.0, 0.0, -12.0], [1.0, 0.0, 0.0], 0.0]
+
+  socket-head-m4-screw-6mm:
+    desc: M4 socket head screw, 6mm long
+    url: https://www.gobilda.com/2800-series-zinc-plated-steel-socket-head-screw-m4-x-0-7mm-6mm-length-25-pack/
+    type: step
+    implements:
+      m4-screw-6mm: [[0.0, 0.0, -6.0], [1.0, 0.0, 0.0], 0.0]
+
+  example-motor:
+    desc: NEMA 17 motor bracket
+    url: https://www.omc-stepperonline.com/nema-17-bipolar-1-8deg-65ncm-92oz-in-2-1a-3-36v-42x42x60mm-4-wires-17hs24-2104s
+    type: step
+    implements:
+      nema-17-motor: [[0.0, 0.0, 60.0], [1.0, 0.0, 0.0], 180.0]
+
+  example-bracket:
+    desc: NEMA 17 motor bracket
+    url: https://www.omc-stepperonline.com/nema-17-bracket-for-stepper-motor-and-geared-stepper-motor-alloy-steel-bracket-st-m1
+    type: step
+    implements:
+      nema-17-motor-bracket-3mm-screws:
+        outer-screws: [[0.0, 0.0, 3.0], [0.0, 1.0, 0.0], 180.0]
+        inner-screws: [[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], 0.0]
+      nema-17-motor-bracket:
+        outer-motor: [[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], 180.0]
+        inner-motor: [[0.0, 0.0, 3.0], [0.0, 1.0, 0.0], 0.0]
+      m4-slotted-30-through-3:
+        L: [[-15.0, -27.0, 27.0], [1.0, 0.0, 0.0], 90.0] # top left
+        R: [[15.0, -27.0, 27.0], [1.0, 0.0, 0.0], 90.0] # top right
+
+assemblies:
+  connect-ports:
+    type: assy
+    parameters:
+      placement:
+        type: string
+        enum: [inner, outer]
+        default: outer
+  connect-interfaces:
+    type: assy
+    parameters:
+      placement:
+        type: string
+        enum: [inner, outer]
+        default: outer
+  connect-mates:
+    type: assy
+    parameters:
+      placement:
+        type: string
+        enum: [inner, outer]
+        default: outer

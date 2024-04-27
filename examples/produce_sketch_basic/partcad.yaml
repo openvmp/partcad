@@ -1,0 +1,22 @@
+sketches:
+  circle_01:
+    type: basic
+    circle: 5
+  circle_02:
+    type: basic
+    circle:
+      radius: 3
+  circle_03:
+    type: basic
+    circle:
+      x: 2
+      y: 2
+      radius: 2
+  square_01:
+    type: basic
+    square: 5
+  rect_01:
+    type: basic
+    rectangle:
+      side-x: 5
+      side-y: 3

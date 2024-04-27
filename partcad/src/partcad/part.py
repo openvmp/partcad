@@ -18,23 +18,17 @@ from . import logging as pc_logging
 
 class Part(ShapeWithAi):
     path: typing.Optional[str] = None
-    desc: typing.Optional[str] = None
     vendor: typing.Optional[str] = None
     sku: typing.Optional[str] = None
     url: typing.Optional[str] = None
     count_per_sku: int = None
     count: int = None
 
-    errors: list[str] = []
-
     def __init__(self, config: object = {}, shape=None):
         super().__init__(config)
 
         self.shape = shape
 
-        self.desc = None
-        if "desc" in config:
-            self.desc = config["desc"]
         self.vendor = None
         if "vendor" in config:
             self.vendor = config["vendor"]
@@ -64,13 +58,6 @@ class Part(ShapeWithAi):
         cloned = Part(self.name, self.config, self.shape)
         cloned.count = self.count
         return cloned
-
-    def error(self, msg: str):
-        mute = self.config.get("mute", False)
-        if mute:
-            self.errors.append(msg)
-        else:
-            pc_logging.error(msg)
 
     def _render_txt_real(self, file):
         file.write(self.name + ": " + self.count + "\n")

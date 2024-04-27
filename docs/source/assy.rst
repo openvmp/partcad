@@ -1,0 +1,66 @@
+Assembly YAML
+#############
+
+============
+Introduction
+============
+
+Assembly YAML is an approach to define assemblies using a simple YAML file.
+This file format was introduced in PartCAD for the first time.
+
+======
+Syntax
+======
+
+Each Assembly YAML (ASSY) file is a YAML file consisting of a tree of nodes.
+Each node is either a reference to an external part, a reference to an
+external assembly, or a container for such references.
+
+Containers
+----------
+
+The top-level mode of an ASSY file is a container node.
+The container nodes have the following syntax:
+
+  .. code-block:: yaml
+
+    name: <(optional) name>
+    description: <(optional) description>
+    location: <(optional) OCCT Location object> # e.g. [[0,0,0], [0,0,1], 0]
+    links:
+      - <other node>
+      - <other node>
+      - <other node>
+      - <other node>
+
+Parts
+-----
+
+The following syntax is used to create a node that places a part in the assembly:
+
+  .. code-block:: yaml
+
+    part: <name of a part from this package or a global path "{/package}:{part}">
+    name: <(optional) name to use for this part in this assembly>
+    location: <(optional) OCCT Location object> # e.g. [[0,0,0], [0,0,1], 0]
+    connectPorts: # alternative to "location", used to connect by ports
+      with: <(optional) name of the port in this part, if more than one exists>
+      name: <the name of the target part in this assembly to connect to>
+      to: <(optional) name of the port in the target part to connect to, if more than one exists>
+    connect: # alternative to "location" and "connectPorts", used to connect by interfaces
+      with: <(optional) name of the interface in this part, if more than one exists>
+      withInstance: <(optional) name of the instance of the interface in this part, if more than one exists>
+      name: <the name of the target part in this assembly to connect to>
+      to: <(optional) name of the interface in the target part to connect to, if more than one compatible one exists>
+      toInstance: <(optional) name of the instance of the interface in the target part to connect to, if more than one exists>
+
+
+Assemblies
+----------
+
+The following syntax is used to create a node that places an assembly in the assembly:
+
+  .. code-block:: yaml
+
+    assembly: <name of an assembly from this package or a global path "{/package}:{assembly}">
+    ... # same as for parts

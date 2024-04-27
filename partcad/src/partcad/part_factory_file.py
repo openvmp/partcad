@@ -9,12 +9,11 @@
 
 import os
 
-from . import part as p
-from . import part_factory as pf
+from .part_factory import PartFactory
 from . import logging as pc_logging
 
 
-class PartFactoryFile(pf.PartFactory):
+class PartFactoryFile(PartFactory):
     extension: str
 
     def __init__(

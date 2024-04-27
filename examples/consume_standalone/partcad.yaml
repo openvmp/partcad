@@ -1,4 +1,0 @@
-import:
-  pub:
-    type: git
-    url: https://github.com/openvmp/partcad-index.git

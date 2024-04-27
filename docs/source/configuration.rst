@@ -62,6 +62,106 @@ Here are some ``import`` examples:
 |                    |       url: https://github.com/openvmp/partcad/archive/7544a5a1e3d8909c9ecee9e87b30998c05d090ca.tar.gz |
 +--------------------+-------------------------------------------------------------------------------------------------------+
 
+========
+Sketches
+========
+
+Sketches are declared in ``partcad.yaml`` using the following syntax:
+
+  .. code-block:: yaml
+
+    sketches:
+      <sketch name>:
+        type: <basic|dxf|svg>
+        desc: <(optional) textual description>
+        path: <(optional) the source file path, "{sketch name}.{ext}" otherwise>
+        <... type-specific options ...>
+
+The basic sketches are defined using the following syntax:
+
+  .. code-block:: yaml
+
+    sketches:
+      <sketch name>:
+        type: basic
+        desc: <(optional) textual description>
+        circle: <(optional) radius>
+        circle:  # alternative syntax
+          radius: <radius>
+          x: <(optional) x offset>
+          y: <(optional) y offset>
+        square: <(optional) edge size>
+        square:  # alternative syntax
+          side: <edge size>
+          x: <(optional) x offset>
+          y: <(optional) y offset>
+        rectangle: <(optional)>
+          side-x: <x edge size>
+          side-y: <y edge size>
+          x: <(optional) x offset>
+          y: <(optional) y offset>
+
+==========
+Interfaces
+==========
+
+Interfaces are declared in ``partcad.yaml`` using the following syntax:
+
+  .. code-block:: yaml
+
+    interfaces:
+      <interface name>:
+        abstract: <(optional) whether the interface is abstract>
+        desc: <(optional) textual description>
+        path: <(optional) the source file path, "{interface name}.{ext}" otherwise>
+        inherits: # (optional) the list of other interfaces to inherit from
+          <parent interface name>: <instance name>
+          <other interface name>: # instance name is implied to be empty ("")
+          <yet another interface>:
+            <instance name>: <OCCT Location object> # e.g. [[0,0,0], [0,0,1], 0]
+        ports:  # (optional) the list of ports in addition to the inherited ones
+          <port name>: <OCCT Location object> # e.g. [[0,0,0], [0,0,1], 0]
+          <other port name>: # [[0,0,0], [0,0,1], 0] is implied
+          <another port name>:
+            location: <OCCT Location object> # e.g. [[0,0,0], [0,0,1], 0]
+            sketch: <(optional) name of the sketch used for visualization>
+
+
+Abstract interfaces can't be implemented by parts directly.
+They also can't be used for mating with other interfaces.
+
+  .. image:: images/interface-m3.png
+    :width: 50%
+    :align: center
+
+Each port has the coordinates of the logical center of the port and the
+direction (orientation) of the port.
+Whenever two ports are meant to connect without any offset or angle
+(e.g. male and female connectors), their coordinates and directions should match
+(not inverted directions).
+The suggested convention is to use the Z-axis (blue) as the main direction.
+Male ports should have the Z-axis pointing outwards, while female ports should
+have the Z-axis pointing inwards.
+
+Sometimes there are multiple interchangeable ports within one interface.
+For example, take a look at the NEMA-17 mounting ports:
+
+  .. image:: images/interface-orientation.png
+    :width: 50%
+    :align: center
+
+It is desired that any mounting port of the motor can be connected to any
+mounting port of the bracket.
+That can be achieved by orienting the ports in a circular direction.
+See how the X-axis (red) is pointing to the next port clockwise (right-hand rule).
+If any pair of ports is aligned then all three other port pairs are aligned too.
+
+  .. image:: images/interface-orientation-2.png
+    :width: 50%
+    :align: center
+
+See the `feature_interfaces` example for more information.
+
 =====
 Parts
 =====
@@ -78,6 +178,20 @@ Parts are declared in ``partcad.yaml`` using the following syntax:
         <... type-specific options ...>
         offset: <OCCT Location object, e.g. "[[0,0,0], [0,0,1], 0]">
 
+        # The below syntax is similar to the one used for interfaces,
+        # with the only exception being the word "implements" instead of "inherits".
+        implements: # (optional) the list of interfaces to implement
+          <interface name>: <instance name>
+          <other interface name>: # instance name is implied to be be empty ("")
+          <yet another interface>:
+            <instance name>: <OCCT Location object> # e.g. [[0,0,0], [0,0,1], 0]
+        ports: # (optional) the list of ports in addition to the inherited ones
+          <port name>: <OCCT Location object> # e.g. [[0,0,0], [0,0,1], 0]
+          <other port name>: # [[0,0,0], [0,0,1], 0] is implied
+          <another port name>:
+            location: <OCCT Location object> # e.g. [[0,0,0], [0,0,1], 0]
+            sketch: <(optional) name of the sketch used for visualization>
+
 Depending on the type of the part, the configuration may have different options:
 
   .. code-block:: yaml
@@ -92,7 +206,8 @@ Depending on the type of the part, the configuration may have different options:
         pythonRequirements: <(python scripts only) the list of dependencies to install>
         parameters:
           <param name>:
-            type: <str|float|int|bool>
+            type: <string|float|int|bool>
+            enum: <(optional) list of possible values>
             default: <default value>
 
   .. code-block:: yaml
@@ -201,7 +316,8 @@ Assemblies are declared in ``partcad.yaml`` using the following syntax:
         path: <(optional) the source file path>
         parameters:  # (optional)
           <param name>:
-            type: <str|float|int|bool>
+            type: <string|float|int|bool>
+            enum: <(optional) list of possible values>
             default: <default value>
         offset: <OCCT Location object, e.g. "[[0,0,0], [0,0,1], 0]">
 

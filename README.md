@@ -15,8 +15,16 @@ commercial Product Lifecycle Management (PLM) tools.
 
 PartCAD maintains information about mechanical parts and
 how they come together to form larger assemblies.
-The same parts are reused in multiple assemblies and multiple projects.
+The same parts can be reused in multiple assemblies and multiple projects.
 And all of that is supercharged by the ultimate versioning and collaboration features of Git.
+
+PartCAD features include:
+
+- 3D part models using STEP, STL and 3MF files
+- 3D part models using CadQuery, build123d and OpenSCAD scripting languages (including AI-generated: Gemini and GPT)
+- 2D blueprints using DXF, build123d and SVG files
+- Fully featured object-oriented approach to maintain part interfaces and mating information (with multiple class inheritance etc)
+- Live preview of 3D models while coding in VS Code
 
 Find [more documentation here](https://partcad.readthedocs.io/en/latest/?badge=latest) and visit [our website](https://partcad.org/).
 

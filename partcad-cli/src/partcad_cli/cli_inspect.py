@@ -36,6 +36,12 @@ def cli_help_inspect(subparsers):
 
     group_type = parser_inspect.add_mutually_exclusive_group(required=False)
     group_type.add_argument(
+        "-i",
+        help="The object is an interface",
+        dest="interface",
+        action="store_true",
+    )
+    group_type.add_argument(
         "-a",
         help="The object is an assembly",
         dest="assembly",
@@ -43,6 +49,12 @@ def cli_help_inspect(subparsers):
     )
     group_type.add_argument(
         "-s",
+        help="The object is a sketch",
+        dest="sketch",
+        action="store_true",
+    )
+    group_type.add_argument(
+        "-S",
         help="The object is a scene",
         dest="scene",
         action="store_true",
@@ -81,6 +93,10 @@ def cli_inspect(args, ctx):
 
     if args.assembly:
         obj = ctx.get_assembly(path, params=params)
+    elif args.interface:
+        obj = ctx.get_interface(path)
+    elif args.sketch:
+        obj = ctx.get_sketch(path, params=params)
     else:
         obj = ctx.get_part(path, params=params)
 

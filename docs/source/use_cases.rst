@@ -43,6 +43,15 @@ The command line tools are the easiest way to browse parts:
     # List all available packages
     pc list
 
+    # List all sketches in all available packages
+    pc list-sketches -r
+
+    # List all interfaces in all available packages
+    pc list-interfaces -r
+
+    # List all known matings of interfaces in all available packages
+    pc list-mates -r
+
     # List all parts in all available packages
     pc list-parts -r
 

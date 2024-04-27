@@ -1,0 +1,13 @@
+parts:
+  cylinder:
+    type: extrude
+    sketch: /produce_sketch_basic:circle_01
+    depth: 1
+  dxf:
+    type: extrude
+    sketch: /produce_sketch_dxf:dxf_01
+    depth: 10
+  clock:
+    type: extrude
+    sketch: /produce_sketch_build123d:clock
+    depth: 1

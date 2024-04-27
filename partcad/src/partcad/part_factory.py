@@ -7,17 +7,16 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import os
 import typing
 
-from . import part as p
+from .part import Part
 from .shape_factory import ShapeFactory
 
 
 class PartFactory(ShapeFactory):
     # TODO(clairbee): Make the next line work for part_factory_file only
     path: typing.Optional[str] = None
-    part: p.Part
+    part: Part
     name: str
     orig_name: str
 
@@ -33,14 +32,15 @@ class PartFactory(ShapeFactory):
         self.name = config["name"]
         self.orig_name = config["orig_name"]
 
-    def _create_part(self, config: object) -> p.Part:
-        part = p.Part(config)
+    def _create_part(self, config: object) -> Part:
+        part = Part(config)
         part.project_name = (
             self.target_project.name
         )  # TODO(clairbee): pass it via the constructor
         # TODO(clairbee): Make the next line work for part_factory_file only
         part.instantiate = lambda part_self: self.instantiate(part_self)
         part.info = lambda: self.info(part)
+        part.with_ports = self.with_ports
         return part
 
     def _create(self, config: object):

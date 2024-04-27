@@ -1,0 +1,30 @@
+links:
+  - part: example-bracket
+  - part: example-motor
+    connect:
+      name: example-bracket
+      toInstance: {{ param_placement }}-motor
+  - part: socket-head-m4-screw-6mm
+    connect:
+      name: example-bracket
+      toInstance: L
+  - part: socket-head-m4-screw-6mm
+    connect:
+      name: example-bracket
+      toInstance: R
+  - part: socket-head-m3-screw-6mm
+    connect:
+      name: example-bracket
+      toInstance: {{ param_placement }}-screws-TL
+  - part: socket-head-m3-screw-6mm
+    connect:
+      name: example-bracket
+      toInstance: {{ param_placement }}-screws-TR
+  - part: socket-head-m3-screw-6mm
+    connect:
+      name: example-bracket
+      toInstance: {{ param_placement }}-screws-BL
+  - part: socket-head-m3-screw-6mm
+    connect:
+      name: example-bracket
+      toInstance: {{ param_placement }}-screws-BR
