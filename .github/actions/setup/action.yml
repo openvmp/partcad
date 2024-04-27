@@ -1,0 +1,44 @@
+name: 'Setup'
+
+runs:
+  using: "composite"
+  steps:
+    - name: python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    # TODO(clairbee): do we need to set up cache after miniconda?
+    - uses: actions/cache@v3
+      id: cache
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.*') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    # Miniconda
+    - uses: conda-incubator/setup-miniconda@v3
+      with:
+        miniconda-version: latest
+        activate-environment: pc-conda-env
+
+    # cadquery-ocp hack for MacOS with ARM
+    - name: install cadquery-ocp on MacOS (Python 3.10)
+      if: matrix.os == 'macos-latest'
+      if: matrix.python-version == '3.10'
+      shell: bash
+      run: |
+        pip install https://github.com/jdegenstein/ocp-build-system/releases/download/7.7.2_macos_arm64/cadquery_ocp-7.7.2-cp310-cp310-macosx_11_0_arm64.whl
+    - name: install cadquery-ocp on MacOS (Python 3.11)
+      if: matrix.os == 'macos-latest'
+      if: matrix.python-version == '3.11'
+      shell: bash
+      run: |
+        pip install https://github.com/jdegenstein/ocp-build-system/releases/download/7.7.2_macos_arm64/cadquery_ocp-7.7.2-cp311-cp311-macosx_11_0_arm64.whl
+    - name: install cadquery-ocp on MacOS (Python 3.12)
+      if: matrix.os == 'macos-latest'
+      if: matrix.python-version == '3.12'
+      shell: bash
+      run: |
+        pip install https://github.com/jdegenstein/ocp-build-system/releases/download/7.7.2_macos_arm64/cadquery_ocp-7.7.2-cp312-cp312-macosx_11_0_arm64.whl
