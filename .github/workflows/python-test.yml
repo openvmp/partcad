@@ -28,6 +28,11 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
+      - name: install requirements
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          pip install https://github.com/jdegenstein/ocp-build-system/releases/download/7.7.2_macos_arm64_cp310/cadquery_ocp-7.7.2-cp310-cp310-macosx_11_0_arm64.whl
       - uses: actions/cache@v3
         id: cache
         with:
