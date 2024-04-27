@@ -24,10 +24,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v3
+      # - name: Set up Python
+      #   uses: actions/setup-python@v3
+      #   with:
+      #     python-version: ${{ matrix.python-version }}
+      - uses: conda-incubator/setup-miniconda@v2
         with:
+          activate-environment: test
+          # environment-file: environment.yml
           python-version: ${{ matrix.python-version }}
+          auto-activate-base: false
       - uses: actions/cache@v3
         id: cache
         with:
