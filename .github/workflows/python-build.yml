@@ -14,7 +14,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-13, macos-14, macos-14-arm64]
+        # os: [ubuntu-latest, windows-latest, macos-latest]
         # TODO(clairbee): Add pypy versions to the matrix?
         python-version: ["3.10", "3.11", "3.12"]
         # nlopt often causes problems on Windows or MacOS depending on the specific version

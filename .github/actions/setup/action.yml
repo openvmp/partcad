@@ -29,11 +29,6 @@ runs:
       shell: bash
       run: |
         pip install wheel mypy
-    - name: install macos dev dependencies
-      if: matrix.os == 'macos-latest'
-      shell: bash
-      run: |
-        pip install numpy swig oct2py
     # - name: Update Homebrew
     #   if: matrix.os == 'macos-latest'
     #   shell: bash
@@ -58,6 +53,11 @@ runs:
     #     HOMEBREW_NO_AUTO_UPDATE=1 brew install nlopt
 
     # cadquery-ocp hack for MacOS with ARM
+    - name: install macos dev dependencies
+      if: matrix.os == 'macos-latest'
+      shell: bash
+      run: |
+        pip install numpy swig
     - name: install cadquery-ocp on MacOS (Python 3.10)
       if: ${{ (matrix.os == 'macos-latest') && (matrix.python-version == '3.10') }}
       shell: bash
