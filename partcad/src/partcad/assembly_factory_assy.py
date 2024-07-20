@@ -241,7 +241,7 @@ class AssemblyFactoryAssy(AssemblyFactoryFile):
                 item = None
 
             if connect is not None:
-                pc_logging.info("Attempting to connect %s" % name)
+                pc_logging.debug("Attempting to connect %s" % name)
                 source_port = None
                 source_iface = None
                 source_iface_obj = None
@@ -861,7 +861,7 @@ class AssemblyFactoryAssy(AssemblyFactoryFile):
                         source_port = item.with_ports.get_ports()[
                             connect_with_port
                         ]
-                        pc_logging.info(
+                        pc_logging.debug(
                             "Found source port: %s" % source_port.name
                         )
                     if (
@@ -881,7 +881,7 @@ class AssemblyFactoryAssy(AssemblyFactoryFile):
                         target_port = target_part.with_ports.get_ports()[
                             connect_to_port
                         ]
-                        pc_logging.info(
+                        pc_logging.debug(
                             "Found target port: %s" % target_port.name
                         )
                     if (
