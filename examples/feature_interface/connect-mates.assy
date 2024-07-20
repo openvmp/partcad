@@ -1,9 +1,12 @@
+{% set opposite = {"outer":"inner", "inner":"outer"} %}
+{% set other_placement = opposite[param_placement] %}
 links:
   - part: example-bracket
   - part: example-motor
     connect:
       name: example-bracket
-      toInstance: {{ param_placement }}-motor
+      toInstance: {{param_placement}}
+      toPort: "*{{ param_motor_tr_connect_to }}*"
   - part: socket-head-m4-screw-6mm
     connect:
       name: example-bracket
@@ -12,19 +15,20 @@ links:
     connect:
       name: example-bracket
       toInstance: R
+      toParams: {offset: -15}
   - part: socket-head-m3-screw-6mm
     connect:
       name: example-bracket
-      toInstance: {{ param_placement }}-screws-TL
+      toInstance: {{ other_placement }}-TL
   - part: socket-head-m3-screw-6mm
     connect:
       name: example-bracket
-      toInstance: {{ param_placement }}-screws-TR
+      toInstance: {{ other_placement }}-TR
   - part: socket-head-m3-screw-6mm
     connect:
       name: example-bracket
-      toInstance: {{ param_placement }}-screws-BL
+      toInstance: {{ other_placement }}-BL
   - part: socket-head-m3-screw-6mm
     connect:
       name: example-bracket
-      toInstance: {{ param_placement }}-screws-BR
+      toInstance: {{ other_placement }}-BR

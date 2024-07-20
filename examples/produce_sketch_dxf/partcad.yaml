@@ -1,4 +1,4 @@
 sketches:
   dxf_01:
     type: dxf
-    layer: 1
+    include: ["0"]

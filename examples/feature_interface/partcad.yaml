@@ -22,19 +22,19 @@ interfaces:
     desc: Abstract 3mm circular opening
     inherits:
       m3: opening
-  m3-hole-4_5:
+  m3-hole-4.5:
     desc: 4.5mm deep hole of 3mm diameter
     inherits:
       m3-opening: 4.5mm-hole
-  m3-through:
+  m3-thru:
     abstract: True
     desc: Abstract 3mm through hole
     inherits:
-      m3-opening: through
-  m3-through-3:
+      m3-opening: thru
+  m3-thru-3:
     desc: 3mm thick through hole of 3mm diameter
     inherits:
-      m3-through: 3mm
+      m3-thru: 3mm
   m4:
     desc: Abstract 4mm circular interface
     abstract: True
@@ -46,20 +46,27 @@ interfaces:
     abstract: True
     inherits:
       m4: opening
-  m4-through:
+  m4-thru:
     abstract: True
     desc: Abstract 4mm through hole
     inherits:
-      m4-opening: through
-  m4-through-3:
+      m4-opening: thru
+  m4-thru-3:
     desc: 3mm thick through hole of 4mm diameter
     inherits:
-      m4-through: 3mm
-  m4-slotted-30-through-3:
+      m4-thru: 3mm
+  m4-slotted-30-thru-3:
     desc: 3mm thick 30mm long slotted hole of 4mm diameter (*unfinished*)
     # TODO(clairbee): implement parametrized sketches, base interfaces for standard slotted holes, and inherit m4-slotted here
     inherits:
-      m4-through-3: 30mm-slotted
+      m4-thru-3: 30mm-slotted
+    parameters:
+      offset:
+        min: -15
+        max: 15
+        dir: [1, 0, 0]
+      # Identical to:
+      # moveX: [-15, 15]
   m5:
     desc: Abstract 5mm circular interface
     abstract: True
@@ -77,12 +84,12 @@ interfaces:
     inherits:
       m3-screw: 6mm-long
     mates:
-      m3-through-3:
+      m3-thru-3:
         move-z:
           min: -1 # TODO(clairbee): Is there a standard minimum depth?
           max: 0
           default: 0
-      m3-hole-4_5:
+      m3-hole-4.5:
         move-z:
           min: -2 # TODO(clairbee): Is there a standard minimum depth?
           max: -2
@@ -98,7 +105,7 @@ interfaces:
     inherits:
       m4-screw: 6mm-long
     mates:
-      m4-through-3:
+      m4-thru-3:
         move-z:
           min: -1 # TODO(clairbee): Is there a standard minimum depth?
           max: 0
@@ -118,33 +125,42 @@ interfaces:
     desc: NEMA-17 motor mount
     compound: True
     inherits:
-      m3-hole-4_5:
+      m3-hole-4.5:
         TL: [[-15.5, 15.5, 0.0], [0.0, 0.0, 1.0], 270.0] # top left
         TR: [[15.5, 15.5, 0.0], [0.0, 0.0, 1.0], 180.0] # top right
         BL: [[-15.5, -15.5, 0.0], [0.0, 0.0, 1.0], 0.0] # bottom left
         BR: [[15.5, -15.5, 0.0], [0.0, 0.0, 1.0], 90.0] # bottom right
+    leadPort: TR-4.5mm-hole-opening-m3
   nema-17-motor:
     desc: NEMA-17 motor
     inherits:
       nema-17-motor-mount:
-      m5-bar-22: [[0.0, 0.0, -24.0], [0.0, 0.0, 1.0], 0.0]
-  nema-17-motor-bracket-3mm-screws:
-    desc: NEMA 17 motor bracket (3mm thick) for screws
+      m5-bar-22: [[0.0, 0.0, -24.0], [0.0, 1.0, 0.0], 180.0]
+  nema-17-motor-bracket:
+    desc: NEMA 17 motor bracket for motor
     inherits:
-      m3-through-3:
+      m3-thru:
         TL: [[-15.5, 15.5, 0.0], [0.0, 0.0, 1.0], 270.0] # top left
         TR: [[15.5, 15.5, 0.0], [0.0, 0.0, 1.0], 180.0] # top right
         BL: [[-15.5, -15.5, 0.0], [0.0, 0.0, 1.0], 0.0] # bottom left
         BR: [[15.5, -15.5, 0.0], [0.0, 0.0, 1.0], 90.0] # bottom right
-  nema-17-motor-bracket:
+    leadPort: TR-thru-opening-m3
+    mates: nema-17-motor-mount
+  nema-17-motor-bracket-3:
     desc: NEMA 17 motor bracket (3mm thick) for motor
     inherits:
-      m3-through:
+      m3-thru-3:
         TL: [[-15.5, 15.5, 0.0], [0.0, 0.0, 1.0], 270.0] # top left
         TR: [[15.5, 15.5, 0.0], [0.0, 0.0, 1.0], 180.0] # top right
         BL: [[-15.5, -15.5, 0.0], [0.0, 0.0, 1.0], 0.0] # bottom left
         BR: [[15.5, -15.5, 0.0], [0.0, 0.0, 1.0], 90.0] # bottom right
+    leadPort: TR-thru-3-opening-m3
     mates: nema-17-motor-mount
+    # The below is an alternative to having leadPorts on both ends
+    # mates:
+    #   nema-17-motor-mount:
+    #     sourcePortSelector: "*TR*"
+    #     targetPortSelector: "*TR*"
 
 parts:
   socket-head-m3-screw-6mm:
@@ -152,14 +168,14 @@ parts:
     url: https://www.gobilda.com/zinc-plated-steel-socket-head-screw-m3-x-0-5mm-6mm-length-6-pack/
     type: step
     implements:
-      m3-screw-6mm: [[0.0, 0.0, -12.0], [1.0, 0.0, 0.0], 0.0]
+      m3-screw-6mm: [[0.0, 0.0, -12.0], [0.0, 1.0, 0.0], 180.0]
 
   socket-head-m4-screw-6mm:
     desc: M4 socket head screw, 6mm long
     url: https://www.gobilda.com/2800-series-zinc-plated-steel-socket-head-screw-m4-x-0-7mm-6mm-length-25-pack/
     type: step
     implements:
-      m4-screw-6mm: [[0.0, 0.0, -6.0], [1.0, 0.0, 0.0], 0.0]
+      m4-screw-6mm: [[0.0, 0.0, -6.0], [0.0, 1.0, 0.0], 180.0]
 
   example-motor:
     desc: NEMA 17 motor bracket
@@ -173,24 +189,31 @@ parts:
     url: https://www.omc-stepperonline.com/nema-17-bracket-for-stepper-motor-and-geared-stepper-motor-alloy-steel-bracket-st-m1
     type: step
     implements:
-      nema-17-motor-bracket-3mm-screws:
-        outer-screws: [[0.0, 0.0, 3.0], [0.0, 1.0, 0.0], 180.0]
-        inner-screws: [[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], 0.0]
-      nema-17-motor-bracket:
-        outer-motor: [[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], 180.0]
-        inner-motor: [[0.0, 0.0, 3.0], [0.0, 1.0, 0.0], 0.0]
-      m4-slotted-30-through-3:
-        L: [[-15.0, -27.0, 27.0], [1.0, 0.0, 0.0], 90.0] # top left
-        R: [[15.0, -27.0, 27.0], [1.0, 0.0, 0.0], 90.0] # top right
+      nema-17-motor-bracket-3:
+        inner: [[0.0, 0.0, 3.0], [0.0, 1.0, 0.0], 180.0]
+        outer: [[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], 0.0]
+      m4-slotted-30-thru-3:
+        L: # top left
+          location: [[-15.0, -27.0, 27.0], [1.0, 0.0, 0.0], 90.0]
+          params: {offset: -15}
+        R: # top right
+          location: [[15.0, -27.0, 27.0], [1.0, 0.0, 0.0], 90.0]
+          # params: {offset: -15}
 
 assemblies:
   connect-ports:
     type: assy
     parameters:
       placement:
+        desc: Place the motor inside the bracket or outside
         type: string
         enum: [inner, outer]
         default: outer
+      motor_tr_connect_to:
+        desc: Turn the motor so that the TR port matches the given bracket port
+        type: string
+        enum: [TR, TL, BR, BL]
+        default: TR
   connect-interfaces:
     type: assy
     parameters:
@@ -198,6 +221,11 @@ assemblies:
         type: string
         enum: [inner, outer]
         default: outer
+      motor_tr_connect_to:
+        desc: Turn the motor so that the TR port matches the given bracket port
+        type: string
+        enum: [TR, TL, BR, BL]
+        default: TR
   connect-mates:
     type: assy
     parameters:
@@ -205,3 +233,8 @@ assemblies:
         type: string
         enum: [inner, outer]
         default: outer
+      motor_tr_connect_to:
+        desc: Turn the motor so that the TR port matches the given bracket port
+        type: string
+        enum: [TR, TL, BR, BL]
+        default: TR

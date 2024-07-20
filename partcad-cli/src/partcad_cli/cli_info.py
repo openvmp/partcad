@@ -30,6 +30,12 @@ def cli_help_info(subparsers):
 
     group_type = parser_info.add_mutually_exclusive_group(required=False)
     group_type.add_argument(
+        "-i",
+        help="The object is an interface",
+        dest="interface",
+        action="store_true",
+    )
+    group_type.add_argument(
         "-a",
         help="The object is an assembly",
         dest="assembly",
@@ -81,6 +87,8 @@ def cli_info(args, ctx):
 
     if args.assembly:
         obj = ctx.get_assembly(path, params=params)
+    elif args.interface:
+        obj = ctx.get_interface(path)
     elif args.sketch:
         obj = ctx.get_sketch(path, params=params)
     else:

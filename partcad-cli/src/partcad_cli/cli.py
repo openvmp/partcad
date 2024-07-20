@@ -55,6 +55,10 @@ def main():
     )
     # TODO(clairbee): add a config option to change logging mechanism and level
     subparsers = parser.add_subparsers(dest="command")
+    subparsers.add_parser(
+        "version",
+        help="Print PartCAD version and exit",
+    )
     cli_help_add(subparsers)
     cli_help_init(subparsers)
     cli_help_info(subparsers)
@@ -85,6 +89,9 @@ def main():
             return
         elif args.command == "status":
             cli_status(args)
+            return
+        elif args.command == "version":
+            pc_logging.info("PartCAD version: %s" % pc.__version__)
             return
 
         if args.command == "install" or args.command == "update":
