@@ -251,7 +251,7 @@ class Context(project_config.Configuration):
                 and not project.config_obj["import"] is None
             ):
                 imports = project.config_obj["import"]
-                if project.path != "/":
+                if project.path != self.root_path:
                     filtered = filter(
                         lambda x: "onlyInRoot" not in imports[x]
                         or not imports[x]["onlyInRoot"],
@@ -293,7 +293,7 @@ class Context(project_config.Configuration):
             and not project.config_obj["import"] is None
         ):
             imports = project.config_obj["import"]
-            if project.path != "/":
+            if project.path != self.root_path:
                 filtered = filter(
                     lambda x: "onlyInRoot" not in imports[x]
                     or not imports[x]["onlyInRoot"],

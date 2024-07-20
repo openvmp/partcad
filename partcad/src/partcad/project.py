@@ -209,7 +209,7 @@ class Project(project_config.Configuration):
             and not self.config_obj["import"] is None
         ):
             imports = self.config_obj["import"]
-            if self.path != "/":
+            if self.path != self.ctx.root_path:
                 filtered = filter(
                     lambda x: "onlyInRoot" not in imports[x]
                     or not imports[x]["onlyInRoot"],
