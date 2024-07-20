@@ -1,35 +1,37 @@
+{% set opposite = {"outer":"inner", "inner":"outer"} %}
+{% set other_placement = opposite[param_placement] %}
 links:
   - part: example-bracket
   - part: example-motor
     connectPorts:
-      with: BL-4.5mm-hole-opening-m3
-      to: {{ param_placement }}-motor-BL-through-opening-m3
+      with: TR-4.5mm-hole-opening-m3
+      to: {{ param_placement }}-{{ param_motor_tr_connect_to }}-3mm-thru-opening-m3
       name: example-bracket
   - part: socket-head-m4-screw-6mm
     connectPorts:
       with: 6mm-long-screw-m4
-      to: L-30mm-slotted-3mm-through-opening-m4
+      to: L-30mm-slotted-3mm-thru-opening-m4
       name: example-bracket
   - part: socket-head-m4-screw-6mm
     connectPorts:
       with: 6mm-long-screw-m4
-      to: R-30mm-slotted-3mm-through-opening-m4
+      to: R-30mm-slotted-3mm-thru-opening-m4
       name: example-bracket
   - part: socket-head-m3-screw-6mm
     connectPorts:
       with: 6mm-long-screw-m3
-      to: {{ param_placement }}-screws-TL-3mm-through-opening-m3
+      to: {{ other_placement }}-TL-3mm-thru-opening-m3
       name: example-bracket
   - part: socket-head-m3-screw-6mm
     connectPorts:
       # 'with' can be omitted, because there is only one port in this part
-      to: {{ param_placement }}-screws-TR-3mm-through-opening-m3
+      to: {{ other_placement }}-TR-3mm-thru-opening-m3
       name: example-bracket
   - part: socket-head-m3-screw-6mm
     connectPorts:
-      to: {{ param_placement }}-screws-BL-3mm-through-opening-m3
+      to: {{ other_placement }}-BL-3mm-thru-opening-m3
       name: example-bracket
   - part: socket-head-m3-screw-6mm
     connectPorts:
-      to: {{ param_placement }}-screws-BR-3mm-through-opening-m3
+      to: {{ other_placement }}-BR-3mm-thru-opening-m3
       name: example-bracket

@@ -119,6 +119,9 @@ class Project(project_config.Configuration):
             and not self.config_obj["interfaces"] is None
         ):
             self.interface_configs = self.config_obj["interfaces"]
+            # pc_logging.debug(
+            #     "Interfaces: %s" % str(self.interface_configs.keys())
+            # )
         else:
             self.interface_configs = {}
         # self.interfaces contains all the initialized interfaces in this project
@@ -205,11 +208,19 @@ class Project(project_config.Configuration):
             "import" in self.config_obj
             and not self.config_obj["import"] is None
         ):
+            imports = self.config_obj["import"]
+            if self.path != "/":
+                filtered = filter(
+                    lambda x: "onlyInRoot" not in imports[x]
+                    or not imports[x]["onlyInRoot"],
+                    imports,
+                )
+                imports = list(filtered)
             children.extend(
                 list(
                     map(
                         lambda project_name: self.name + "/" + project_name,
-                        self.config_obj["import"],
+                        imports,
                     )
                 )
             )
@@ -250,7 +261,7 @@ class Project(project_config.Configuration):
         if self.interface_configs is None:
             return
 
-        for interface_name in self.interface_configs:
+        for interface_name in self.interface_configs.keys():
             config = self.get_interface_config(interface_name)
             config["name"] = interface_name
             self.init_interface_by_config(config)

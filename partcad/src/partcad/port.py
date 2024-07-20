@@ -23,6 +23,17 @@ class WithPorts(Interface):
     ):
         super().__init__(name, project, config, config_section="implements")
 
+        self.interfaces = None
+
+    def get_interfaces(self):
+        if self.interfaces is None:
+            self.instantiate_interfaces()
+        return self.interfaces
+
+    def get_interface(self, interface_name: str):
+        return self.get_interfaces()[interface_name]
+
+    def instantiate_interfaces(self):
         self.interfaces = {}
 
         # Recursively merge the inherited interfaces
@@ -46,12 +57,12 @@ class WithPorts(Interface):
                     continue
 
                 if not ":" in interface_name:
-                    interface_name = project.name + ":" + interface_name
+                    interface_name = self.project.name + ":" + interface_name
 
                 if not compatible and interface_name not in self.interfaces:
                     self.interfaces[interface_name] = {}
 
-                for instance_name, instance in inherit.instances.items():
+                for instance_name in inherit.instances.keys():
                     if instance_name != "" and interface_state != "":
                         instance_full_name = (
                             interface_state + "-" + instance_name
@@ -69,7 +80,7 @@ class WithPorts(Interface):
                                 instance_full_name
                             ] = {}
 
-                        for port_name, port in interface.ports.items():
+                        for port_name in interface.get_ports().keys():
                             if instance_full_name != "" and port_name != "":
                                 port_full_name = (
                                     instance_full_name + "-" + port_name
@@ -85,9 +96,9 @@ class WithPorts(Interface):
                                 port_name
                             ] = port_full_name
 
-                    merge_inherits(interface.inherits, instance_full_name)
+                    merge_inherits(interface.get_parents(), instance_full_name)
 
-        merge_inherits(self.inherits, top_level=True)
+        merge_inherits(self.get_parents(), top_level=True)
 
     def info(self):
         return {
@@ -105,7 +116,7 @@ class WithPorts(Interface):
                         for instance_name, instance in interface.items()
                     ),
                 )
-                for interface_name, interface in self.interfaces.items()
+                for interface_name, interface in self.get_interfaces().items()
             ),
             "ports": dict(
                 (
@@ -115,6 +126,6 @@ class WithPorts(Interface):
                         "sketch": f"{port.sketch.project_name}:{port.sketch.name}",
                     },
                 )
-                for port_name, port in self.ports.items()
+                for port_name, port in self.get_ports().items()
             ),
         }

@@ -292,7 +292,7 @@ def cli_list_interfaces(args, ctx):
                 line += " " + " " * (35 - len(project_name))
             line += "%s" % interface_name
             if args.used_by is not None:
-                interface = project.interfaces[interface_name]
+                interface = project.get_interface(interface_name)
                 line += "(%d)" % interface.count
                 interface_count = interface_count + interface.count
             line += " " + " " * (35 - len(interface_name))

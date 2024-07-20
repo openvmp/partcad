@@ -10,6 +10,7 @@
 import os
 import threading
 
+from partcad import __version__ as version
 import partcad.logging as pc_logging
 import partcad.user_config as user_config
 
@@ -37,6 +38,8 @@ def get_size(start_path="."):
 
 def cli_status(args):
     with pc_logging.Process("Status", "this"):
+        pc_logging.info("PartCAD version: %s" % version)
+
         path = user_config.internal_state_dir
         pc_logging.info("Internal data storage location: %s" % path)
 

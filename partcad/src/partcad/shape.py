@@ -117,6 +117,8 @@ class Shape(ShapeConfiguration):
         with pc_logging.Action("Show", self.project_name, self.name):
             if show_object is None:
                 components = []
+                # TODO(clairbee): consider removing this exception handler permanently
+                # Comment out the below exception handler for easier troubleshooting in CLI
                 try:
                     components = await self.get_components()
                 except Exception as e:

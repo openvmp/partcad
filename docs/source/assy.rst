@@ -50,10 +50,22 @@ The following syntax is used to create a node that places a part in the assembly
     connect: # alternative to "location" and "connectPorts", used to connect by interfaces
       with: <(optional) name of the interface in this part, if more than one exists>
       withInstance: <(optional) name of the instance of the interface in this part, if more than one exists>
+      withPort: <(optional) name of the port in this part to connect witht>
       name: <the name of the target part in this assembly to connect to>
       to: <(optional) name of the interface in the target part to connect to, if more than one compatible one exists>
       toInstance: <(optional) name of the instance of the interface in the target part to connect to, if more than one exists>
+      toPort: <(optional) name of the port in the target par to connect to>
 
+One and only one method for placing the object is acceptable.
+Therefore the sections `location`, `connectPorts` and `connect` are mutually exclusive.
+Both `connectPorts` and `connect` are used to connect parts to each other by matching their ports.
+`connect` is universal, while `connectPorts` is specific to connecting with ports and without interface mating.
+
+The `with` and `to` fields are used to specify the names of interfaces.
+Where `with` is the interface of the part that is getting added to the assembly,
+and `to` is the interface of the part that is already in the assembly.
+The `withInstance` and `toInstance` fields are used to specify the names of interface instances.
+The `withPort` and `toPort` fields are used to specify the names of ports.
 
 Assemblies
 ----------

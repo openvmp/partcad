@@ -12,6 +12,7 @@ import os
 from packaging.specifiers import SpecifierSet
 import sys
 import yaml
+import math
 
 from . import logging as pc_logging
 
@@ -53,7 +54,18 @@ class Configuration:
             loader=FileSystemLoader(self.config_dir + os.path.sep)
         ).from_string(config)
         config = template.render(
-            package_name=name,
+            {
+                "package_name": name,
+                "M_PI": math.pi,
+                "PI": math.pi,
+                "SQRT_2": math.sqrt(2),
+                "SQRT_3": math.sqrt(3),
+                "SQRT_5": math.sqrt(5),
+                "INCH": 25.4,
+                "INCHES": 25.4,
+                "FOOT": 304.8,
+                "FEET": 304.8,
+            }
         )
 
         # Parse the config

@@ -250,7 +250,15 @@ class Context(project_config.Configuration):
                 "import" in project.config_obj
                 and not project.config_obj["import"] is None
             ):
-                for prj_name in project.config_obj["import"]:
+                imports = project.config_obj["import"]
+                if project.path != "/":
+                    filtered = filter(
+                        lambda x: "onlyInRoot" not in imports[x]
+                        or not imports[x]["onlyInRoot"],
+                        imports,
+                    )
+                    imports = list(filtered)
+                for prj_name in imports:
                     pc_logging.debug("Checking the import: %s..." % prj_name)
                     if prj_name != next_import:
                         continue
@@ -284,7 +292,15 @@ class Context(project_config.Configuration):
             "import" in project.config_obj
             and not project.config_obj["import"] is None
         ):
-            for prj_name in project.config_obj["import"]:
+            imports = project.config_obj["import"]
+            if project.path != "/":
+                filtered = filter(
+                    lambda x: "onlyInRoot" not in imports[x]
+                    or not imports[x]["onlyInRoot"],
+                    imports,
+                )
+                imports = list(filtered)
+            for prj_name in imports:
                 next_project_path = get_child_project_path(
                     project.name, prj_name
                 )
@@ -375,8 +391,16 @@ class Context(project_config.Configuration):
         )
         self.mates[source_interface_name][target_interface_name] = mate
 
+    def get_mate(self, source_interface_name, target_interface_name):
+        if not source_interface_name in self.mates:
+            return None
+        if not target_interface_name in self.mates[source_interface_name]:
+            return None
+
+        return self.mates[source_interface_name][target_interface_name]
+
     def find_mating_interfaces(self, source_shape, target_shape):
-        source_interfaces = set(source_shape.with_ports.interfaces.keys())
+        source_interfaces = set(source_shape.with_ports.get_interfaces().keys())
         compatible_source_interfaces = set(
             [
                 compatible_interface
@@ -401,7 +425,7 @@ class Context(project_config.Configuration):
         )
         pc_logging.debug("Source interfaces: %s" % source_interfaces)
 
-        target_interfaces = set(target_shape.with_ports.interfaces.keys())
+        target_interfaces = set(target_shape.with_ports.get_interfaces().keys())
         compatible_target_interfaces = set(
             [
                 compatible_interface

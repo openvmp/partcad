@@ -21,7 +21,7 @@ class InterfaceInherits:
     It points at the interface object that already exists in the package."""
 
     source_project_name: str
-    source_sketch_name: str
+    source_interface_name: str
     interface = None
     instances: dict[str, Location]
 
@@ -29,19 +29,26 @@ class InterfaceInherits:
         self.instances = {}
         # Resolve the interface by name
         if ":" in name:
-            self.source_project_name, self.source_sketch_name = (
+            self.source_project_name, self.source_interface_name = (
                 resolve_resource_path(
                     project.name,
                     name,
                 )
             )
-            self.name = self.source_project_name + ":" + self.source_sketch_name
-            self.interface = project.ctx.get_interface(self.name)
         else:
             self.source_project_name = project.name
-            self.source_sketch_name = name
-            self.name = self.source_project_name + ":" + self.source_sketch_name
-            self.interface = project.get_interface(name)
+            self.source_interface_name = name
+
+        self.name = self.source_project_name + ":" + self.source_interface_name
+        pc_logging.debug("Fetching the interface %s" % self.name)
+
+        if self.source_project_name == project.name:
+            target_project = project
+        else:
+            target_project = project.ctx.get_project(self.source_project_name)
+        self.interface = target_project.get_interface(
+            self.source_interface_name
+        )
 
         if self.interface is None:
             pc_logging.error(
@@ -76,9 +83,33 @@ class InterfaceInherits:
             "Normalized inherited config: %s: %s" % (name, str(config))
         )
 
-        for instance_name, instance_location_config in config.items():
+        for instance_name, instance_config in config.items():
+            offsets = []
+
+            if isinstance(instance_config, dict):
+                instance_location_config = instance_config.get("location", None)
+
+                params = instance_config.get("params", {})
+                for param_name, param_value in params.items():
+                    param = self.interface.params.get(param_name, None)
+                    if param is not None:
+                        # Extend the list of offsets to apply, if any
+                        offsets.extend(param.get_offsets(param_value))
+            else:
+                instance_location_config = instance_config
+
             if instance_location_config is None:
                 location = Location()
             else:
                 location = Location(instance_location_config)
+
+            # TODO(clairbee): consider resolving the parameters here: apply the offsets and drop the parameters
+            # Do not apply the offsets yet?
+            # if len(offsets) > 0:
+            #     trsf = location.wrapped.Transformation()
+            #     for offset in offsets:
+            #         trsf.Multiply(offset)
+            #         # trsf.Multiply(offset.Inverted())
+            #     location = Location(trsf)
+
             self.instances[instance_name] = location
