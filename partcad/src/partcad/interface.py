@@ -290,6 +290,8 @@ class Interface:
                 param_config = InterfaceParameter.config_finalize(param_config)
                 self.params[param_name] = InterfaceParameter(param_config)
 
+        self.project.ctx.stats_interfaces += 1
+
     def get_ports(self):
         if self.ports is None:
             self.instantiate_ports()  # Fill in own ports
@@ -321,6 +323,7 @@ class Interface:
         return self.inherits
 
     def instantiate(self):
+        self.project.ctx.stats_interfaces_instantiated += 1
         self.inherits = {}
         self.get_ports()  # Make sure self.ports is initialized
 
