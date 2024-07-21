@@ -123,7 +123,6 @@ interfaces:
 
   nema-17-motor-mount:
     desc: NEMA-17 motor mount
-    compound: True
     inherits:
       m3-hole-4.5:
         TL: [[-15.5, 15.5, 0.0], [0.0, 0.0, 1.0], 270.0] # top left

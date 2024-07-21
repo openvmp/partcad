@@ -14,6 +14,7 @@ import tempfile
 from .ai import Ai
 from . import logging as pc_logging
 from .shape import Shape
+from .user_config import user_config
 
 
 class ShapeWithAi(Shape, Ai):
@@ -28,7 +29,7 @@ class ShapeWithAi(Shape, Ai):
             return configured_summary
 
         image_filename = tempfile.mktemp(".png")
-        await self.render_png_async(project, image_filename)
+        await self.render_png_async(project.ctx, project, image_filename)
 
         prompt = """The attached image is a single-color (the color doesn't
 matter) line drawing of a mechanical design.
@@ -39,7 +40,7 @@ The design is stored in the folder "%s" and is named "%s".
         )
         if not self.desc is None:
             prompt += (
-                'The design is accompanied by the following description: "%s"'
+                'The design is accompanied by the following description: "%s". '
                 % self.desc
             )
         prompt += """Create a text which describes the design displayed on the
@@ -52,18 +53,21 @@ Produce text which is ready to be narrated as is.
 """
 
         config = {
-            # "model": "gemini-pro-vision",  # Shorter text but more precise
-            "model": "gpt-4-vision-preview",  # Longer but sometimes way off
-            "images": [image_filename],
+            "model": (
+                "gpt-4o"
+                if not user_config.openai_api_key is None
+                else "gemini-1.5-pro"
+            ),
         }
-        summary = self.generate_content(
+        summary = self.generate(
             "Desc",
             self.project_name,
             self.name,
             prompt,
             config,
+            image_filenames=[image_filename],
         )
-        return summary
+        return summary[0] if len(summary) > 0 else "Failed to summarize"
 
     # @override
     def get_summary(self, project=None):

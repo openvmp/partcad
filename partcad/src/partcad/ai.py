@@ -20,8 +20,12 @@ models = [
     "gpt-3.5-turbo",
     "gpt-4",
     "gpt-4-vision-preview",
+    "gpt-4o",
+    "gpt-4o-mini",
     "gemini-pro",
     "gemini-pro-vision",
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
 ]
 
 
@@ -49,15 +53,17 @@ class Ai(AiGoogle, AiOpenAI):
                         provider = "google"
 
                 if provider == "google":
-                    if len(image_filenames) > 0:
-                        model = "gemini-pro-vision"
-                    else:
-                        model = "gemini-pro"
+                    # if len(image_filenames) > 0:
+                    #     model = "gemini-pro-vision"
+                    # else:
+                    #     model = "gemini-pro"
+                    model = "gemini-1.5-pro"
                 elif provider == "openai":
-                    if len(image_filenames) > 0:
-                        model = "gpt-4-vision-preview"
-                    else:
-                        model = "gpt-4"
+                    # if len(image_filenames) > 0:
+                    #     model = "gpt-4-vision-preview"
+                    # else:
+                    #     model = "gpt-4"
+                    model = "gpt-4o"
                 else:
                     error = "Provider %s is not supported" % provider
                     pc_logging.error(error)

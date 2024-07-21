@@ -2,6 +2,7 @@
 {% set other_placement = opposite[param_placement] %}
 links:
   - part: example-bracket
+
   - part: example-motor
     connect:
       with: nema-17-motor-mount
@@ -9,35 +10,21 @@ links:
       to: nema-17-motor-bracket-3
       toInstance: {{param_placement}}
       toPort: "*{{ param_motor_tr_connect_to }}*"
+
+  {% for side in ['R', 'L'] %}
   - part: socket-head-m4-screw-6mm
     connect:
       # 'with' can be omitted, because there is only one interface in this part
       name: example-bracket
       to: m4-slotted-30-thru-3
-      toInstance: L
-  - part: socket-head-m4-screw-6mm
-    connect:
-      name: example-bracket
-      to: m4-slotted-30-thru-3
-      toInstance: R
+      toInstance: {{ side }}
       toParams: {offset: -15}
+  {% endfor %}
+
+  {% for corner in ['TL', 'TR', 'BL', 'BR'] %}
   - part: socket-head-m3-screw-6mm
     connect:
       name: example-bracket
       to: m3-thru-3
-      toInstance: {{ other_placement }}-TL
-  - part: socket-head-m3-screw-6mm
-    connect:
-      name: example-bracket
-      to: m3-thru-3
-      toInstance: {{ other_placement }}-TR
-  - part: socket-head-m3-screw-6mm
-    connect:
-      name: example-bracket
-      to: m3-thru-3
-      toInstance: {{ other_placement }}-BL
-  - part: socket-head-m3-screw-6mm
-    connect:
-      name: example-bracket
-      to: m3-thru-3
-      toInstance: {{ other_placement }}-BR
+      toInstance: {{ other_placement }}-{{ corner }}
+  {% endfor %}

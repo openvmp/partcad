@@ -27,6 +27,8 @@ model_tokens = {
     "gpt-3.5-turbo": 4096,
     "gpt-4": 8000,  # 32600,
     "gpt-4-vision-preview": 8192,
+    "gpt-4o": 4096,  # 32600,
+    "gpt-4o-mini": 8000,  # 32600,
 }
 
 

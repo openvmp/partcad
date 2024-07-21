@@ -2,33 +2,23 @@
 {% set other_placement = opposite[param_placement] %}
 links:
   - part: example-bracket
+
   - part: example-motor
     connect:
       name: example-bracket
       toInstance: {{param_placement}}
       toPort: "*{{ param_motor_tr_connect_to }}*"
+
+  {% for side in ['R', 'L'] %}
   - part: socket-head-m4-screw-6mm
     connect:
       name: example-bracket
-      toInstance: L
-  - part: socket-head-m4-screw-6mm
-    connect:
-      name: example-bracket
-      toInstance: R
-      toParams: {offset: -15}
+      toInstance: {{ side }}
+  {% endfor %}
+
+  {% for corner in ['TL', 'TR', 'BL', 'BR'] %}
   - part: socket-head-m3-screw-6mm
     connect:
       name: example-bracket
-      toInstance: {{ other_placement }}-TL
-  - part: socket-head-m3-screw-6mm
-    connect:
-      name: example-bracket
-      toInstance: {{ other_placement }}-TR
-  - part: socket-head-m3-screw-6mm
-    connect:
-      name: example-bracket
-      toInstance: {{ other_placement }}-BL
-  - part: socket-head-m3-screw-6mm
-    connect:
-      name: example-bracket
-      toInstance: {{ other_placement }}-BR
+      toInstance: {{ other_placement }}-{{ corner }}
+  {% endfor %}

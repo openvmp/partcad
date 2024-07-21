@@ -110,8 +110,14 @@ def cli_inspect(args, ctx):
             )
     else:
         if args.verbal:
-            pc_logging.info(
-                "Summary: %s" % obj.get_summary(project=args.package)
-            )
+            if args.package is None:
+                package_obj = ctx.get_project("/")
+            else:
+                package_obj = ctx.get_project(args.package)
+
+            summary = obj.get_summary(package_obj)
+            pc_logging.info("Summary: %s" % summary)
+            if args.quiet > 0:
+                print("%s" % summary)
         else:
             obj.show()

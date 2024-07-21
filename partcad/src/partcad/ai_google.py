@@ -7,7 +7,7 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import mimetypes
+import PIL.Image
 from pathlib import Path
 import threading
 import time
@@ -62,14 +62,11 @@ class AiGoogle:
         if "tokens" in config:
             tokens = config["tokens"]
         else:
-            tokens = model_tokens[model]
+            tokens = model_tokens[model] if model in model_tokens else None
 
         images = list(
             map(
-                lambda f: {
-                    "mime_type": mimetypes.guess_type(f, False)[0],
-                    "data": Path(f).read_bytes(),
-                },
+                lambda f: PIL.Image.open(f),
                 image_filenames,
             )
         )

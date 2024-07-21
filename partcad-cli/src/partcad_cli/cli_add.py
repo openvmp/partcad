@@ -34,6 +34,21 @@ def cli_help_add(subparsers):
         help="Add a part",
     )
     parser_add_part.add_argument(
+        "--desc",
+        help="The part description (also used by LLMs).",
+        dest="desc",
+        type=str,
+        required=False,
+    )
+    parser_add_part.add_argument(
+        "--ai",
+        help="Generative AI provider.",
+        dest="provider",
+        type=str,
+        choices=["google", "openai"],
+        required=False,
+    )
+    parser_add_part.add_argument(
         "kind",
         help="Type of the part",
         type=str,
@@ -78,7 +93,12 @@ def cli_add(args, ctx):
 
 def cli_add_part(args, ctx):
     prj = ctx.get_project(pc.ROOT)
-    if prj.add_part(args.kind, args.path):
+    config = {}
+    if args.desc:
+        config["desc"] = args.desc
+    if args.provider:
+        config["provider"] = args.provider
+    if prj.add_part(args.kind, args.path, config):
         Path(args.path).touch()
 
 
