@@ -8,6 +8,9 @@ and a framework for creating assemblies.
 It aims to complement Git with everything necessary to substitute
 commercial Product Lifecycle Management (PLM) tools.
 
+
+.. image:: https://github.com/openvmp/partcad/blob/main/docs/source/images/vscode1.png?raw=true             |
+
 PartCAD maintains information about mechanical parts and
 how they come together to form larger assemblies.
 The same parts are reused in multiple assemblies and multiple projects.
