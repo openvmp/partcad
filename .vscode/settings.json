@@ -8,9 +8,7 @@
   "editor.formatOnSave": true,
   "editor.formatOnType": true,
   "editor.autoIndent": "full",
-  "editor.rulers": [
-    80
-  ],
+  "editor.rulers": [80],
   "files.exclude": {
     ".git/**": true,
     "**/__pycache__": true,
@@ -44,9 +42,7 @@
     "partcad*/dist": true
   },
   "markdown.extension.toc.omittedFromToc": {
-    "README.md": [
-      "# PartCAD"
-    ]
+    "README.md": ["# PartCAD"]
   },
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter"
@@ -58,6 +54,7 @@
   "python.terminal.launchArgs": [],
   // TODO(clairbee): "python.analysis.typeCheckingMode": "basic",
   "OcpCadViewer.advanced.autostart": false,
-  "yaml.format.bracketSpacing": false,
-  "esbonio.sphinx.confDir": "" // prevent YAML formatter from breaking Jinja2 templates
+  "yaml.format.bracketSpacing": false,  // prevent YAML formatter from breaking Jinja2 templates
+  "esbonio.sphinx.confDir": "",
+  "files.eol": "\n"
 }

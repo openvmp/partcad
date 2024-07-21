@@ -41,6 +41,13 @@ def main():
         default=0,
     )
     parser.add_argument(
+        "-q",
+        help="Decrease the level of verbosity",
+        dest="quiet",
+        action="count",
+        default=0,
+    )
+    parser.add_argument(
         "--no-ansi",
         help="Plain logging output. Do not use colors or animations.",
         dest="no_ansi",
@@ -76,10 +83,13 @@ def main():
     else:
         logging.basicConfig()
 
-    if args.verbosity > 0:
-        pc.logging.setLevel(logging.DEBUG)
+    if args.quiet > 0:
+        pc.logging.setLevel(logging.ERROR)
     else:
-        pc.logging.setLevel(logging.INFO)
+        if args.verbosity > 0:
+            pc.logging.setLevel(logging.DEBUG)
+        else:
+            pc.logging.setLevel(logging.INFO)
 
     try:
         # First, handle the commands that don't require a context or initialize it

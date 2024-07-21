@@ -267,7 +267,7 @@ class Shape(ShapeConfiguration):
         project=None,
         filepath=None,
     ):
-        if not project is None:
+        if not project is None and "render" in project.config_obj:
             render_opts = project.config_obj["render"]
         else:
             render_opts = {}

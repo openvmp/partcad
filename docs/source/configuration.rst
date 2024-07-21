@@ -440,9 +440,9 @@ Generate CadQuery or OpenSCAD scripts with Generative AI using the following syn
     <part name>:
       type: <ai-openscad|ai-cadquery>
       provider: <google|openai, the model provider to use>
-      tokens: <the limit of token context>
-      top_p: <(openai only) the top_p parameter>
-        images: <contextual images as input for AI>
+      tokens: <(optional) the limit of token context>
+      top_p: <(optional, openai only) the top_p parameter>
+      images: <(optional) contextual images as input for AI>
         - <image path>
 
 +---------------------------+-------------------------------------------------------------------------------------------------------------------------+
@@ -453,6 +453,7 @@ Generate CadQuery or OpenSCAD scripts with Generative AI using the following syn
 |   parts:                  |                                                                                                                         |
 |     cube:                 |                                                                                                                         |
 |       type: ai-cadquery   |                                                                                                                         |
+|       provider: google    |                                                                                                                         |
 |       desc: A cube        |                                                                                                                         |
 +---------------------------+-------------------------------------------------------------------------------------------------------------------------+
 
