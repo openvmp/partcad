@@ -34,6 +34,8 @@ Find [more documentation here](https://partcad.readthedocs.io/en/latest/?badge=l
 
 This extension can be installed by searching for `PartCAD` in VS Code extension search form, or by browsing [its VS Code marketplace page](https://marketplace.visualstudio.com/items?itemName=OpenVMP.partcad).
 
+![PartCAD Visual Studio Code extension](./docs/source/images/vscode1.png)
+
 ### Command-Line Interface
 
 The recommended method to install PartCAD CLI tools for most users is:
