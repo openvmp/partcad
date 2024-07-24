@@ -1,9 +1,17 @@
-desc: PartCAD example project which demonstrates parts created using build123d
+desc: PartCAD example project which demonstrates parts created using build123d.
+
+docs:
+  usage: |
+    ```shell
+    pc inspect cube
+    ```
+
 parts:
   cube:
     type: build123d
     desc: Sample part created by build123d
+
 render:
+  readme:
   svg:
     prefix: ./
-  markdown: README.md

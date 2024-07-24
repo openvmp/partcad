@@ -1,4 +1,11 @@
-desc: PartCAD example project to demonstrate parts implemented using STEP files
+desc: PartCAD example project to demonstrate parts implemented using STEP files.
+
+docs:
+  usage: |
+    ```shell
+    pc inspect bolt
+    ```
+
 parts:
   bolt:
     type: step
@@ -9,7 +16,8 @@ parts:
   fastener:
     type: alias
     source: bolt
+
 render:
+  readme:
   svg:
     prefix: ./
-  markdown: README.md

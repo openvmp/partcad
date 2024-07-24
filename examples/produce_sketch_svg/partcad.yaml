@@ -1,4 +1,15 @@
+desc: This example demonstrates how to create a sketch using an SVG file.
+
+docs:
+  usage: |
+    ```shell
+    pc inspect -s svg_01
+    ```
+
 sketches:
   svg_01:
     type: svg
     # use-wires: True
+
+render:
+  readme:

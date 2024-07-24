@@ -1,3 +1,13 @@
+desc: PartCAD parts defined using AI-generated OpenSCAD scripts.
+
+docs:
+  usage: |
+    ```shell
+    pc inspect cube
+    pc inspect prism
+    pc inspect tetrahedron
+    ```
+
 parts:
   cube:
     type: ai-openscad
@@ -21,4 +31,5 @@ parts:
       length: 10
 
 render:
+  readme:
   svg:

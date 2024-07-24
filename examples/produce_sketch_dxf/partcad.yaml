@@ -1,4 +1,16 @@
+desc: This example demonstrates how to create a sketch using a DXF file.
+
+docs:
+  usage: |
+    ```shell
+    pc inspect -s dxf_01
+    ```
+
 sketches:
   dxf_01:
     type: dxf
     include: ["0"]
+
+render:
+  readme:
+  svg:

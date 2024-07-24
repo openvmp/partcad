@@ -27,6 +27,7 @@ class Part(ShapeWithAi):
     def __init__(self, config: object = {}, shape=None):
         super().__init__(config)
 
+        self.kind = "parts"
         self.shape = shape
 
         self.vendor = None

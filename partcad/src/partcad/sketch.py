@@ -19,6 +19,8 @@ class Sketch(ShapeWithAi):
     def __init__(self, config: object = {}):
         super().__init__(config)
 
+        self.kind = "sketches"
+
     async def get_shape(self):
         async with self.lock:
             if self.shape is None:

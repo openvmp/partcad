@@ -1,4 +1,12 @@
-desc: PartCAD example project which demonstrates parts created using CadQuery
+desc: PartCAD example project which demonstrates parts created using CadQuery.
+
+docs:
+  usage: |
+    ```shell
+    pc inspect cube
+    pc inspect brick
+    pc inspect cylinder
+
 parts:
   cube:
     type: cadquery
@@ -30,7 +38,8 @@ parts:
     type: cadquery
     path: cylinder.py
     desc: This is a cylinder from examples
+
 render:
+  readme:
   svg:
     prefix: ./
-  markdown: README.md
