@@ -1138,24 +1138,45 @@ class Project(project_config.Configuration):
                     fp.close()
 
     async def render_async(
-        self, parts=None, assemblies=None, format=None, output_dir=None
+        self,
+        sketches=None,
+        interfaces=None,
+        parts=None,
+        assemblies=None,
+        format=None,
+        output_dir=None,
     ):
         with pc_logging.Action("RenderPkg", self.name):
             # Override the default output_dir.
             # TODO(clairbee): pass the preference downstream without making a
             # persistent change.
             if not output_dir is None:
+                if (
+                    not "render" in self.config_obj
+                    or self.config_obj["render"] is None
+                ):
+                    self.config_obj["render"] = {}
                 self.config_obj["render"]["output_dir"] = output_dir
 
-            if (
-                "render" in self.config_obj
-                and not self.config_obj["render"] is None
-            ):
-                render = self.config_obj["render"]
-            else:
+            render = self.config_obj.get("render", {})
+            if render is None:
                 render = {}
 
             # Enumerating all parts and assemblies
+            if sketches is None:
+                sketches = []
+                if (
+                    "sketches" in self.config_obj
+                    and not self.config_obj["sketches"] is None
+                ):
+                    sketches = self.config_obj["sketches"].keys()
+            if interfaces is None:
+                interfaces = []
+                if (
+                    "interfaces" in self.config_obj
+                    and not self.config_obj["interfaces"] is None
+                ):
+                    interfaces = self.config_obj["interfaces"].keys()
             if parts is None:
                 parts = []
                 if (
@@ -1171,189 +1192,287 @@ class Project(project_config.Configuration):
                 ):
                     assemblies = self.config_obj["assemblies"].keys()
 
+            # Enumerate
+            shapes = []
+            for name in sketches:
+                shape = self.get_sketch(name)
+                shapes.append(shape)
+            for name in interfaces:
+                shape = self.get_interface(name)
+                # TODO(clairbee): interfaces are not yet renderable.
+                # shapes.append(shape)
+            for name in parts:
+                shape = self.get_part(name)
+                shapes.append(shape)
+            for name in assemblies:
+                shape = self.get_assembly(name)
+                shapes.append(shape)
+
             # Render
             tasks = []
-            for part_name in parts:
-                part = self.get_part(part_name)
-                if not part is None:
-                    part_render = render
-                    if (
-                        "render" in part.config
-                        and not part.config["render"] is None
-                    ):
-                        part_render = render_cfg_merge(
-                            part_render, part.config["render"]
-                        )
+            for shape in shapes:
+                shape_render = render
+                if (
+                    "render" in shape.config
+                    and not shape.config["render"] is None
+                ):
+                    shape_render = render_cfg_merge(
+                        shape_render, shape.config["render"]
+                    )
 
-                    # Determine which formats need to be rendered.
-                    # The format needs to be rendered either if it's mentioned in the config
-                    # or if it's explicitly requested in the params (e.g. comes from the
-                    # command line).
-                    if format is None and "svg" in part_render:
-                        render_svg = True
-                    elif not format is None and format == "svg":
-                        render_svg = True
-                    else:
-                        render_svg = False
+                # Determine which formats need to be rendered.
+                # The format needs to be rendered either if it's mentioned in the config
+                # or if it's explicitly requested in the params (e.g. comes from the
+                # command line).
+                if (
+                    "svg" in shape_render
+                    and shape_render["svg"] is not None
+                    and not isinstance(shape_render["svg"], str)
+                    and shape.kind
+                    in shape_render.get("svg", {}).get("exclude", [])
+                ):
+                    render_svg = False
+                elif format is None and "svg" in shape_render:
+                    render_svg = True
+                elif not format is None and format == "svg":
+                    render_svg = True
+                else:
+                    render_svg = False
 
-                    if format is None and "png" in part_render:
-                        render_png = True
-                    elif not format is None and format == "png":
-                        render_png = True
-                    else:
-                        render_png = False
+                if (
+                    "png" in shape_render
+                    and shape_render["png"] is not None
+                    and not isinstance(shape_render["png"], str)
+                    and shape.kind
+                    in shape_render.get("png", {}).get("exclude", [])
+                ):
+                    render_png = False
+                elif format is None and "png" in shape_render:
+                    render_png = True
+                elif not format is None and format == "png":
+                    render_png = True
+                else:
+                    render_png = False
 
-                    if format is None and "step" in part_render:
-                        render_step = True
-                    elif not format is None and format == "step":
-                        render_step = True
-                    else:
-                        render_step = False
+                if (
+                    "step" in shape_render
+                    and shape_render["step"] is not None
+                    and not isinstance(shape_render["step"], str)
+                    and shape.kind
+                    in shape_render.get("step", {}).get("exclude", [])
+                ):
+                    render_step = False
+                elif format is None and "step" in shape_render:
+                    render_step = True
+                elif not format is None and format == "step":
+                    render_step = True
+                else:
+                    render_step = False
 
-                    if format is None and "stl" in part_render:
-                        render_stl = True
-                    elif not format is None and format == "stl":
-                        render_stl = True
-                    else:
-                        render_stl = False
+                if (
+                    "stl" in shape_render
+                    and shape_render["stl"] is not None
+                    and not isinstance(shape_render["stl"], str)
+                    and shape.kind
+                    in shape_render.get("stl", {}).get("exclude", [])
+                ):
+                    render_stl = False
+                elif format is None and "stl" in shape_render:
+                    render_stl = True
+                elif not format is None and format == "stl":
+                    render_stl = True
+                else:
+                    render_stl = False
 
-                    if format is None and "3mf" in part_render:
-                        render_3mf = True
-                    elif not format is None and format == "3mf":
-                        render_3mf = True
-                    else:
-                        render_3mf = False
+                if (
+                    "3mf" in shape_render
+                    and shape_render["3mf"] is not None
+                    and not isinstance(shape_render["3mf"], str)
+                    and shape.kind
+                    in shape_render.get("3mf", {}).get("exclude", [])
+                ):
+                    render_3mf = False
+                elif format is None and "3mf" in shape_render:
+                    render_3mf = True
+                elif not format is None and format == "3mf":
+                    render_3mf = True
+                else:
+                    render_3mf = False
 
-                    if format is None and "threejs" in part_render:
-                        render_threejs = True
-                    elif not format is None and format == "threejs":
-                        render_threejs = True
-                    else:
-                        render_threejs = False
+                if (
+                    "threejs" in shape_render
+                    and shape_render["threejs"] is not None
+                    and not isinstance(shape_render["threejs"], str)
+                    and shape.kind
+                    in shape_render.get("threejs", {}).get("exclude", [])
+                ):
+                    render_threejs = False
+                elif format is None and "threejs" in shape_render:
+                    render_threejs = True
+                elif not format is None and format == "threejs":
+                    render_threejs = True
+                else:
+                    render_threejs = False
 
-                    if format is None and "obj" in part_render:
-                        render_obj = True
-                    elif not format is None and format == "obj":
-                        render_obj = True
-                    else:
-                        render_obj = False
+                if (
+                    "obj" in shape_render
+                    and shape_render["obj"] is not None
+                    and not isinstance(shape_render["obj"], str)
+                    and shape.kind
+                    in shape_render.get("obj", {}).get("exclude", [])
+                ):
+                    render_obj = False
+                elif format is None and "obj" in shape_render:
+                    render_obj = True
+                elif not format is None and format == "obj":
+                    render_obj = True
+                else:
+                    render_obj = False
 
-                    if format is None and "gltf" in part_render:
-                        render_gltf = True
-                    elif not format is None and format == "gltf":
-                        render_gltf = True
-                    else:
-                        render_gltf = False
+                if (
+                    "gltf" in shape_render
+                    and shape_render["gltf"] is not None
+                    and not isinstance(shape_render["gltf"], str)
+                    and shape.kind
+                    in shape_render.get("gltf", {}).get("exclude", [])
+                ):
+                    render_gltf = False
+                elif format is None and "gltf" in shape_render:
+                    render_gltf = True
+                elif not format is None and format == "gltf":
+                    render_gltf = True
+                else:
+                    render_gltf = False
 
-                    if render_svg:
-                        tasks.append(part.render_svg_async(self.ctx, self))
-                    if render_png:
-                        tasks.append(part.render_png_async(self.ctx, self))
-                    if render_step:
-                        tasks.append(part.render_step_async(self.ctx, self))
-                    if render_stl:
-                        tasks.append(part.render_stl_async(self.ctx, self))
-                    if render_3mf:
-                        tasks.append(part.render_3mf_async(self.ctx, self))
-                    if render_threejs:
-                        tasks.append(part.render_threejs_async(self.ctx, self))
-                    if render_obj:
-                        tasks.append(part.render_obj_async(self.ctx, self))
-                    if render_gltf:
-                        tasks.append(part.render_gltf_async(self.ctx, self))
-
-            for assembly_name in assemblies:
-                assembly = self.get_assembly(assembly_name)
-                if not assembly is None:
-                    assy_render = render
-                    if (
-                        "render" in assembly.config
-                        and not assembly.config["render"] is None
-                    ):
-                        assy_render = render_cfg_merge(
-                            assy_render, assembly.config["render"]
-                        )
-
-                    # Determine which formats need to be rendered.
-                    # The format needs to be rendered either if it's mentioned in the config
-                    # or if it's explicitly requested in the params (e.g. comes from the
-                    # command line).
-                    if format is None and "svg" in assy_render:
-                        render_svg = True
-                    elif not format is None and format == "svg":
-                        render_svg = True
-                    else:
-                        render_svg = False
-
-                    if format is None and "png" in assy_render:
-                        render_png = True
-                    elif not format is None and format == "png":
-                        render_png = True
-                    else:
-                        render_png = False
-
-                    if format is None and "step" in assy_render:
-                        render_step = True
-                    elif not format is None and format == "step":
-                        render_step = True
-                    else:
-                        render_step = False
-
-                    if format is None and "stl" in assy_render:
-                        render_stl = True
-                    elif not format is None and format == "stl":
-                        render_stl = True
-                    else:
-                        render_stl = False
-
-                    if format is None and "3mf" in assy_render:
-                        render_3mf = True
-                    elif not format is None and format == "3mf":
-                        render_3mf = True
-                    else:
-                        render_3mf = False
-
-                    if format is None and "threejs" in assy_render:
-                        render_threejs = True
-                    elif not format is None and format == "threejs":
-                        render_threejs = True
-                    else:
-                        render_threejs = False
-
-                    if format is None and "obj" in assy_render:
-                        render_obj = True
-                    elif not format is None and format == "obj":
-                        render_obj = True
-                    else:
-                        render_obj = False
-
-                    if format is None and "gltf" in assy_render:
-                        render_gltf = True
-                    elif not format is None and format == "gltf":
-                        render_gltf = True
-                    else:
-                        render_gltf = False
-
-                    if render_svg:
-                        tasks.append(assembly.render_svg_async(self.ctx, self))
-                    if render_png:
-                        tasks.append(assembly.render_png_async(self.ctx, self))
-                    if render_step:
-                        tasks.append(assembly.render_step_async(self.ctx, self))
-                    if render_stl:
-                        tasks.append(assembly.render_stl_async(self.ctx, self))
-                    if render_3mf:
-                        tasks.append(assembly.render_3mf_async(self.ctx, self))
-                    if render_threejs:
-                        tasks.append(
-                            assembly.render_threejs_async(self.ctx, self)
-                        )
-                    if render_obj:
-                        tasks.append(assembly.render_obj_async(self.ctx, self))
-                    if render_gltf:
-                        tasks.append(assembly.render_gltf_async(self.ctx, self))
+                if render_svg:
+                    tasks.append(shape.render_svg_async(self.ctx, self))
+                if render_png:
+                    tasks.append(shape.render_png_async(self.ctx, self))
+                if render_step:
+                    tasks.append(shape.render_step_async(self.ctx, self))
+                if render_stl:
+                    tasks.append(shape.render_stl_async(self.ctx, self))
+                if render_3mf:
+                    tasks.append(shape.render_3mf_async(self.ctx, self))
+                if render_threejs:
+                    tasks.append(shape.render_threejs_async(self.ctx, self))
+                if render_obj:
+                    tasks.append(shape.render_obj_async(self.ctx, self))
+                if render_gltf:
+                    tasks.append(shape.render_gltf_async(self.ctx, self))
 
             await asyncio.gather(*tasks)
 
-    def render(self, parts=None, assemblies=None, format=None, output_dir=None):
-        asyncio.run(self.render_async(parts, assemblies, format, output_dir))
+            if format == "readme" or (format is None and "readme" in render):
+                self.render_readme_async(render, output_dir)
+
+    def render(
+        self,
+        sketches=None,
+        interfaces=None,
+        parts=None,
+        assemblies=None,
+        format=None,
+        output_dir=None,
+    ):
+        asyncio.run(
+            self.render_async(
+                sketches, interfaces, parts, assemblies, format, output_dir
+            )
+        )
+
+    def render_readme_async(self, render_cfg, output_dir):
+        if output_dir is None:
+            output_dir = self.config_dir
+        path = os.path.join(output_dir, "README.md")
+
+        if render_cfg is None:
+            render_cfg = {}
+        cfg = render_cfg.get("readme", {})
+        if cfg is None:
+            cfg = {}
+        exclude = cfg.get("exclude", [])
+        if exclude is None:
+            exclude = []
+
+        lines = []
+        lines += ["# %s" % self.name]
+        lines += [""]
+        if "desc" in self.config_obj:
+            lines += [self.config_obj["desc"]]
+            lines += [""]
+
+        if "docs" in self.config_obj and "usage" in self.config_obj["docs"]:
+            lines += ["## Usage"]
+            lines += [self.config_obj["docs"]["usage"]]
+            lines += [""]
+
+        def add_section(name, config, render_cfg):
+            columns = []
+            if "svg" in render_cfg:
+                svg_cfg = render_cfg["svg"]
+                svg_cfg = svg_cfg if svg_cfg is not None else {}
+                columns += [
+                    '<img src="%s" width="200" height="200">'
+                    % os.path.join(
+                        svg_cfg.get("prefix", "."),
+                        name + ".svg",
+                    )
+                ]
+            elif "png" in render_cfg:
+                png_cfg = render_cfg["png"]
+                png_cfg = png_cfg if png_cfg is not None else {}
+                columns += [
+                    '<img src="%s" height="200">'
+                    % os.path.join(
+                        png_cfg.get("prefix", "."),
+                        name + ".png",
+                    )
+                ]
+            if "desc" in config:
+                columns += [config["desc"]]
+
+            lines = ["### %s" % name]
+            if len(columns) > 1:
+                lines += ["<table><tr>"]
+                lines += map(lambda c: "<td valign=top>" + c + "</td>", columns)
+                lines += ["</tr></table>"]
+            else:
+                lines += columns
+            lines += [""]
+            return lines
+
+        if "sketches" in self.config_obj and not "sketches" in exclude:
+            lines += ["## Sketches"]
+            lines += [""]
+            for name, config in self.config_obj["sketches"].items():
+                lines += add_section(name, config, render_cfg)
+
+        if "interfaces" in self.config_obj and not "interfaces" in exclude:
+            lines += ["## Interfaces"]
+            lines += [""]
+            for name, config in self.config_obj["interfaces"].items():
+                lines += add_section(name, config, render_cfg)
+
+        if "parts" in self.config_obj and not "parts" in exclude:
+            lines += ["## Parts"]
+            lines += [""]
+            for name, config in self.config_obj["parts"].items():
+                lines += add_section(name, config, render_cfg)
+
+        if "assemblies" in self.config_obj and not "assemblies" in exclude:
+            lines += ["## Assemblies"]
+            lines += [""]
+            for name, config in self.config_obj["assemblies"].items():
+                lines += add_section(name, config, render_cfg)
+
+        lines += [
+            "---",
+            "*Generated by [PartCAD](https://partcad.org/).*",
+        ]
+
+        lines = map(lambda s: s + "\n", lines)
+
+        f = open(path, "w")
+        f.writelines(lines)
+        f.close()

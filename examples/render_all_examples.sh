@@ -1,6 +1,8 @@
 #!/bin/sh
 
-for i in produce_* feature_export; do
-    echo "Rendering $i..."
-    (cd $i && pc render)
+for i in *; do
+    if [ -f $i/partcad.yaml ]; then
+        echo "Rendering $i..."
+        (cd $i && pc render)
+    fi
 done

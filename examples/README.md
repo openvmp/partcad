@@ -45,6 +45,6 @@ Below are some examples of consuming existing modules:
 These examples showcase particular PartCAD features:
 
 - [Export to file](./feature_export)
-- [Interfaces and mating](./feature_interfaces)
+- [Interfaces and mating](./feature_interface)
 - [Part enrichment](./feature_enrich)
 - [Monorepo](./feature_monorepo)

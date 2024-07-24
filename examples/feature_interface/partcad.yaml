@@ -1,3 +1,22 @@
+desc: |
+  This example demonstrates how the same parametrized assembly
+  can be defined in three slightly different ways
+  using three approaches to connect parts to each other.
+
+docs:
+  usage: |
+    ```shell
+    # placement == "outer"
+    pc inspect -a connect-ports
+    pc inspect -a connect-interfaces
+    pc inspect -a connect-mates
+
+    # placement == "inner"
+    pc inspect -a -p placement=inner connect-ports
+    pc inspect -a -p placement=inner connect-interfaces
+    pc inspect -a -p placement=inner connect-mates
+    ```
+
 sketches:
   m3:
     type: basic
@@ -202,6 +221,7 @@ parts:
 assemblies:
   connect-ports:
     type: assy
+    desc: Demonstrates how to connect parts by specifying ports.
     parameters:
       placement:
         desc: Place the motor inside the bracket or outside
@@ -215,6 +235,7 @@ assemblies:
         default: TR
   connect-interfaces:
     type: assy
+    desc: Demonstrates how to connect parts by specifying interfaces.
     parameters:
       placement:
         type: string
@@ -227,6 +248,9 @@ assemblies:
         default: TR
   connect-mates:
     type: assy
+    desc: |
+      Demonstrates how to provide the minimum information while letting PartCAD
+      determine the rest using the interfaces' mating metadata.
     parameters:
       placement:
         type: string
@@ -237,3 +261,15 @@ assemblies:
         type: string
         enum: [TR, TL, BR, BL]
         default: TR
+
+render:
+  readme:
+    exclude:
+      - sketches
+      - interfaces
+      - parts
+  svg:
+    exclude:
+      - sketches
+      - interfaces
+      - parts

@@ -1,13 +1,31 @@
+desc: >
+  This example demonstrates how to create 3D parts by extruding sketches.
+
+docs:
+  usage: |
+    ```shell
+    pc inspect dxf
+    pc inspect cylinder
+    pc inspect clock
+    ```
+
 parts:
   cylinder:
+    desc: Extrude a circle sketch to create a cylinder.
     type: extrude
     sketch: /produce_sketch_basic:circle_01
     depth: 1
   dxf:
+    desc: Extrude a DXF sketch to create a 3D part.
     type: extrude
     sketch: /produce_sketch_dxf:dxf_01
     depth: 10
   clock:
+    desc: Extrude a clock sketch to create a 3D clock.
     type: extrude
     sketch: /produce_sketch_build123d:clock
     depth: 1
+
+render:
+  readme:
+  svg:

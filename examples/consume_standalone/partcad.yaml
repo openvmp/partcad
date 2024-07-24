@@ -1,0 +1,9 @@
+desc: >
+  This example demonstrates how to retrieve and operate with PartCAD parts
+  in an arbitrary Python application.
+
+docs:
+  usage: Run `python ./example.py` while having an OCP VSCode view open.
+
+render:
+  readme:

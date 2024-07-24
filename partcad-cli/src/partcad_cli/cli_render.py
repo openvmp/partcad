@@ -37,7 +37,17 @@ def cli_help_render(subparsers: argparse.ArgumentParser):
         dest="format",
         type=str,
         nargs="?",
-        choices=["svg", "png", "step", "stl", "3mf", "threejs", "obj", "gltf"],
+        choices=[
+            "readme",
+            "svg",
+            "png",
+            "step",
+            "stl",
+            "3mf",
+            "threejs",
+            "obj",
+            "gltf",
+        ],
     )
 
     parser_render.add_argument(
@@ -51,13 +61,25 @@ def cli_help_render(subparsers: argparse.ArgumentParser):
 
     group_type = parser_render.add_mutually_exclusive_group(required=False)
     group_type.add_argument(
+        "-s",
+        help="The object is a sketch",
+        dest="sketch",
+        action="store_true",
+    )
+    group_type.add_argument(
+        "-i",
+        help="The object is an interface",
+        dest="interface",
+        action="store_true",
+    )
+    group_type.add_argument(
         "-a",
         help="The object is an assembly",
         dest="assembly",
         action="store_true",
     )
     group_type.add_argument(
-        "-s",
+        "-S",
         help="The object is a scene",
         dest="scene",
         action="store_true",
@@ -92,15 +114,23 @@ def cli_render(args, ctx):
         )
     else:
         # Render the requested part or assembly
+        sketches = []
+        interfaces = []
         parts = []
         assemblies = []
-        if args.assembly:
+        if args.sketch:
+            sketches.append(args.object)
+        elif args.interface:
+            interfaces.append(args.object)
+        elif args.assembly:
             assemblies.append(args.object)
         else:
             parts.append(args.object)
 
         prj = ctx.get_project(args.package)
         prj.render(
+            sketches=sketches,
+            interfaces=interfaces,
             parts=parts,
             assemblies=assemblies,
             format=args.format,

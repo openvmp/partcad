@@ -1,3 +1,13 @@
+desc: Assembly YAML examples
+
+docs:
+  usage: |
+    ```shell
+    pc inspect primitive
+    pc inspect logo
+    pc inspect logo_embedded
+    ```
+
 assemblies:
   primitive:
     type: assy
@@ -13,6 +23,6 @@ assemblies:
   partcad_logo_short: logo
 
 render:
+  readme:
   svg:
     prefix: ./
-  markdown: README.md

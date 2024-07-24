@@ -36,6 +36,7 @@ class Assembly(ShapeWithAi):
         else:
             self.location = None
         self.shape = None
+        self.kind = "assemblies"
 
         # self.children contains all child parts and assemblies before they turn into 'self.shape'
         self.children = []

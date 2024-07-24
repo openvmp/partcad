@@ -1,4 +1,12 @@
-desc: PartCAD example project which implements its logo
+desc: PartCAD example project which implements its logo.
+
+docs:
+  usage: |
+    ```shell
+    pc inspect head_half
+    pc inspect bone
+    ```
+
 parts:
   head_half:
     type: cadquery
@@ -8,6 +16,6 @@ parts:
     desc: Plate used as one of the bones on PartCAD logo
 
 render:
+  readme:
   svg:
     prefix: ./
-  markdown: README.md
