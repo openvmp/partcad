@@ -22,6 +22,7 @@ classifiers = [
 
 [tool.setuptools.package-data]
 "partcad.wrappers" = ["*.py"]
+"partcad.template" = ["*.yaml"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
