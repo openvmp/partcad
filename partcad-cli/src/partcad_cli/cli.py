@@ -10,6 +10,7 @@
 
 import argparse
 import logging
+import sys
 
 import partcad as pc
 import partcad.logging as pc_logging
@@ -179,6 +180,8 @@ def main():
 
     if not args.no_ansi:
         pc.logging_ansi_terminal_fini()
+    if pc_logging.had_errors:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
