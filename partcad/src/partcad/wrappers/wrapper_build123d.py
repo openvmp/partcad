@@ -125,10 +125,12 @@ def process(path, request):
         elif is_wrapped(shape):
             if is_vector(shape):
                 converted.append(vertex(shape.wrapped))
-            else:
+            elif is_topods_shape(shape):
                 converted.extend(
                     get_downcasted_shape(shape.wrapped)
                 )  # TODO(clairbee): append(shape.wrapped)? append(downcast(shape.wrapped))?
+            else:
+                converted.append(shape.wrapped)
 
         elif isinstance(shape, str):
             converted.append(shape)
