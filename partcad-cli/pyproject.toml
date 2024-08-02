@@ -20,9 +20,6 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-[tool.setuptools.package-data]
-"partcad_cli.template" = ["*.yaml"]
-
 [project.scripts]
 pc = "partcad_cli:main_cli"
 
