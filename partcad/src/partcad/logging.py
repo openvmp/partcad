@@ -11,6 +11,8 @@ from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 import threading
 import time
 
+had_errors = False
+
 setLevel = lambda *args, **kwargs: logging.getLogger("partcad").setLevel(
     *args, **kwargs
 )
@@ -27,12 +29,14 @@ warn = lambda *args, **kwargs: logging.getLogger("partcad").warn(
 warning = lambda *args, **kwargs: logging.getLogger("partcad").warning(
     *args, **kwargs
 )
-error = lambda *args, **kwargs: logging.getLogger("partcad").error(
-    *args, **kwargs
-)
-critical = lambda *args, **kwargs: logging.getLogger("partcad").critical(
-    *args, **kwargs
-)
+def error(*args, **kwargs):
+    global had_errors
+    had_errors = True
+    logging.getLogger("partcad").error(*args, **kwargs)
+def critical(*args, **kwargs):
+    global had_errors
+    had_errors = True
+    logging.getLogger("partcad").critical(*args, **kwargs)
 
 
 # Some pytest versions/configurations/plugins mess with the exception method
