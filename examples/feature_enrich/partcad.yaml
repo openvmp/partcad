@@ -1,4 +1,5 @@
 desc: Demonstrates the use of "enrich"
+
 parts:
   leg:
     type: enrich

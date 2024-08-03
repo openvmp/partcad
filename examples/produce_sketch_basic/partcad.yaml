@@ -1,5 +1,6 @@
 desc: >
-  This example demonstrates how to create sketches using basic geometric shapes.
+  This example demonstrates various syntax options
+  how to define sketches using basic geometry shapes.
 
 docs:
   usage: |
@@ -14,22 +15,27 @@ docs:
 sketches:
   circle_01:
     type: basic
+    desc: The shortest way to create a basic circle in PartCAD
     circle: 5
   circle_02:
     type: basic
+    desc: A longer way to create a basic circle in PartCAD
     circle:
       radius: 3
   circle_03:
     type: basic
+    desc: The longest way to create a basic circle in PartCAD
     circle:
       x: 2
       y: 2
       radius: 2
   square_01:
     type: basic
+    desc: The shortest way to create a basic square in PartCAD
     square: 5
   rect_01:
     type: basic
+    desc: The longest way to create a basic square in PartCAD
     rectangle:
       side-x: 5
       side-y: 3

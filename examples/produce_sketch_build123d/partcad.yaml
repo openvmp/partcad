@@ -1,4 +1,4 @@
-desc: This example demonstrates how to create a sketch using a build123d script.
+desc: This example demonstrates how to define a sketch using a build123d script.
 
 docs:
   usage: |
@@ -9,6 +9,7 @@ docs:
 sketches:
   clock:
     type: build123d
+    desc: A clock face taken from the build123d examples
 
 render:
   readme:

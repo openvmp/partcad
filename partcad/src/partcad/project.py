@@ -1395,22 +1395,42 @@ class Project(project_config.Configuration):
         if exclude is None:
             exclude = []
 
+        name = self.name
+        desc = self.desc
+        docs = self.config_obj.get("docs", None)
+        intro = None
+        usage = None
+        if docs:
+            name = docs.get("name", name)
+            intro = docs.get("intro", None)
+            usage = docs.get("usage", None)
+
         lines = []
-        lines += ["# %s" % self.name]
+        lines += ["# %s" % name]
         lines += [""]
-        if "desc" in self.config_obj:
-            lines += [self.config_obj["desc"]]
+        if desc:
+            lines += [desc]
+            lines += [""]
+        if intro:
+            lines += [intro]
             lines += [""]
 
-        if "docs" in self.config_obj and "usage" in self.config_obj["docs"]:
+        if usage:
             lines += ["## Usage"]
-            lines += [self.config_obj["docs"]["usage"]]
+            lines += [usage]
             lines += [""]
 
-        def add_section(name, config, render_cfg):
+        def add_section(name, shape, render_cfg):
+            config = shape.config
+
+            if "type" in config and config["type"] == "alias":
+                return []
+
             columns = []
-            if "svg" in render_cfg:
-                svg_cfg = render_cfg["svg"]
+            if "svg" in render_cfg or (
+                "type" in config and config["type"] == "svg"
+            ):
+                svg_cfg = render_cfg["svg"] if "svg" in render_cfg else {}
                 svg_cfg = svg_cfg if svg_cfg is not None else {}
                 columns += [
                     '<img src="%s" width="200" height="200">'
@@ -1432,6 +1452,29 @@ class Project(project_config.Configuration):
             if "desc" in config:
                 columns += [config["desc"]]
 
+            if "parameters" in config:
+                parameters = "Parameters:<br/><ul>"
+                for param_name, param in config["parameters"].items():
+                    parameters += "<li>%s: %s</li>" % (
+                        param_name,
+                        param["default"],
+                    )
+                parameters += "</ul>"
+                columns += [parameters]
+
+            if "aliases" in config:
+                aliases = "Aliases:<br/><ul>"
+                for alias in config["aliases"]:
+                    aliases += "<li>%s</li>" % alias
+                aliases += "</ul>"
+                columns += [aliases]
+
+            if hasattr(shape, "interfaces"):
+                interfaces = "Interfaces:<br/>"
+                for interface in shape.interfaces:
+                    interfaces += "- %s<br/>" % interface.name
+                columns += [interfaces]
+
             lines = ["### %s" % name]
             if len(columns) > 1:
                 lines += ["<table><tr>"]
@@ -1442,33 +1485,32 @@ class Project(project_config.Configuration):
             lines += [""]
             return lines
 
-        if "sketches" in self.config_obj and not "sketches" in exclude:
-            lines += ["## Sketches"]
-            lines += [""]
-            for name, config in self.config_obj["sketches"].items():
-                lines += add_section(name, config, render_cfg)
-
-        if "interfaces" in self.config_obj and not "interfaces" in exclude:
-            lines += ["## Interfaces"]
-            lines += [""]
-            for name, config in self.config_obj["interfaces"].items():
-                lines += add_section(name, config, render_cfg)
-
-        if "parts" in self.config_obj and not "parts" in exclude:
-            lines += ["## Parts"]
-            lines += [""]
-            for name, config in self.config_obj["parts"].items():
-                lines += add_section(name, config, render_cfg)
-
-        if "assemblies" in self.config_obj and not "assemblies" in exclude:
+        if self.assemblies and not "assemblies" in exclude:
             lines += ["## Assemblies"]
             lines += [""]
-            for name, config in self.config_obj["assemblies"].items():
-                lines += add_section(name, config, render_cfg)
+            for name, shape in self.assemblies.items():
+                lines += add_section(name, shape, render_cfg)
+
+        if self.parts and not "parts" in exclude:
+            lines += ["## Parts"]
+            lines += [""]
+            for name, shape in self.parts.items():
+                lines += add_section(name, shape, render_cfg)
+
+        if self.interfaces and not "interfaces" in exclude:
+            lines += ["## Interfaces"]
+            lines += [""]
+            for name, shape in self.interfaces.items():
+                lines += add_section(name, shape, render_cfg)
+
+        if self.sketches and not "sketches" in exclude:
+            lines += ["## Sketches"]
+            lines += [""]
+            for name, shape in self.sketches.items():
+                lines += add_section(name, shape, render_cfg)
 
         lines += [
-            "---",
-            "*Generated by [PartCAD](https://partcad.org/).*",
+            "*Generated by [PartCAD](https://partcad.org/)*",
         ]
 
         lines = map(lambda s: s + "\n", lines)

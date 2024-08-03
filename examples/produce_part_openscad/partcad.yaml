@@ -1,4 +1,4 @@
-desc: PartCAD example project to demonstrate parts implemented using SCAD files.
+desc: PartCAD example project to demonstrate parts defined using SCAD files.
 
 docs:
   usage: |
