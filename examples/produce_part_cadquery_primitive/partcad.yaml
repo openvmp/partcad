@@ -1,4 +1,4 @@
-desc: PartCAD example project which demonstrates parts created using CadQuery.
+desc: PartCAD example project which demonstrates parts defined using CadQuery.
 
 docs:
   usage: |
@@ -6,6 +6,7 @@ docs:
     pc inspect cube
     pc inspect brick
     pc inspect cylinder
+    ```
 
 parts:
   cube:

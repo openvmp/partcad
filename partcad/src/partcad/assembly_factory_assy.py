@@ -767,7 +767,7 @@ class AssemblyFactoryAssy(AssemblyFactoryFile):
                         and connect_with_port is None
                         and connect_to_port is None
                     ):
-                        pc_logging.warn("Trying to match ports by name")
+                        pc_logging.debug("Trying to match ports by name")
                         # Both interfaces are known but they have more than one port each.
                         # Let's find a matching pair of ports.
                         source_ports = sorted(
@@ -795,7 +795,7 @@ class AssemblyFactoryAssy(AssemblyFactoryFile):
                                     and connect_to_port_pattern is None
                                 ):
                                     if len(source_ports) == len(target_ports):
-                                        pc_logging.warn(
+                                        pc_logging.debug(
                                             "Connect %s to %s: port mating is not detected deterministically on BOTH ends, guessing alphabetically..."
                                             % (name, connect_to_name)
                                         )
@@ -827,7 +827,7 @@ class AssemblyFactoryAssy(AssemblyFactoryFile):
                                     and connect_with_port_index != -1
                                     and connect_to_port_index == -1
                                 ):
-                                    pc_logging.warn(
+                                    pc_logging.debug(
                                         "Connect %s to %s: port selection is not detected on the target end, guessing alphabetically..."
                                         % (name, connect_to_name)
                                     )
@@ -839,7 +839,7 @@ class AssemblyFactoryAssy(AssemblyFactoryFile):
                                     and connect_with_port_index == -1
                                     and connect_to_port_index != -1
                                 ):
-                                    pc_logging.warn(
+                                    pc_logging.debug(
                                         "Connect %s to %s: port selection is not detected on the source end, guessing alphabetically..."
                                         % (name, connect_to_name)
                                     )
@@ -960,7 +960,7 @@ class AssemblyFactoryAssy(AssemblyFactoryFile):
                     ).wrapped.Transformation()
 
                     if source_port is not None and target_port is not None:
-                        pc_logging.info(
+                        pc_logging.debug(
                             "Connected %s of %s to %s of %s"
                             % (
                                 connect_with_port,
@@ -987,7 +987,7 @@ class AssemblyFactoryAssy(AssemblyFactoryFile):
                         )
                         location = b3d.Location(trsf)
                     elif source_port is None and target_port is not None:
-                        pc_logging.info(
+                        pc_logging.debug(
                             "Connected %s to %s of %s"
                             % (
                                 name,
@@ -1005,7 +1005,7 @@ class AssemblyFactoryAssy(AssemblyFactoryFile):
                             trsf.Multiply(target_offset)
                         location = b3d.Location(trsf)
                     elif source_port is not None and target_port is None:
-                        pc_logging.info(
+                        pc_logging.debug(
                             "Connected %s of %s to %s"
                             % (connect_with_port, name, connect_to_name)
                         )
@@ -1018,7 +1018,7 @@ class AssemblyFactoryAssy(AssemblyFactoryFile):
                         )
                         location = b3d.Location(trsf)
                     elif source_port is None and target_port is None:
-                        pc_logging.info(
+                        pc_logging.debug(
                             "Connected %s to %s" % (name, connect_to_name)
                         )
                         trsf = target_part_location.wrapped.Transformation()

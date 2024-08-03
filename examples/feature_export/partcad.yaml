@@ -1,8 +1,10 @@
 desc: PartCAD example project to demonstrate various export mechanisms
+
 parts:
   bolt:
     type: step
     desc: M8x30-screw
+
 render:
   svg:
     prefix: ./
