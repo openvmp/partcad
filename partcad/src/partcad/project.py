@@ -1459,10 +1459,17 @@ class Project(project_config.Configuration):
             if "parameters" in config:
                 parameters = "Parameters:<br/><ul>"
                 for param_name, param in config["parameters"].items():
-                    parameters += "<li>%s: %s</li>" % (
-                        param_name,
-                        param["default"],
-                    )
+                    if "enum" in param:
+                        value = "<ul>"
+                        for enum_value in param["enum"]:
+                            if enum_value == param["default"]:
+                                value += "<li><b>%s</b></li>" % enum_value
+                            else:
+                                value += "<li>%s</li>" % enum_value
+                        value += "</ul>"
+                    else:
+                        value = param["default"]
+                    parameters += "<li>%s: %s</li>" % (param_name, value)
                 parameters += "</ul>"
                 columns += [parameters]
 
