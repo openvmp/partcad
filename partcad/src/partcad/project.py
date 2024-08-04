@@ -1384,13 +1384,17 @@ class Project(project_config.Configuration):
     def render_readme_async(self, render_cfg, output_dir):
         if output_dir is None:
             output_dir = self.config_dir
-        path = os.path.join(output_dir, "README.md")
 
         if render_cfg is None:
             render_cfg = {}
         cfg = render_cfg.get("readme", {})
+        if isinstance(cfg, str):
+            cfg = {"path": cfg}
         if cfg is None:
             cfg = {}
+
+        path = os.path.join(output_dir, cfg.get("path", "README.md"))
+
         exclude = cfg.get("exclude", [])
         if exclude is None:
             exclude = []
