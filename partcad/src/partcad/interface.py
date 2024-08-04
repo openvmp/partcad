@@ -9,6 +9,7 @@
 
 import asyncio
 import math
+import re
 
 from .geom import Location
 from .interface_inherit import InterfaceInherits
@@ -342,6 +343,25 @@ class Interface:
                 compatible_with_parents = False
 
             for interface_name, interface_config in inherits_config.items():
+                # Resolve the parameter values in the interface name
+                def interface_template_resolve(m):
+                    tmpl = m.group(1)
+                    param_name = tmpl[0 : tmpl.index(":")]
+                    value = self.params[param_name].default
+                    if ":" in tmpl:
+                        expr = tmpl[tmpl.index(":") + 1 :]
+                        globals = {"__builtins__": {}}
+                        locals = {"value": value}
+                        value = eval(expr, globals, locals)
+
+                    return value
+
+                interface_name = re.sub(
+                    "%([^%*]+)%",
+                    interface_template_resolve,
+                    interface_name,
+                )
+
                 inherit = InterfaceInherits(
                     interface_name, self.project, interface_config
                 )

@@ -45,7 +45,6 @@ class Shape(ShapeConfiguration):
         self.components = []
         self.compound = None
         self.with_ports = None
-        # self.implements = {}
 
         # Leave the svg path empty to get it created on demand
         self.svg_lock = asyncio.Lock()
