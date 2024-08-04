@@ -20,7 +20,4 @@ def cli_help_install(subparsers):
 
 
 def cli_install(args, ctx):
-    # No op.
-    # The context initialization that is done in cli.py is doing everything
-    # necessary already.
-    _ignore = True
+    ctx.get_all_packages()
