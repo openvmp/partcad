@@ -1436,23 +1436,30 @@ class Project(project_config.Configuration):
             ):
                 svg_cfg = render_cfg["svg"] if "svg" in render_cfg else {}
                 svg_cfg = svg_cfg if svg_cfg is not None else {}
+                image_path = os.path.join(
+                    svg_cfg.get("prefix", "."),
+                    name + ".svg",
+                )
                 columns += [
-                    '<img src="%s" width="200" height="200">'
-                    % os.path.join(
-                        svg_cfg.get("prefix", "."),
-                        name + ".svg",
-                    )
+                    '<img src="%s" width="200" height="200">' % image_path
                 ]
             elif "png" in render_cfg:
                 png_cfg = render_cfg["png"]
                 png_cfg = png_cfg if png_cfg is not None else {}
-                columns += [
-                    '<img src="%s" height="200">'
-                    % os.path.join(
-                        png_cfg.get("prefix", "."),
-                        name + ".png",
-                    )
-                ]
+                image_path = os.path.join(
+                    png_cfg.get("prefix", "."),
+                    name + ".png",
+                )
+                columns += ['<img src="%s" height="200">' % image_path]
+            else:
+                image_path = None
+
+            if image_path is None or not os.path.exists(image_path):
+                pc_logging.warn(
+                    "Skipping rendering of %s: no image found" % name
+                )
+                return []
+
             if "desc" in config:
                 columns += [config["desc"]]
 
