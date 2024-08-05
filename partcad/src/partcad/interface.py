@@ -314,6 +314,8 @@ class Interface:
                 )
 
             for port_name, port_config in ports_config.items():
+                if isinstance(port_config, list):
+                    port_config = {"location": port_config}
                 self.ports[port_name] = InterfacePort(
                     port_name, self.project, port_config
                 )
