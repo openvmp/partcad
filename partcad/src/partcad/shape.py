@@ -121,7 +121,7 @@ class Shape(ShapeConfiguration):
                 try:
                     components = await self.get_components()
                 except Exception as e:
-                    pc_logging.error(e)
+                    pc_logging.exception(e)
 
                 if len(components) != 0:
                     import importlib
