@@ -18,6 +18,7 @@ from . import runtime_python_all
 from . import project_factory_local as rfl
 from . import project_factory_git as rfg
 from . import project_factory_tar as rft
+from . import sync_threads
 from .user_config import user_config
 from .utils import *
 
@@ -278,12 +279,47 @@ class Context(project_config.Configuration):
         return next_project
 
     def import_all(self):
-        self._import_all_recursive(self.projects[consts.ROOT])
+        asyncio.run(self._import_all_wrapper(self.projects[consts.ROOT]))
 
-    def _import_all_recursive(self, project):
+    async def _import_all_wrapper(self, project):
+        iterate_tasks = []
+        import_tasks = []
+
+        iterate_tasks.append(
+            asyncio.create_task(
+                self._import_all_recursive(self.projects[consts.ROOT])
+            )
+        )
+
+        while iterate_tasks or import_tasks:
+            if iterate_tasks:
+                iterate_done, iterate_tasks_set = await asyncio.tasks.wait(
+                    iterate_tasks
+                )
+                iterate_tasks = list(iterate_tasks_set)
+                for iterate_task in iterate_done:
+                    new_import_tasks = iterate_task.result()
+                    import_tasks.extend(new_import_tasks)
+
+            if import_tasks:
+                import_done, import_tasks_set = await asyncio.tasks.wait(
+                    import_tasks
+                )
+                import_tasks = list(import_tasks_set)
+                for import_task in import_done:
+                    next_project = import_task.result()
+                    iterate_tasks.append(
+                        asyncio.create_task(
+                            self._import_all_recursive(next_project)
+                        )
+                    )
+
+    async def _import_all_recursive(self, project):
+        tasks = []
+
         if project.broken:
             pc_logging.info("Ignoring the broken package: %s" % project.name)
-            return
+            return []
 
         # First, iterate all explicitly mentioned "import"s.
         # Do it before iterating subdirectories, as it may kick off a long
@@ -310,8 +346,12 @@ class Context(project_config.Configuration):
                 if "name" in prj_conf:
                     prj_conf["orig_name"] = prj_conf["name"]
                 prj_conf["name"] = next_project_path
-                next_project = self.import_project(project, prj_conf)
-                self._import_all_recursive(next_project)
+
+                tasks.append(
+                    asyncio.create_task(
+                        sync_threads.run(self.import_project, project, prj_conf)
+                    )
+                )
 
         # Second, iterate over all subfolder and check for packages
         subfolders = [
@@ -334,8 +374,14 @@ class Context(project_config.Configuration):
                     "type": "local",
                     "path": subdir,
                 }
-                next_project = self.import_project(project, prj_conf)
-                self._import_all_recursive(next_project)
+
+                tasks.append(
+                    asyncio.create_task(
+                        sync_threads.run(self.import_project, project, prj_conf)
+                    )
+                )
+
+        return tasks
 
     def get_all_packages(self):
         # TODO(clairbee): leverage root_project.get_child_project_names()
