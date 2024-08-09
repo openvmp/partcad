@@ -52,9 +52,11 @@ class Project(project_config.Configuration):
 
     class InterfaceLock(object):
         def __init__(self, prj, interface_name: str):
+            prj.interface_locks_lock.acquire()
             if not interface_name in prj.interface_locks:
                 prj.interface_locks[interface_name] = threading.Lock()
             self.lock = prj.interface_locks[interface_name]
+            prj.interface_locks_lock.release()
 
         def __enter__(self, *_args):
             self.lock.acquire()
@@ -64,9 +66,11 @@ class Project(project_config.Configuration):
 
     class SketchLock(object):
         def __init__(self, prj, sketch_name: str):
+            prj.sketch_locks_lock.acquire()
             if not sketch_name in prj.sketch_locks:
                 prj.sketch_locks[sketch_name] = threading.Lock()
             self.lock = prj.sketch_locks[sketch_name]
+            prj.sketch_locks_lock.release()
 
         def __enter__(self, *_args):
             self.lock.acquire()
@@ -76,9 +80,11 @@ class Project(project_config.Configuration):
 
     class PartLock(object):
         def __init__(self, prj, part_name: str):
+            prj.part_locks_lock.acquire()
             if not part_name in prj.part_locks:
                 prj.part_locks[part_name] = threading.Lock()
             self.lock = prj.part_locks[part_name]
+            prj.part_locks_lock.release()
 
         def __enter__(self, *_args):
             self.lock.acquire()
@@ -88,9 +94,11 @@ class Project(project_config.Configuration):
 
     class AssemblyLock(object):
         def __init__(self, prj, assembly_name: str):
+            prj.assembly_locks_lock.acquire()
             if not assembly_name in prj.assembly_locks:
                 prj.assembly_locks[assembly_name] = threading.Lock()
             self.lock = prj.assembly_locks[assembly_name]
+            prj.assembly_locks_lock.release()
 
         def __enter__(self, *_args):
             self.lock.acquire()
@@ -127,6 +135,7 @@ class Project(project_config.Configuration):
         # self.interfaces contains all the initialized interfaces in this project
         self.interfaces = {}
         self.interface_locks = {}
+        self.interface_locks_lock = threading.Lock()
 
         # self.sketch_configs contains the configs of all the sketches in this project
         if (
@@ -139,6 +148,7 @@ class Project(project_config.Configuration):
         # self.sketches contains all the initialized sketches in this project
         self.sketches = {}
         self.sketch_locks = {}
+        self.sketch_locks_lock = threading.Lock()
 
         # self.part_configs contains the configs of all the parts in this project
         if "parts" in self.config_obj and not self.config_obj["parts"] is None:
@@ -148,6 +158,7 @@ class Project(project_config.Configuration):
         # self.parts contains all the initialized parts in this project
         self.parts = {}
         self.part_locks = {}
+        self.part_locks_lock = threading.Lock()
 
         # self.assembly_configs contains the configs of all the assemblies in this project
         if (
@@ -160,6 +171,7 @@ class Project(project_config.Configuration):
         # self.assemblies contains all the initialized assemblies in this project
         self.assemblies = {}
         self.assembly_locks = {}
+        self.assembly_locks_lock = threading.Lock()
 
         if (
             "desc" in self.config_obj
