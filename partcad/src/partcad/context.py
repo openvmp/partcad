@@ -39,6 +39,20 @@ class Context(project_config.Configuration):
     stats_assemblies_instantiated: int
     stats_memory: int
 
+    class PackageLock(object):
+        def __init__(self, ctx, package_name: str):
+            ctx.project_locks_lock.acquire()
+            if not package_name in ctx.project_locks:
+                ctx.project_locks[package_name] = threading.Lock()
+            self.lock = ctx.project_locks[package_name]
+            ctx.project_locks_lock.release()
+
+        def __enter__(self, *_args):
+            self.lock.acquire()
+
+        def __exit__(self, *_args):
+            self.lock.release()
+
     def __init__(self, root_path=None, search_root=True):
         """Initializes the context and imports the root project."""
         root_file = ""
@@ -85,6 +99,8 @@ class Context(project_config.Configuration):
         self.mates = {}
         # self.projects contains all projects known to this context
         self.projects = {}
+        self.project_locks = {}
+        self.project_locks_lock = threading.Lock()
         self._projects_being_loaded = {}
 
         with pc_logging.Process("InitCtx", self.config_dir):
@@ -116,54 +132,62 @@ class Context(project_config.Configuration):
             return None
 
         name = project_import_config["name"]
-        with pc_logging.Action("Import", name):
-            if name in self._projects_being_loaded:
-                pc_logging.error(
-                    "Recursive project loading detected (%s), aborting." % name
-                )
-                return None
-            self._projects_being_loaded[name] = True
+        with self.PackageLock(self, name):
+            with pc_logging.Action("Import", name):
+                if name in self._projects_being_loaded:
+                    pc_logging.error(
+                        "Recursive project loading detected (%s), aborting."
+                        % name
+                    )
+                    return None
+                self._projects_being_loaded[name] = True
 
-            # Depending on the project type, use different factories
-            if (
-                not "type" in project_import_config
-                or project_import_config["type"] == "local"
-            ):
-                rfl.ProjectFactoryLocal(self, parent, project_import_config)
-            elif project_import_config["type"] == "git":
-                with pc_logging.Action("Git", name):
-                    rfg.ProjectFactoryGit(self, parent, project_import_config)
-            elif project_import_config["type"] == "tar":
-                with pc_logging.Action("Tar", name):
-                    rft.ProjectFactoryTar(self, parent, project_import_config)
-            else:
-                pc_logging.error("Invalid project type found: %s." % name)
+                # Depending on the project type, use different factories
+                if (
+                    not "type" in project_import_config
+                    or project_import_config["type"] == "local"
+                ):
+                    rfl.ProjectFactoryLocal(self, parent, project_import_config)
+                elif project_import_config["type"] == "git":
+                    with pc_logging.Action("Git", name):
+                        rfg.ProjectFactoryGit(
+                            self, parent, project_import_config
+                        )
+                elif project_import_config["type"] == "tar":
+                    with pc_logging.Action("Tar", name):
+                        rft.ProjectFactoryTar(
+                            self, parent, project_import_config
+                        )
+                else:
+                    pc_logging.error("Invalid project type found: %s." % name)
+                    del self._projects_being_loaded[name]
+                    return None
+
+                # Check whether the factory was able to successfully add the project
+                if not name in self.projects:
+                    pc_logging.error(
+                        "Failed to create the project: %s"
+                        % project_import_config
+                    )
+                    del self._projects_being_loaded[name]
+                    return None
+
+                imported_project = self.projects[name]
+                if imported_project is None:
+                    pc_logging.error("Failed to import the package: %s" % name)
+                    del self._projects_being_loaded[name]
+                    return None
+                if imported_project.broken:
+                    pc_logging.error(
+                        "Failed to parse the package's 'partcad.yaml': %s"
+                        % name
+                    )
+
+                self.stats_packages += 1
+                self.stats_packages_instantiated += 1
+
                 del self._projects_being_loaded[name]
-                return None
-
-            # Check whether the factory was able to successfully add the project
-            if not name in self.projects:
-                pc_logging.error(
-                    "Failed to create the project: %s" % project_import_config
-                )
-                del self._projects_being_loaded[name]
-                return None
-
-            imported_project = self.projects[name]
-            if imported_project is None:
-                pc_logging.error("Failed to import the package: %s" % name)
-                del self._projects_being_loaded[name]
-                return None
-            if imported_project.broken:
-                pc_logging.error(
-                    "Failed to parse the package's 'partcad.yaml': %s" % name
-                )
-
-            self.stats_packages += 1
-            self.stats_packages_instantiated += 1
-
-            del self._projects_being_loaded[name]
-            return imported_project
+                return imported_project
 
     def get_project_abs_path(self, rel_project_path: str):
         if rel_project_path.startswith("/"):

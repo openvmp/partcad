@@ -6,11 +6,13 @@
 #
 # Licensed under Apache License, Version 2.0.
 
+import re
 import sys
 from types import ModuleType, FunctionType
 from gc import get_referents
 
 from . import consts
+from . import logging as pc_logging
 
 # Custom objects know their class.
 # Function objects seem to know way too much, including modules.
@@ -35,6 +37,12 @@ def resolve_resource_path(current_project_name, pattern: str):
         item_pattern = "*"
 
     project_pattern = project_pattern.replace("...", "*")
+    if not project_pattern.startswith("/"):
+        if current_project_name.endswith("/"):
+            project_pattern = current_project_name + project_pattern
+        else:
+            project_pattern = current_project_name + "/" + project_pattern
+    project_pattern = re.sub(r"/[^/]*/\.\.", "", project_pattern)
     item_pattern = item_pattern.replace("...", "*")
 
     return project_pattern, item_pattern

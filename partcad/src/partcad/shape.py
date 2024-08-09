@@ -52,6 +52,7 @@ class Shape(ShapeConfiguration):
         self.svg_url = None
 
         self.desc = config.get("desc", None)
+        self.desc = self.desc.strip() if self.desc is not None else None
 
     async def get_components(self):
         if len(self.components) == 0:
