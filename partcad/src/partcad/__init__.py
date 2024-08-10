@@ -29,6 +29,7 @@ from .logging_ansi_terminal import init as logging_ansi_terminal_init
 from .logging_ansi_terminal import fini as logging_ansi_terminal_fini
 from . import logging
 from . import utils
+from . import exception
 
 __all__ = [
     "config",
@@ -50,6 +51,7 @@ __all__ = [
     "scene",
     "main_cli",
     "plugins",
+    "exception",
 ]
 
 __version__: str = "0.6.18"

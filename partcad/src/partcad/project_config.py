@@ -15,6 +15,7 @@ import yaml
 import math
 
 from . import logging as pc_logging
+from . import exception as pc_exception
 
 DEFAULT_CONFIG_FILENAME = "partcad.yaml"
 
@@ -91,7 +92,7 @@ class Configuration:
             partcad_version = sys.modules["partcad"].__version__
             if partcad_version not in partcad_requirements:
                 # TODO(clairbee): add better error and exception handling
-                raise Exception(
+                raise pc_exception.NeedsUpdateException(
                     "ERROR: Incompatible PartCAD version! %s does not satisfy %s"
                     % (partcad_version, partcad_requirements)
                 )
