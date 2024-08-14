@@ -1,4 +1,4 @@
-# /produce_part_ai_cadquery
+# /pub/examples/partcad/produce_part_ai_cadquery
 
 PartCAD parts defined using AI-generated CadQuery scripts.
 

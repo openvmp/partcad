@@ -14,6 +14,7 @@ import sys
 import yaml
 import math
 
+from . import consts
 from . import logging as pc_logging
 from . import exception as pc_exception
 
@@ -78,7 +79,11 @@ class Configuration:
         if self.config_obj is None:
             self.config_obj = {}
 
-        self.config_obj["name"] = name
+        if name == consts.ROOT and "name" in self.config_obj:
+            name = self.config_obj["name"]
+            self.name = name
+        else:
+            self.config_obj["name"] = name
 
         if not "render" in self.config_obj or self.config_obj["render"] is None:
             self.config_obj["render"] = {}

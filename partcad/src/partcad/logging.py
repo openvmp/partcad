@@ -11,28 +11,31 @@ from logging import DEBUG, INFO, WARN, WARNING, ERROR, CRITICAL
 import threading
 import time
 
+# Track if any errors occurred during the execution for test purposes and for
+# the main program to know if it should exit with an error code.
 had_errors = False
 
-setLevel = lambda *args, **kwargs: logging.getLogger("partcad").setLevel(
-    *args, **kwargs
-)
-log = lambda *args, **kwargs: logging.getLogger("partcad").log(*args, **kwargs)
-debug = lambda *args, **kwargs: logging.getLogger("partcad").debug(
-    *args, **kwargs
-)
-info = lambda *args, **kwargs: logging.getLogger("partcad").info(
-    *args, **kwargs
-)
-warn = lambda *args, **kwargs: logging.getLogger("partcad").warn(
-    *args, **kwargs
-)
-warning = lambda *args, **kwargs: logging.getLogger("partcad").warning(
-    *args, **kwargs
-)
+# Other packages (such as 'pip' or 'pytest') may mess with the root logger
+# in a way that we don't want. We create a separate logger for our own use.
+# For example, 'pip' sets up a filter that drops 'extra's from log records,
+# thus turning 'process_start' and 'process_end' into regular error messages.
+logging.getLogger("partcad").propagate = False
+
+# Wrap the logger to make it easier to use
+setLevel = lambda *a, **kw: logging.getLogger("partcad").setLevel(*a, **kw)
+log = lambda *a, **kw: logging.getLogger("partcad").log(*a, **kw)
+debug = lambda *a, **kw: logging.getLogger("partcad").debug(*a, **kw)
+info = lambda *a, **kw: logging.getLogger("partcad").info(*a, **kw)
+warn = lambda *a, **kw: logging.getLogger("partcad").warn(*a, **kw)
+warning = lambda *a, **kw: logging.getLogger("partcad").warning(*a, **kw)
+
+
 def error(*args, **kwargs):
     global had_errors
     had_errors = True
     logging.getLogger("partcad").error(*args, **kwargs)
+
+
 def critical(*args, **kwargs):
     global had_errors
     had_errors = True
@@ -44,10 +47,16 @@ def critical(*args, **kwargs):
 def exception(
     *args,
 ):
+    global had_errors
+    had_errors = True
     logging.getLogger("partcad").exception(*args)
 
 
-def default_process_start(self_ops, op: str, package: str, item: str = None):
+# Create 'ops' that are used for dependency injection of the logic to control
+# the logging context (e.g. the current state of processes and actions).
+def default_process_start(
+    self_ops, op: str, package: str, item: str | None = None
+):
     if item is None:
         info("Starting process: %s: %s" % (op, package))
     else:
@@ -55,10 +64,12 @@ def default_process_start(self_ops, op: str, package: str, item: str = None):
 
 
 def default_process_end(self_ops, op: str, package: str, item: str = None):
-    _ignore = True
+    pass
 
 
-def default_action_start(self_ops, op: str, package: str, item: str = None):
+def default_action_start(
+    self_ops, op: str, package: str, item: str | None = None
+):
     if item is None:
         info("Starting action: %s: %s" % (op, package))
     else:
@@ -66,7 +77,7 @@ def default_action_start(self_ops, op: str, package: str, item: str = None):
 
 
 def default_action_end(self_ops, op: str, package: str, item: str = None):
-    _ignore = True
+    pass
 
 
 # Dependency injection point for logging plugins
@@ -80,11 +91,11 @@ class Ops:
 ops = Ops()
 
 
-# Only one process at a time, no recursion
+# Only one 'process' at a time, no recursion
 process_lock = threading.Lock()
 
 
-# classes to be used with "with()" for blocks to be logged
+# Classes to be used with "with()" to alter the logging context.
 class Process(object):
     def __init__(self, op: str, package: str, item: str = None):
         self.op = op

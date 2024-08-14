@@ -16,7 +16,8 @@ import partcad as pc
 
 def test_file_url_part_1():
     """Download a STEP file from a URL"""
-    ctx = pc.Context()
+    # TODO(clairbee): make this test work with no parameter passed into "Context": the root package may be broken or the absent config is not a broken package?
+    ctx = pc.Context("examples")
     pkg = ctx.get_project(".")
     assert pkg is not None
 

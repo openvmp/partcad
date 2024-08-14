@@ -178,7 +178,7 @@ class Project(project_config.Configuration):
             and not self.config_obj["desc"] is None
             and isinstance(self.config_obj["desc"], str)
         ):
-            self.desc = self.config_obj["desc"]
+            self.desc = self.config_obj["desc"].strip()
         else:
             self.desc = ""
 

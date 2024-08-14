@@ -39,6 +39,17 @@ class Context(project_config.Configuration):
     stats_assemblies_instantiated: int
     stats_memory: int
 
+    # name is the package path (not a filesystem path) of the root package
+    # in case it's configured to be something other than '/' (default)
+    name: str
+
+    # root_path is the absolute filesystem path to the root package (for monorepo's)
+    root_path: str
+
+    # current_project_path is the package path (not a filesystem path) of the current package
+    # It is expected to match 'self.name' of the current package's object
+    current_project_path: str
+
     class PackageLock(object):
         def __init__(self, ctx, package_name: str):
             ctx.project_locks_lock.acquire()
@@ -70,13 +81,17 @@ class Context(project_config.Configuration):
         self.root_path = os.path.abspath(root_path)
         if self.root_path == initial_root_path and root_file != "":
             self.root_path = os.path.join(self.root_path, root_file)
-        self.current_project_path = "/" + os.path.relpath(
+
+        super().__init__(consts.ROOT, self.root_path)
+        self.current_project_path = self.name
+        if not self.current_project_path.endswith("/"):
+            self.current_project_path += "/"
+        self.current_project_path += os.path.relpath(
             initial_root_path,
             root_path,
         )
-        if self.current_project_path == "/.":
-            self.current_project_path = "/"
-        super().__init__(consts.ROOT, self.root_path)
+        if self.current_project_path == self.name + "/.":
+            self.current_project_path = self.name
 
         # Protect the critical sections from access in different threads
         self.lock = threading.RLock()
@@ -107,7 +122,7 @@ class Context(project_config.Configuration):
             self.import_project(
                 None,  # parent
                 {
-                    "name": consts.ROOT,
+                    "name": self.name,
                     "type": "local",
                     "path": self.config_path,
                     "maybeEmpty": True,
@@ -208,10 +223,23 @@ class Context(project_config.Configuration):
         project_path = self.get_project_abs_path(rel_project_path)
 
         with self.lock:
-            # Strip the first '/' (absolute path always starts with a '/'``)
-            project_path = project_path[1:]
+            # Check if it's an explicit reference outside of the root project
+            if not project_path.startswith(self.name):
+                pc_logging.debug(
+                    "Project path is outside of the root project: %s"
+                    % project_path
+                )
+                # In case of an explicit reference outside of the root project,
+                # assume that the root package has an 'onlyInRoot' dependency
+                # present to facilitate such a reference in a standalone
+                # development environment.
+                project_path = self.name + project_path
 
-            project = self.projects[consts.ROOT]
+            # Strip the first '/' (absolute path always starts with a '/'``)
+            len_to_skip = len(self.name) + 1 if self.name != "/" else 1
+            project_path = project_path[len_to_skip:]
+
+            project = self.projects[self.name]
 
             if project_path == "":
                 return project
@@ -303,16 +331,18 @@ class Context(project_config.Configuration):
         return next_project
 
     def import_all(self):
-        asyncio.run(self._import_all_wrapper(self.projects[consts.ROOT]))
+        # The VS Code Extension may run this inside an event loop, so we need to
+        # check if we are already inside one.
+        asyncio.get_event_loop().run_until_complete(
+            self._import_all_wrapper(self.projects[self.name])
+        )
 
     async def _import_all_wrapper(self, project):
         iterate_tasks = []
         import_tasks = []
 
         iterate_tasks.append(
-            asyncio.create_task(
-                self._import_all_recursive(self.projects[consts.ROOT])
-            )
+            asyncio.create_task(self._import_all_recursive(project))
         )
 
         while iterate_tasks or import_tasks:
@@ -342,7 +372,7 @@ class Context(project_config.Configuration):
         tasks = []
 
         if project.broken:
-            pc_logging.info("Ignoring the broken package: %s" % project.name)
+            pc_logging.warn("Ignoring the broken package: %s" % project.name)
             return []
 
         # First, iterate all explicitly mentioned "import"s.
