@@ -42,6 +42,7 @@ Besides the package properties and, optionally, a list of imported dependencies,
 
 .. code-block:: yaml
 
+  name: <(optional) for advanced users, the assumed package path for standalone development>
   desc: <(optional) description>
   url: <(optional) package or maintainer's url>
   poc: <(optional) point of contact, maintainer's email>

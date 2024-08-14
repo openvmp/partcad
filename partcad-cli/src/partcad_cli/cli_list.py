@@ -173,7 +173,9 @@ def cli_list(args, ctx):
         if padding_size < 4:
             padding_size = 4
         line += " " * padding_size
-        line += "%s" % project["desc"]
+        desc = project["desc"]
+        desc = desc.replace("\n", "\n" + " " * 68)
+        line += "%s" % desc
         output += line + "\n"
         pkg_count = pkg_count + 1
 
@@ -440,7 +442,7 @@ def cli_list_parts(args, ctx):
 
             desc = part.desc if part.desc is not None else ""
             desc = desc.replace(
-                "\n", "\n" + " " * (80 if args.recursive else 44)
+                "\n", "\n" + " " * (84 if args.recursive else 44)
             )
             line += "%s" % desc
             output += line + "\n"
@@ -506,7 +508,7 @@ def cli_list_assemblies(args, ctx):
 
             desc = assy.desc if assy.desc is not None else ""
             desc = desc.replace(
-                "\n", "\n" + " " * (80 if args.recursive else 44)
+                "\n", "\n" + " " * (84 if args.recursive else 44)
             )
             line += "%s" % desc
             output += line + "\n"

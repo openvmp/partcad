@@ -1,7 +1,6 @@
-# /produce_part_extrude
+# /pub/examples/partcad/produce_part_extrude
 
 This example demonstrates how to define 3D parts by extruding 2D sketches.
-
 
 ## Usage
 ```shell

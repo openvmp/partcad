@@ -6,7 +6,6 @@
 #
 # Licensed under Apache License, Version 2.0.
 
-import asyncio
 import atexit
 import logging
 from logging.handlers import QueueHandler, QueueListener
@@ -249,11 +248,24 @@ class AnsiTerminalProgressHandler(logging.Handler):
 
 listener = None
 queue_handler: AnsiTerminalProgressHandler = None
+old_handlers = []
+log_queue = None
 
 
 def fini():
     global listener
-    if not listener is None:
+    global queue_handler
+
+    if queue_handler is not None:
+        logger = logging.getLogger("partcad")
+        for handler in logger.handlers:
+            if handler == queue_handler:
+                logger.removeHandler(handler)
+        for handler in old_handlers:
+            logger.addHandler(handler)
+        queue_handler = None
+
+    if listener is not None:
         atexit.unregister(fini)
         listener.stop()
         listener = None
@@ -261,21 +273,28 @@ def fini():
 
 def init(stream=None):
     global listener
+    global queue_handler
+    global log_queue
     global ops
 
-    log_queue = queue.Queue(-1)
-    queue_handler = QueueHandler(log_queue)
-    output_handler = AnsiTerminalProgressHandler(stream=stream)
+    if log_queue is None:
+        log_queue = queue.Queue(-1)
 
-    logger = logging.getLogger("partcad")
-    handlers = logger.handlers
-    for handler in handlers:
-        logger.removeHandler(handler)
-    logger.addHandler(queue_handler)
+    if queue_handler is None:
+        queue_handler = QueueHandler(log_queue)
 
-    listener = QueueListener(log_queue, output_handler)
-    listener.start()
-    atexit.register(fini)
+        logger = logging.getLogger("partcad")
+        handlers = logger.handlers
+        for handler in handlers:
+            old_handlers.append(handler)
+            logger.removeHandler(handler)
+        logger.addHandler(queue_handler)
+
+    if listener is None:
+        output_handler = AnsiTerminalProgressHandler(stream=stream)
+        listener = QueueListener(log_queue, output_handler)
+        listener.start()
+        atexit.register(fini)
 
     ops.process_start = ansi_process_start
     ops.process_end = ansi_process_end

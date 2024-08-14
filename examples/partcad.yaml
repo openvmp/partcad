@@ -7,7 +7,9 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-# Repo used by some built-in tests
+# In case this is the root package,
+# use the path prefix that we would expect in the real production use case.
+name: /pub/examples/partcad
 
 import:
   pub:

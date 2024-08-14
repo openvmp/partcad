@@ -260,6 +260,7 @@ class Interface:
         self.name = name
         self.full_name = project.name + ":" + name
         self.desc = config.get("desc", "")
+        self.desc = self.desc.strip() if self.desc is not None else ""
         self.abstract = config.get("abstract", False)
         self.lead_port = config.get("leadPort", None)
 
