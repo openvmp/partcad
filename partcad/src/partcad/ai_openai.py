@@ -8,12 +8,15 @@
 #
 
 import base64
+import importlib
 import mimetypes
 from pathlib import Path
 import threading
 from typing import Any
 
-import openai as openai_genai
+# Lazy-load AI imports as they are not always needed
+# import openai as openai_genai
+openai_genai = None
 
 from . import logging as pc_logging
 from .user_config import user_config
@@ -33,9 +36,16 @@ model_tokens = {
 
 
 def openai_once():
-    global OPENAI_API_KEY, openai_client
+    global OPENAI_API_KEY, openai_client, openai_genai
 
     with lock:
+        if openai_genai is None:
+            try:
+                openai_genai = importlib.import_module("openai")
+            except Exception as e:
+                pc_logging.exception(e)
+                return False
+
         latest_key = user_config.openai_api_key
         if latest_key != OPENAI_API_KEY:
             OPENAI_API_KEY = latest_key
