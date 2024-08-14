@@ -7,14 +7,18 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import PIL.Image
-from pathlib import Path
+import importlib
 import threading
 import time
 from typing import Any
 
-import google.generativeai as google_genai
-import google.api_core.exceptions
+# Lazy-load AI imports as they are not always needed
+# import PIL.Image
+pil_image = None
+# import google.generativeai as google_genai
+google_genai = None
+# import google.api_core.exceptions
+google_api_core_exceptions = None
 
 from . import logging as pc_logging
 from .user_config import user_config
@@ -30,8 +34,34 @@ model_tokens = {
 
 def google_once():
     global GOOGLE_API_KEY
+    global pil_image
+    global google_genai
+    global google_api_core_exceptions
 
     with lock:
+        if pil_image is None:
+            try:
+                pil_image = importlib.import_module("PIL.Image")
+            except Exception as e:
+                pc_logging.exception(e)
+                return
+
+        if google_genai is None:
+            try:
+                google_genai = importlib.import_module("google.generativeai")
+            except Exception as e:
+                pc_logging.exception(e)
+                return
+
+        if google_api_core_exceptions is None:
+            try:
+                google_api_core_exceptions = importlib.import_module(
+                    "google.api_core.exceptions"
+                )
+            except Exception as e:
+                pc_logging.exception(e)
+                return
+
         latest_key = user_config.google_api_key
         if latest_key != GOOGLE_API_KEY:
             GOOGLE_API_KEY = latest_key
@@ -89,11 +119,11 @@ class AiGoogle:
                     response = client.generate_content(
                         contents,
                     )
-                except google.api_core.exceptions.ResourceExhausted as e:
+                except google_api_core_exceptions.ResourceExhausted as e:
                     pc_logging.exception(e)
                     retry = True
                     time.sleep(60)
-                except google.api_core.exceptions.InternalServerError as e:
+                except google_api_core_exceptions.InternalServerError as e:
                     pc_logging.exception(e)
                     retry = True
                     time.sleep(1)
