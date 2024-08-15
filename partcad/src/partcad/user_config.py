@@ -6,6 +6,7 @@
 #
 # Licensed under Apache License, Version 2.0.
 
+import importlib.util
 import os
 from pathlib import Path
 import shutil
@@ -29,6 +30,8 @@ class UserConfig:
         if os.path.exists(config_path):
             try:
                 self.config_obj = yaml.safe_load(open(config_path, "r"))
+                if self.config_obj is None:
+                    self.config_obj = {}
             except Exception as e:
                 pc_logging.error("ERROR: Failed to parse %s" % config_path)
 
@@ -36,7 +39,10 @@ class UserConfig:
         # description: sandboxing environment for invoking python scripts
         # values: [none | pypy | conda]
         # default: conda
-        if not shutil.which("conda") is None:
+        if (
+            not shutil.which("conda") is None
+            or importlib.util.find_spec("conda") is not None
+        ):
             self.python_runtime = "conda"
         else:
             self.python_runtime = "none"

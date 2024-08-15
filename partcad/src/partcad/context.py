@@ -331,11 +331,7 @@ class Context(project_config.Configuration):
         return next_project
 
     def import_all(self):
-        # The VS Code Extension may run this inside an event loop, so we need to
-        # check if we are already inside one.
-        asyncio.get_event_loop().run_until_complete(
-            self._import_all_wrapper(self.projects[self.name])
-        )
+        asyncio.run(self._import_all_wrapper(self.projects[self.name]))
 
     async def _import_all_wrapper(self, project):
         iterate_tasks = []
