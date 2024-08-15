@@ -45,7 +45,6 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
                     "conda",
                     path=search_path_strings,
                 )
-            pc_logging.error("Conda path corrected: %s" % self.conda_path)
 
     async def run(self, cmd, stdin="", cwd=None):
         with self.lock:
