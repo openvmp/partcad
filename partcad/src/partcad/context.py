@@ -89,7 +89,7 @@ class Context(project_config.Configuration):
         self.current_project_path += os.path.relpath(
             initial_root_path,
             root_path,
-        )
+        ).replace(os.path.sep, "/")
         if self.current_project_path == self.name + "/.":
             self.current_project_path = self.name
 
@@ -205,6 +205,10 @@ class Context(project_config.Configuration):
                 return imported_project
 
     def get_project_abs_path(self, rel_project_path: str):
+        """
+        Get the full package path (not a filesystem path) of a package
+        given the relative path from the current package
+        """
         if rel_project_path.startswith("/"):
             return rel_project_path
 
@@ -215,9 +219,7 @@ class Context(project_config.Configuration):
         if rel_project_path == "":
             return project_path
 
-        if not project_path.endswith("/"):
-            project_path += "/"
-        return os.path.abspath(project_path + rel_project_path)
+        return get_child_project_path(project_path, rel_project_path)
 
     def get_project(self, rel_project_path: str):
         project_path = self.get_project_abs_path(rel_project_path)

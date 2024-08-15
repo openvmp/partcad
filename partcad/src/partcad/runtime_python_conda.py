@@ -32,9 +32,20 @@ class CondaPythonRuntime(runtime_python.PythonRuntime):
                 root_prefix = info["root_prefix"]
                 root_bin = os.path.join(root_prefix, "bin")
                 root_scripts = os.path.join(root_prefix, "Scripts")
+                search_paths = [
+                    root_scripts,
+                    root_bin,
+                    root_prefix,
+                ]
+                if os.name == "nt":
+                    search_path_strings = ";".join(search_paths)
+                else:
+                    search_path_strings = ":".join(search_paths)
                 self.conda_path = shutil.which(
-                    "conda", path=f"{root_scripts}:{root_bin}:{root_prefix}"
+                    "conda",
+                    path=search_path_strings,
                 )
+            pc_logging.error("Conda path corrected: %s" % self.conda_path)
 
     async def run(self, cmd, stdin="", cwd=None):
         with self.lock:
