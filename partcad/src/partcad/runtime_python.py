@@ -29,6 +29,13 @@ class PythonRuntime(runtime.Runtime):
         # the asyncio event loop. So a threading lock is appropriate here.
         self.lock = threading.RLock()
 
+    def get_async_lock(self):
+        locals = threading.local()
+        alock = f"lock_{id(self)}"
+        if alock not in locals.__dict__:
+            locals.__dict__[alock] = asyncio.Lock()
+        return locals.__dict__[alock]
+
     async def run(self, cmd, stdin="", cwd=None):
         pc_logging.debug("Running: %s", cmd)
         p = await asyncio.create_subprocess_exec(
@@ -70,12 +77,15 @@ class PythonRuntime(runtime.Runtime):
             self.path, ".partcad.installed." + python_package_hash
         )
         with self.lock:
-            if not os.path.exists(guard_path):
-                with pc_logging.Action("PipInst", self.version, python_package):
-                    await self.run(
-                        ["-m", "pip", "install", "-U", python_package]
-                    )
-                pathlib.Path(guard_path).touch()
+            async with self.get_async_lock():
+                if not os.path.exists(guard_path):
+                    with pc_logging.Action(
+                        "PipInst", self.version, python_package
+                    ):
+                        await self.run(
+                            ["-m", "pip", "install", "-U", python_package]
+                        )
+                    pathlib.Path(guard_path).touch()
 
     async def prepare_for_package(self, project):
         # TODO(clairbee): expire the guard file after a certain time
@@ -88,23 +98,24 @@ class PythonRuntime(runtime.Runtime):
             flag_filename = ".partcad.project." + project_hash
             flag_path = os.path.join(self.path, flag_filename)
             with self.lock:
-                if not os.path.exists(flag_path) or os.path.getmtime(
-                    requirements_path
-                ) > os.path.getmtime(flag_path):
-                    # Install requirements and remember when we did that
-                    with pc_logging.Action(
-                        "PipReqs", self.version, project.name
-                    ):
-                        await self.run(
-                            [
-                                "-m",
-                                "pip",
-                                "install",
-                                "-r",
-                                requirements_path,
-                            ]
-                        )
-                    pathlib.Path(flag_path).touch()
+                async with self.get_async_lock():
+                    if not os.path.exists(flag_path) or os.path.getmtime(
+                        requirements_path
+                    ) > os.path.getmtime(flag_path):
+                        # Install requirements and remember when we did that
+                        with pc_logging.Action(
+                            "PipReqs", self.version, project.name
+                        ):
+                            await self.run(
+                                [
+                                    "-m",
+                                    "pip",
+                                    "install",
+                                    "-r",
+                                    requirements_path,
+                                ]
+                            )
+                        pathlib.Path(flag_path).touch()
 
         # Install dependencies of the package
         if "pythonRequirements" in project.config_obj:

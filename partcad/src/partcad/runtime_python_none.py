@@ -7,13 +7,23 @@
 # Licensed under Apache License, Version 2.0.
 
 import os
+import shutil
 
 from . import runtime_python
 
 
 class NonePythonRuntime(runtime_python.PythonRuntime):
+    exec_name: str
+
     def __init__(self, ctx, version=None):
         super().__init__(ctx, "none", version)
+
+        if os.name == "nt" and shutil.which("pythonw") is not None:
+            self.exec_name = "pythonw"
+        elif shutil.which("python3") is not None:
+            self.exec_name = "python3"
+        else:
+            self.exec_name = "python"
 
         if not self.initialized:
             os.makedirs(self.path)
@@ -21,11 +31,7 @@ class NonePythonRuntime(runtime_python.PythonRuntime):
 
     async def run(self, cmd, stdin="", cwd=None):
         return await super().run(
-            [
-                "python" if os.name != "nt" else "pythonw",
-                # "python%s" % self.version, # This doesn't work on Windows
-            ]
-            + cmd,
+            [self.exec_name] + cmd,
             stdin,
             cwd=cwd,
         )
