@@ -9,6 +9,7 @@
 
 import aiofiles
 import aiohttp
+import os
 
 from .file_factory import FileFactory
 from .logging import debug
@@ -24,6 +25,10 @@ class FileFactoryUrl(FileFactory):
 
     async def download(self, path):
         debug("Downloading file from %s to %s" % (self.url, path))
+
+        dirs = os.path.dirname(path)
+        if dirs != "" and not os.path.exists(dirs):
+            os.makedirs(dirs)
 
         async with aiohttp.ClientSession() as session:
             r = await session.get(self.url)
