@@ -1,0 +1,6 @@
+{% from 'include.j2' import defined_variable %}
+
+parts:
+  {{ defined_variable }}:
+    type: cadquery
+    path: ../../../../examples/produce_part_cadquery_primitive/cube.py

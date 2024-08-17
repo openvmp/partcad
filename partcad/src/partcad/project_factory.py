@@ -25,6 +25,7 @@ class ImportConfiguration:
             else:
                 raise ValueError("Import configuration type is not set")
         self.import_config_type = config_obj.get("type")
+        self.include_paths = self.config_obj.get("includePaths", [])
 
 
 class ProjectFactory(ImportConfiguration):
@@ -44,7 +45,9 @@ class ProjectFactory(ImportConfiguration):
 
     def _create(self, config):
         # TODO(clairbee): Finalize the config object if necessary
-        self.project = p.Project(self.ctx, self.name, self.path)
+        self.project = p.Project(
+            self.ctx, self.name, self.path, include_paths=self.include_paths
+        )
         # Make the project config inherit some properties of the import config
         self.project.config_obj["type"] = self.import_config_type
 
