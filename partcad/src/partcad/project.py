@@ -106,8 +106,8 @@ class Project(project_config.Configuration):
         def __exit__(self, *_args):
             self.lock.release()
 
-    def __init__(self, ctx, name, path):
-        super().__init__(name, path)
+    def __init__(self, ctx, name, path, include_paths=[]):
+        super().__init__(name, path, include_paths)
         self.ctx = ctx
 
         # Protect the critical sections from access in different threads

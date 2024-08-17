@@ -58,6 +58,7 @@ Besides the package properties and, optionally, a list of imported dependencies,
           url: <(git|tar only) URL of the package>
           relPath: <(git|tar only) relative path within the repository>
           revision: <(git only) the exact revision to import>
+          includePaths: <(optional) Jinja2 include path>
 
   parts:
       <part declarations, see below>

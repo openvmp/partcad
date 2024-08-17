@@ -6,7 +6,7 @@
 #
 # Licensed under Apache License, Version 2.0.
 
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, ChoiceLoader
 import json
 import os
 from packaging.specifiers import SpecifierSet
@@ -24,7 +24,9 @@ DEFAULT_CONFIG_FILENAME = "partcad.yaml"
 class Configuration:
     name: str
 
-    def __init__(self, name, config_path=DEFAULT_CONFIG_FILENAME):
+    def __init__(
+        self, name, config_path=DEFAULT_CONFIG_FILENAME, include_paths=[]
+    ):
         self.name = name
         self.config_obj = {}
         self.config_dir = config_path
@@ -52,9 +54,12 @@ class Configuration:
         fp.close()
 
         # Resolve Jinja templates
-        template = Environment(
-            loader=FileSystemLoader(self.config_dir + os.path.sep)
-        ).from_string(config)
+        loaders = [FileSystemLoader(self.config_dir + os.path.sep)]
+        # TODO(clairbee): mark the build as non-hermetic if includePaths is used
+        for include_path in include_paths:
+            loaders.append(FileSystemLoader(include_path))
+        loader = ChoiceLoader(loaders)
+        template = Environment(loader=loader).from_string(config)
         config = template.render(
             {
                 "package_name": name,
