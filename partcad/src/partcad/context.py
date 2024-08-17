@@ -90,7 +90,10 @@ class Context(project_config.Configuration):
             initial_root_path,
             root_path,
         ).replace(os.path.sep, "/")
-        if self.current_project_path == self.name + "/.":
+        if self.current_project_path == self.name + "/." or (
+            self.name.endswith("/")
+            and self.current_project_path == self.name + "."
+        ):
             self.current_project_path = self.name
 
         # Protect the critical sections from access in different threads
