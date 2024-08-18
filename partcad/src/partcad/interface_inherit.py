@@ -46,12 +46,17 @@ class InterfaceInherits:
             target_project = project
         else:
             target_project = project.ctx.get_project(self.source_project_name)
+            if target_project is None:
+                raise Exception(
+                    "Failed to find the project to inherit the interface from: %s"
+                    % self.source_project_name
+                )
         self.interface = target_project.get_interface(
             self.source_interface_name
         )
 
         if self.interface is None:
-            pc_logging.error(
+            raise Exception(
                 "Failed to find the interface to inherit: %s" % name
             )
 
