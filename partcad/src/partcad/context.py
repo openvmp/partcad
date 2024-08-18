@@ -165,7 +165,10 @@ class Context(project_config.Configuration):
                     not "type" in project_import_config
                     or project_import_config["type"] == "local"
                 ):
-                    rfl.ProjectFactoryLocal(self, parent, project_import_config)
+                    with pc_logging.Action("Local", name):
+                        rfl.ProjectFactoryLocal(
+                            self, parent, project_import_config
+                        )
                 elif project_import_config["type"] == "git":
                     with pc_logging.Action("Git", name):
                         rfg.ProjectFactoryGit(
