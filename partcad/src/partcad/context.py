@@ -462,12 +462,13 @@ class Context(project_config.Configuration):
             mate_target_config,
             reverse=False,
         )
-        self._add_mate(
-            target_interface,
-            source_interface,
-            mate_target_config,
-            reverse=True,
-        )
+        if target_interface != source_interface:
+            self._add_mate(
+                target_interface,
+                source_interface,
+                mate_target_config,
+                reverse=True,
+            )
 
     def _add_mate(
         self,
@@ -482,10 +483,11 @@ class Context(project_config.Configuration):
         if not source_interface_name in self.mates:
             self.mates[source_interface_name] = {}
         if target_interface_name in self.mates[source_interface_name]:
-            raise Exception(
+            pc_logging.error(
                 "Mate already exists: %s -> %s"
                 % (source_interface_name, target_interface_name)
             )
+            return
 
         mate = Mating(
             source_interface, target_interface, mate_target_config, reverse
@@ -502,6 +504,9 @@ class Context(project_config.Configuration):
 
     def find_mating_interfaces(self, source_shape, target_shape):
         source_interfaces = set(source_shape.with_ports.get_interfaces().keys())
+
+        # compatible_source_interfaces is the list of all interfaces they are
+        # compatible with (implement them and only them)
         compatible_source_interfaces = set(
             [
                 compatible_interface
@@ -511,6 +516,12 @@ class Context(project_config.Configuration):
                 ).compatible_with
             ]
         )
+
+        # real_source_interfaces is the map of source interfaces to the set of
+        # interfaces they are compatible with (including themselves). It's
+        # called 'real', beacuase it allows to perform a lookup of
+        # the actual (real) source interface(s) which brought in the given
+        # compatible interface.
         real_source_interfaces = {
             interface: set([interface]) for interface in source_interfaces
         }
@@ -521,11 +532,15 @@ class Context(project_config.Configuration):
                 if not compatible_interface in real_source_interfaces:
                     real_source_interfaces[compatible_interface] = set()
                 real_source_interfaces[compatible_interface].add(interface)
+
+        # Now, extend the source_interfaces to include all of the interfaces at
+        # least one of the source interfaces is compatible with
         source_interfaces = source_interfaces.union(
             compatible_source_interfaces
         )
         pc_logging.debug("Source interfaces: %s" % source_interfaces)
 
+        # Now do the same for the target interfaces
         target_interfaces = set(target_shape.with_ports.get_interfaces().keys())
         compatible_target_interfaces = set(
             [
