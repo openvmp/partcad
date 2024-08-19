@@ -13,7 +13,9 @@ from . import project_factory as pf
 
 class LocalImportConfiguration:
     def __init__(self):
-        self.import_config_path = self.config_obj.get("path")
+        self.import_config_path = self.config_obj.get("path").replace(
+            "/", os.path.sep
+        )
         self.maybe_empty = False
         if "maybeEmpty" in self.config_obj:
             self.maybe_empty = self.config_obj.get("maybeEmpty")
