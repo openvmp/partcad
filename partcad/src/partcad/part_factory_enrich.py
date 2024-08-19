@@ -67,7 +67,13 @@ class PartFactoryEnrich(pf.PartFactory):
             else:
                 source_project = ctx.get_project(self.source_project_name)
                 if source_project is None:
-                    raise Exception("Package not found: %s" % self.source_project_name)
+                    pc_logging.debug(
+                        "Available projects: %s"
+                        % str(sorted(list(ctx.projects.keys())))
+                    )
+                    raise Exception(
+                        "Package not found: %s" % self.source_project_name
+                    )
                 augmented_config = source_project.get_part_config(
                     self.source_part_name
                 )
