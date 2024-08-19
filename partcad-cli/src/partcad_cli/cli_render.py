@@ -58,6 +58,12 @@ def cli_help_render(subparsers: argparse.ArgumentParser):
         dest="package",
         default="",
     )
+    parser_render.add_argument(
+        "-r",
+        help="Recursively render all imported packages",
+        dest="recursive",
+        action="store_true",
+    )
 
     group_type = parser_render.add_mutually_exclusive_group(required=False)
     group_type.add_argument(
@@ -96,43 +102,57 @@ def cli_help_render(subparsers: argparse.ArgumentParser):
 def cli_render(args, ctx):
     ctx.option_create_dirs = args.create_dirs
 
-    if args.package is None:
-        args.package = ""
-    if not args.object is None:
-        if not ":" in args.object:
-            args.object = ":" + args.object
-        args.package, args.object = pc_utils.resolve_resource_path(
-            ctx.get_current_project_path(), args.object
+    package = args.package if args.package is not None else ""
+    if args.recursive:
+        start_package = pc_utils.get_child_project_path(
+            ctx.get_current_project_path(), package
         )
-
-    if args.object is None:
-        # Render all parts and assemblies configured to be auto-rendered in this project
-        ctx.render(
-            project_path=args.package,
-            format=args.format,
-            output_dir=args.output_dir,
+        all_packages = ctx.get_all_packages(start_package)
+        packages = list(
+            map(
+                lambda p: p["name"],
+                list(all_packages),
+            )
         )
     else:
-        # Render the requested part or assembly
-        sketches = []
-        interfaces = []
-        parts = []
-        assemblies = []
-        if args.sketch:
-            sketches.append(args.object)
-        elif args.interface:
-            interfaces.append(args.object)
-        elif args.assembly:
-            assemblies.append(args.object)
-        else:
-            parts.append(args.object)
+        packages = [package]
 
-        prj = ctx.get_project(args.package)
-        prj.render(
-            sketches=sketches,
-            interfaces=interfaces,
-            parts=parts,
-            assemblies=assemblies,
-            format=args.format,
-            output_dir=args.output_dir,
-        )
+    for package in packages:
+        if not args.object is None:
+            if not ":" in args.object:
+                args.object = ":" + args.object
+            args.package, args.object = pc_utils.resolve_resource_path(
+                ctx.get_current_project_path(), args.object
+            )
+
+        if args.object is None:
+            # Render all parts and assemblies configured to be auto-rendered in this project
+            ctx.render(
+                project_path=package,
+                format=args.format,
+                output_dir=args.output_dir,
+            )
+        else:
+            # Render the requested part or assembly
+            sketches = []
+            interfaces = []
+            parts = []
+            assemblies = []
+            if args.sketch:
+                sketches.append(args.object)
+            elif args.interface:
+                interfaces.append(args.object)
+            elif args.assembly:
+                assemblies.append(args.object)
+            else:
+                parts.append(args.object)
+
+            prj = ctx.get_project(package)
+            prj.render(
+                sketches=sketches,
+                interfaces=interfaces,
+                parts=parts,
+                assemblies=assemblies,
+                format=args.format,
+                output_dir=args.output_dir,
+            )

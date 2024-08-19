@@ -11,6 +11,7 @@ import build123d as b3d
 
 import asyncio
 import base64
+import copy
 import os
 import pickle
 import shutil
@@ -268,7 +269,7 @@ class Shape(ShapeConfiguration):
         filepath=None,
     ):
         if not project is None and "render" in project.config_obj:
-            render_opts = project.config_obj["render"]
+            render_opts = copy.copy(project.config_obj["render"])
         else:
             render_opts = {}
 
@@ -276,7 +277,7 @@ class Shape(ShapeConfiguration):
             if isinstance(render_opts[kind], str):
                 opts = {"prefix": render_opts[kind]}
             else:
-                opts = render_opts[kind]
+                opts = copy.copy(render_opts[kind])
         else:
             opts = {}
 
@@ -286,7 +287,7 @@ class Shape(ShapeConfiguration):
             and kind in self.config["render"]
             and not self.config["render"][kind] is None
         ):
-            shape_opts = self.config["render"][kind]
+            shape_opts = copy.copy(self.config["render"][kind])
             if isinstance(shape_opts, str):
                 shape_opts = {"prefix": shape_opts}
             opts = render_cfg_merge(opts, shape_opts)
@@ -305,6 +306,10 @@ class Shape(ShapeConfiguration):
             # the generic section of rendering options in the config.
             if not os.path.isabs(filepath):
                 if "output_dir" in render_opts:
+                    # TODO(clairbee): consider using project.config_dir
+                    # filepath = os.path.join(
+                    #     project.config_dir, render_opts["output_dir"], filepath
+                    # )
                     filepath = os.path.join(render_opts["output_dir"], filepath)
                 elif not project is None:
                     filepath = os.path.join(project.config_dir, filepath)
