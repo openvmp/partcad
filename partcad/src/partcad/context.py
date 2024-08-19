@@ -241,10 +241,13 @@ class Context(project_config.Configuration):
                 # assume that the root package has an 'onlyInRoot' dependency
                 # present to facilitate such a reference in a standalone
                 # development environment.
-                project_path = self.name + project_path
 
             # Strip the first '/' (absolute path always starts with a '/'``)
-            len_to_skip = len(self.name) + 1 if self.name != "/" else 1
+            if self.name != "/" and project_path.startswith(self.name):
+                # The root package is not '/, need to skip the root package name
+                len_to_skip = len(self.name) + 1
+            else:
+                len_to_skip = 1
             project_path = project_path[len_to_skip:]
 
             project = self.projects[self.name]
@@ -292,7 +295,7 @@ class Context(project_config.Configuration):
                 )
             ):
                 pc_logging.debug(
-                    "Importing a subfolder: %s..." % next_project_path
+                    "Importing a subfolder (get): %s..." % next_project_path
                 )
                 prj_conf = {
                     "name": next_project_path,
@@ -320,11 +323,16 @@ class Context(project_config.Configuration):
                     )
                     imports = list(filtered)
                 for prj_name in imports:
-                    pc_logging.debug("Checking the import: %s..." % prj_name)
+                    pc_logging.debug(
+                        "Checking the import: %s vs %s..."
+                        % (prj_name, next_import)
+                    )
                     if prj_name != next_import:
                         continue
-                    pc_logging.debug("Importing: %s..." % next_project_path)
                     prj_conf = project.config_obj["import"][prj_name]
+                    if prj_conf.get("onlyInRoot", False):
+                        next_project_path = "/" + prj_name
+                    pc_logging.debug("Importing: %s..." % next_project_path)
                     if "name" in prj_conf:
                         prj_conf["orig_name"] = prj_conf["name"]
                     prj_conf["name"] = next_project_path
@@ -338,8 +346,10 @@ class Context(project_config.Configuration):
 
         return next_project
 
-    def import_all(self):
-        asyncio.run(self._import_all_wrapper(self.projects[self.name]))
+    def import_all(self, parent_name=None):
+        if parent_name is None:
+            parent_name = self.name
+        asyncio.run(self._import_all_wrapper(self.projects[parent_name]))
 
     async def _import_all_wrapper(self, project):
         iterate_tasks = []
@@ -394,13 +404,18 @@ class Context(project_config.Configuration):
                     imports,
                 )
                 imports = list(filtered)
-            for prj_name in imports:
-                next_project_path = get_child_project_path(
-                    project.name, prj_name
-                )
 
-                pc_logging.debug("Importing: %s..." % next_project_path)
+            for prj_name in imports:
                 prj_conf = project.config_obj["import"][prj_name]
+
+                if prj_conf.get("onlyInRoot", False):
+                    next_project_path = "/" + prj_name
+                else:
+                    next_project_path = get_child_project_path(
+                        project.name, prj_name
+                    )
+                pc_logging.debug("Importing: %s..." % next_project_path)
+
                 if "name" in prj_conf:
                     prj_conf["orig_name"] = prj_conf["name"]
                 prj_conf["name"] = next_project_path
@@ -423,9 +438,11 @@ class Context(project_config.Configuration):
                     consts.DEFAULT_PACKAGE_CONFIG,
                 )
             ):
+                # TODO(clairbee): check if this subdir is already imported
                 next_project_path = get_child_project_path(project.name, subdir)
                 pc_logging.debug(
-                    "Importing a subfolder: %s..." % next_project_path
+                    "Importing a subfolder (import all): %s..."
+                    % next_project_path
                 )
                 prj_conf = {
                     "name": next_project_path,
@@ -441,18 +458,25 @@ class Context(project_config.Configuration):
 
         return tasks
 
-    def get_all_packages(self):
+    def get_all_packages(self, parent_name=None):
         # TODO(clairbee): leverage root_project.get_child_project_names()
-        self.import_all()
-        return self.get_packages()
+        self.import_all(parent_name)
+        return self.get_packages(parent_name)
 
-    def get_packages(self):
+    def get_packages(self, parent_name=None):
+        projects = self.projects.values()
+        if parent_name is not None:
+            projects = filter(
+                lambda x: x.name.startswith(parent_name), projects
+            )
         return map(
             lambda pkg: {"name": pkg.name, "desc": pkg.desc},
             filter(
+                # FIXME(clairbee): parameterize interfaces before displaying them
+                # lambda x: len(x.interfaces) + len(x.sketches) + len(x.parts) + len(x.assemblies)
                 lambda x: len(x.sketches) + len(x.parts) + len(x.assemblies)
                 > 0,
-                self.projects.values(),
+                projects,
             ),
         )
 

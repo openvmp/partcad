@@ -1223,7 +1223,7 @@ class Project(project_config.Configuration):
             # Render
             tasks = []
             for shape in shapes:
-                shape_render = render
+                shape_render = copy.copy(render)
                 if (
                     "render" in shape.config
                     and not shape.config["render"] is None
@@ -1406,6 +1406,8 @@ class Project(project_config.Configuration):
             cfg = {}
 
         path = os.path.join(output_dir, cfg.get("path", "README.md"))
+        dir_path = os.path.dirname(path)
+        return_path = os.path.relpath(output_dir, dir_path)
 
         exclude = cfg.get("exclude", [])
         if exclude is None:
@@ -1436,10 +1438,70 @@ class Project(project_config.Configuration):
             lines += [usage]
             lines += [""]
 
+        if (
+            self.config_obj.get("import", None) is not None
+            and not "packages" in exclude
+        ):
+            imports = self.config_obj["import"]
+            display_imports = []
+            for alias in imports:
+                if imports[alias].get("onlyInRoot", False):
+                    continue
+                display_imports.append(alias)
+
+            if display_imports:
+                lines += ["## Sub-Packages"]
+                lines += [""]
+                for alias in display_imports:
+                    import_config = imports[alias]
+                    columns = []
+
+                    if (
+                        "type" not in import_config
+                        or import_config["type"] == "local"
+                    ):
+                        lines += [
+                            "### [%s](./%s)"
+                            % (
+                                import_config["name"],
+                                os.path.join(
+                                    return_path,
+                                    import_config["path"],
+                                    "README.md",
+                                ),
+                            )
+                        ]
+                    elif import_config["type"] == "git":
+                        lines += [
+                            "### [%s](%s)"
+                            % (import_config["name"], import_config["url"])
+                        ]
+                    else:
+                        lines += ["### %s" % import_config["name"]]
+
+                    if "desc" in import_config:
+                        columns += [import_config["desc"]]
+                    elif not columns:
+                        columns += ["***Not documented yet.***"]
+
+                    if len(columns) > 1:
+                        lines += ["<table><tr>"]
+                        lines += map(
+                            lambda c: "<td valign=top>" + c + "</td>", columns
+                        )
+                        lines += ["</tr></table>"]
+                    else:
+                        lines += columns
+                    lines += [""]
+
         def add_section(name, shape, render_cfg):
             config = shape.config
 
-            if "type" in config and config["type"] == "alias":
+            if (
+                "type" in config
+                and config["type"] == "alias"
+                and "aliases" in exclude
+            ):
                 return []
 
             columns = []
@@ -1447,8 +1509,15 @@ class Project(project_config.Configuration):
                 "type" in config and config["type"] == "svg"
             ):
                 svg_cfg = render_cfg["svg"] if "svg" in render_cfg else {}
+                if isinstance(svg_cfg, str):
+                    svg_cfg = {"prefix": svg_cfg}
                 svg_cfg = svg_cfg if svg_cfg is not None else {}
                 image_path = os.path.join(
+                    return_path,
+                    svg_cfg.get("prefix", "."),
+                    name + ".svg",
+                )
+                test_image_path = os.path.join(
                     svg_cfg.get("prefix", "."),
                     name + ".svg",
                 )
@@ -1459,6 +1528,11 @@ class Project(project_config.Configuration):
                 png_cfg = render_cfg["png"]
                 png_cfg = png_cfg if png_cfg is not None else {}
                 image_path = os.path.join(
+                    return_path,
+                    png_cfg.get("prefix", "."),
+                    name + ".png",
+                )
+                test_image_path = os.path.join(
                     png_cfg.get("prefix", "."),
                     name + ".png",
                 )
@@ -1466,9 +1540,12 @@ class Project(project_config.Configuration):
             else:
                 image_path = None
 
-            if image_path is None or not os.path.exists(image_path):
+            if image_path is None or not os.path.exists(
+                os.path.join(output_dir, test_image_path)
+            ):
                 pc_logging.warn(
-                    "Skipping rendering of %s: no image found" % name
+                    "Skipping rendering of %s: no image found at %s"
+                    % (name, test_image_path)
                 )
                 return []
 
@@ -1540,6 +1617,8 @@ class Project(project_config.Configuration):
                 lines += add_section(name, shape, render_cfg)
 
         lines += [
+            "<br/><br/>",
+            "",
             "*Generated by [PartCAD](https://partcad.org/)*",
         ]
 

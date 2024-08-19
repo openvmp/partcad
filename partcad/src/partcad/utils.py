@@ -27,6 +27,8 @@ def get_child_project_path(parent_path, child_name):
         result = parent_path + "/" + child_name
 
     result = re.sub(r"/[^/]*/\.\.", "", result)
+    if result != "/":
+        result = re.sub(r"/$", "", result)
     return result
 
 
