@@ -1,4 +1,4 @@
-partcad==0.6.31
+partcad==0.6.32
 renderlab
 rlPyCairo
 svglib
