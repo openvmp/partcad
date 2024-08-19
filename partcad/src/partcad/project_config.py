@@ -57,6 +57,9 @@ class Configuration:
         loaders = [FileSystemLoader(self.config_dir + os.path.sep)]
         # TODO(clairbee): mark the build as non-hermetic if includePaths is used
         for include_path in include_paths:
+            include_path = (
+                os.path.join(self.config_dir, include_path) + os.path.sep
+            )
             loaders.append(FileSystemLoader(include_path))
         loader = ChoiceLoader(loaders)
         template = Environment(loader=loader).from_string(config)
