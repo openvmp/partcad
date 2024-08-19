@@ -57,7 +57,7 @@ def test_project_config_template_override():
             "name": "/that",
             "type": "local",
             "path": "unit/data/project_config_include.yaml",
-            "includePaths": ["partcad/tests/unit/data/subdir"],
+            "includePaths": ["subdir"],
         },
     )
     # In this test case, the template is used to name the part the same name as
