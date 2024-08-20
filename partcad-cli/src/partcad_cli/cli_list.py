@@ -205,6 +205,7 @@ def cli_list_sketches(args, ctx):
 
         if (
             args.recursive
+            and hasattr(args, "package")
             and args.package is not None
             and not project_name.startswith(args.package)
         ):
@@ -212,7 +213,7 @@ def cli_list_sketches(args, ctx):
 
         if (
             args.recursive
-            and args.package is None
+            and (not hasattr(args, "package") or args.package is None)
             and not project_name.startswith(ctx.get_current_project_path())
         ):
             continue
@@ -276,6 +277,7 @@ def cli_list_interfaces(args, ctx):
 
         if (
             args.recursive
+            and hasattr(args, "package")
             and args.package is not None
             and not project_name.startswith(args.package)
         ):
@@ -283,7 +285,7 @@ def cli_list_interfaces(args, ctx):
 
         if (
             args.recursive
-            and args.package is None
+            and (not hasattr(args, "package") or args.package is None)
             and not project_name.startswith(ctx.get_current_project_path())
         ):
             continue
@@ -339,6 +341,37 @@ def cli_list_mates(args, ctx):
     # with corresponding logging calls
     time.sleep(2)
 
+    # Instantiate all interfaces in the relevant packages to get the mating data
+    # finalized
+    for package_name in ctx.projects:
+        if not args.recursive:
+            if (
+                hasattr(args, "package")
+                and args.package is not None
+                and package_name != args.package
+            ):
+                continue
+            if (
+                not hasattr(args, "package") or args.package is None
+            ) and package_name != ctx.get_current_project_path():
+                continue
+
+        if args.recursive:
+            if (
+                hasattr(args, "package")
+                and args.package is not None
+                and not package_name.startswith(args.package)
+            ):
+                continue
+            if (
+                not hasattr(args, "package") or args.package is None
+            ) and not package_name.startswith(ctx.get_current_project_path()):
+                continue
+
+        package = ctx.projects[package_name]
+        for interface_name in package.interfaces:
+            package.get_interface(interface_name)
+
     output = "PartCAD mating interfaces:\n"
     for source_interface_name in ctx.mates:
         source_package_name = source_interface_name.split(":")[0]
@@ -352,6 +385,7 @@ def cli_list_mates(args, ctx):
 
             if (
                 args.recursive
+                and hasattr(args, "package")
                 and args.package is not None
                 and not source_package_name.startswith(args.package)
                 and not target_package_name.startswith(args.package)
@@ -360,13 +394,30 @@ def cli_list_mates(args, ctx):
 
             if (
                 args.recursive
-                and args.package is None
+                and (not hasattr(args, "package") or args.package is None)
                 and not source_package_name.startswith(
                     ctx.get_current_project_path()
                 )
                 and not target_package_name.startswith(
                     ctx.get_current_project_path()
                 )
+            ):
+                continue
+
+            if (
+                not args.recursive
+                and hasattr(args, "package")
+                and args.package is not None
+                and source_package_name != args.package
+                and target_package_name != args.package
+            ):
+                continue
+
+            if (
+                not args.recursive
+                and (not hasattr(args, "package") or args.package is None)
+                and source_package_name != ctx.get_current_project_path()
+                and target_package_name != ctx.get_current_project_path()
             ):
                 continue
 
@@ -423,6 +474,7 @@ def cli_list_parts(args, ctx):
 
         if (
             args.recursive
+            and hasattr(args, "package")
             and args.package is not None
             and not project_name.startswith(args.package)
         ):
@@ -430,7 +482,7 @@ def cli_list_parts(args, ctx):
 
         if (
             args.recursive
-            and args.package is None
+            and (not hasattr(args, "package") or args.package is None)
             and not project_name.startswith(ctx.get_current_project_path())
         ):
             continue
@@ -492,6 +544,7 @@ def cli_list_assemblies(args, ctx):
 
         if (
             args.recursive
+            and hasattr(args, "package")
             and args.package is not None
             and not project_name.startswith(args.package)
         ):
@@ -499,7 +552,7 @@ def cli_list_assemblies(args, ctx):
 
         if (
             args.recursive
-            and args.package is None
+            and (not hasattr(args, "package") or args.package is None)
             and not project_name.startswith(ctx.get_current_project_path())
         ):
             continue
