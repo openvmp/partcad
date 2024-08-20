@@ -200,17 +200,20 @@ def cli_list_sketches(args, ctx):
 
     output = "PartCAD sketches:\n"
     for project_name in ctx.projects:
+        if not args.recursive and args.package != project_name:
+            continue
+
         if (
-            hasattr(args, "package")
-            and not args.package is None
-            and args.package != project_name
+            args.recursive
+            and args.package is not None
+            and not project_name.startswith(args.package)
         ):
             continue
 
-        if project_name != ctx.get_current_project_path() and (
-            not args.recursive
-            and hasattr(args, "package")
+        if (
+            args.recursive
             and args.package is None
+            and not project_name.startswith(ctx.get_current_project_path())
         ):
             continue
 
@@ -268,17 +271,20 @@ def cli_list_interfaces(args, ctx):
 
     output = "PartCAD interfaces:\n"
     for project_name in ctx.projects:
+        if not args.recursive and args.package != project_name:
+            continue
+
         if (
-            hasattr(args, "package")
-            and not args.package is None
-            and args.package != project_name
+            args.recursive
+            and args.package is not None
+            and not project_name.startswith(args.package)
         ):
             continue
 
-        if project_name != ctx.get_current_project_path() and (
-            not args.recursive
-            and hasattr(args, "package")
+        if (
+            args.recursive
             and args.package is None
+            and not project_name.startswith(ctx.get_current_project_path())
         ):
             continue
 
@@ -345,19 +351,22 @@ def cli_list_mates(args, ctx):
             mating = ctx.mates[source_interface_name][target_interface_name]
 
             if (
-                hasattr(args, "package")
-                and not args.package is None
-                and args.package != source_package_name
-                and args.package != target_package_name
+                args.recursive
+                and args.package is not None
+                and not source_package_name.startswith(args.package)
+                and not target_package_name.startswith(args.package)
             ):
                 continue
 
             if (
-                source_package_name != ctx.get_current_project_path()
-                and target_package_name != ctx.get_current_project_path()
-                and not args.recursive
-                and hasattr(args, "package")
+                args.recursive
                 and args.package is None
+                and not source_package_name.startswith(
+                    ctx.get_current_project_path()
+                )
+                and not target_package_name.startswith(
+                    ctx.get_current_project_path()
+                )
             ):
                 continue
 
@@ -409,17 +418,20 @@ def cli_list_parts(args, ctx):
 
     output = "PartCAD parts:\n"
     for project_name in ctx.projects:
+        if not args.recursive and args.package != project_name:
+            continue
+
         if (
-            hasattr(args, "package")
-            and not args.package is None
-            and args.package != project_name
+            args.recursive
+            and args.package is not None
+            and not project_name.startswith(args.package)
         ):
             continue
 
-        if project_name != ctx.get_current_project_path() and (
-            not args.recursive
-            and hasattr(args, "package")
+        if (
+            args.recursive
             and args.package is None
+            and not project_name.startswith(ctx.get_current_project_path())
         ):
             continue
 
@@ -475,17 +487,20 @@ def cli_list_assemblies(args, ctx):
 
     output = "PartCAD assemblies:\n"
     for project_name in ctx.projects:
+        if not args.recursive and args.package != project_name:
+            continue
+
         if (
-            hasattr(args, "package")
-            and not args.package is None
-            and args.package != project_name
+            args.recursive
+            and args.package is not None
+            and not project_name.startswith(args.package)
         ):
             continue
 
-        if project_name != ctx.get_current_project_path() and (
-            not args.recursive
-            and hasattr(args, "package")
+        if (
+            args.recursive
             and args.package is None
+            and not project_name.startswith(ctx.get_current_project_path())
         ):
             continue
 
