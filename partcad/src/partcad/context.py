@@ -129,6 +129,7 @@ class Context(project_config.Configuration):
                     "type": "local",
                     "path": self.config_path,
                     "maybeEmpty": True,
+                    "isRoot": True,
                 },
             )
 
@@ -315,13 +316,15 @@ class Context(project_config.Configuration):
                 and not project.config_obj["import"] is None
             ):
                 imports = project.config_obj["import"]
-                if project.name != self.name:
-                    filtered = filter(
-                        lambda x: "onlyInRoot" not in imports[x]
-                        or not imports[x]["onlyInRoot"],
-                        imports,
-                    )
-                    imports = list(filtered)
+                # TODO(clairbee): revisit if this code path is needed when the
+                #                 user explicitly asked for a particular package
+                # if not project.config_obj.get("isRoot", False):
+                #     filtered = filter(
+                #         lambda x: "onlyInRoot" not in imports[x]
+                #         or not imports[x]["onlyInRoot"],
+                #         imports,
+                #     )
+                #     imports = list(filtered)
                 for prj_name in imports:
                     pc_logging.debug(
                         "Checking the import: %s vs %s..."
@@ -397,7 +400,7 @@ class Context(project_config.Configuration):
             and not project.config_obj["import"] is None
         ):
             imports = project.config_obj["import"]
-            if project.name != self.name:
+            if not project.config_obj.get("isRoot", False):
                 filtered = filter(
                     lambda x: "onlyInRoot" not in imports[x]
                     or not imports[x]["onlyInRoot"],
@@ -414,6 +417,10 @@ class Context(project_config.Configuration):
                     next_project_path = get_child_project_path(
                         project.name, prj_name
                     )
+                if next_project_path == self.name:
+                    # Avoid circular imports of the root package
+                    # TODO(clairbee): fix circular imports in general
+                    continue
                 pc_logging.debug("Importing: %s..." % next_project_path)
 
                 if "name" in prj_conf:
