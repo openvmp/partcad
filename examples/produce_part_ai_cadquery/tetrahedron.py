@@ -1,24 +1,31 @@
 import math
 import cadquery as cq
 
-length = 10
+# Define vertices
+A = (0, 0, 0)
+B = (10, 0, 0)
+C = (5, 8.66, 0)
+D = (3.33, 2.89, 8.16)
 
-def create_tetrahedron(length):
-    height = math.sqrt(2/3) * length
-    radius = math.sqrt(6)/3 * length
-    
-    v0 = cq.Vector(0, 0, 0)
-    v1 = cq.Vector(length, 0, 0)
-    v2 = cq.Vector(length/2, height, 0)
-    v3 = cq.Vector(length/2, height/3, radius)
-    
-    tetrahedron = cq.Workplane("XY").polyline([v0, v1, v2, v0]) \
-        .polyline([v0, v2, v3, v0]) \
-        .polyline([v1, v3, v2, v1]) \
-        .polyline([v1, v0, v3, v1]) \
-        .close()
+# Create edges
+edges = [
+    cq.Edge.makeLine(A, B),
+    cq.Edge.makeLine(A, C),
+    cq.Edge.makeLine(A, D),
+    cq.Edge.makeLine(B, C),
+    cq.Edge.makeLine(B, D),
+    cq.Edge.makeLine(C, D)
+]
 
-    return tetrahedron
+# Create faces
+faces = [
+    cq.Face.makeFromWires(cq.Wire.assembleEdges([edges[0], edges[1], edges[3]])),
+    cq.Face.makeFromWires(cq.Wire.assembleEdges([edges[0], edges[2], edges[4]])),
+    cq.Face.makeFromWires(cq.Wire.assembleEdges([edges[1], edges[2], edges[5]])),
+    cq.Face.makeFromWires(cq.Wire.assembleEdges([edges[3], edges[4], edges[5]]))
+]
 
-tetrahedron = create_tetrahedron(length)
+# Create solid
+tetrahedron = cq.Solid.makeSolid(cq.Shell.makeShell(faces))
+
 show_object(tetrahedron)

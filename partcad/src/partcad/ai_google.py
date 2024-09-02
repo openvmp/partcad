@@ -40,27 +40,15 @@ def google_once():
 
     with lock:
         if pil_image is None:
-            try:
-                pil_image = importlib.import_module("PIL.Image")
-            except Exception as e:
-                pc_logging.exception(e)
-                return
+            pil_image = importlib.import_module("PIL.Image")
 
         if google_genai is None:
-            try:
-                google_genai = importlib.import_module("google.generativeai")
-            except Exception as e:
-                pc_logging.exception(e)
-                return
+            google_genai = importlib.import_module("google.generativeai")
 
         if google_api_core_exceptions is None:
-            try:
-                google_api_core_exceptions = importlib.import_module(
-                    "google.api_core.exceptions"
-                )
-            except Exception as e:
-                pc_logging.exception(e)
-                return
+            google_api_core_exceptions = importlib.import_module(
+                "google.api_core.exceptions"
+            )
 
         latest_key = user_config.google_api_key
         if latest_key != GOOGLE_API_KEY:
@@ -70,9 +58,7 @@ def google_once():
                 return True
 
         if GOOGLE_API_KEY is None:
-            error = "Google API key is not set"
-            pc_logging.error(error)
-            return False
+            raise Exception("Google API key is not set")
 
     return True
 
@@ -94,9 +80,24 @@ class AiGoogle:
         else:
             tokens = model_tokens[model] if model in model_tokens else None
 
+        if "top_p" in config:
+            top_p = config["top_p"]
+        else:
+            top_p = None
+
+        if "top_k" in config:
+            top_k = config["top_k"]
+        else:
+            top_k = None
+
+        if "temperature" in config:
+            temperature = config["temperature"]
+        else:
+            temperature = None
+
         images = list(
             map(
-                lambda f: PIL.Image.open(f),
+                lambda f: pil_image.open(f),
                 image_filenames,
             )
         )
@@ -105,13 +106,17 @@ class AiGoogle:
         client = google_genai.GenerativeModel(
             model,
             generation_config={
-                # "candidate_count": options_num,
+                "candidate_count": 1,
+                # "candidate_count": options_num,  # TODO(clairbee): not supported yet? not any more?
                 "max_output_tokens": tokens,
-                # "temperature": 0.97,
+                "temperature": temperature,
+                "top_p": top_p,
+                "top_k": top_k,
             },
         )
         candidates = []
-        for _ in range(options_num):
+        options_left = options_num
+        while options_left > 0:
             retry = True
             while retry == True:
                 retry = False
@@ -132,7 +137,10 @@ class AiGoogle:
                 error = "%s: Failed to generate content" % self.name
                 pc_logging.error(error)
                 continue
+
+            options_created = len(response.candidates)
             candidates.extend(response.candidates)
+            options_left -= options_created if options_created > 0 else 1
 
         products = []
         try:

@@ -7,16 +7,18 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import fnmatch
 import time
 
 from .ai_google import AiGoogle
 from .ai_openai import AiOpenAI
+from .ai_ollama import AiOllama
 
 from . import logging as pc_logging
 from .user_config import user_config
 
 
-models = [
+supported_models = [
     "gpt-3.5-turbo",
     "gpt-4",
     "gpt-4-vision-preview",
@@ -26,10 +28,16 @@ models = [
     "gemini-pro-vision",
     "gemini-1.5-pro",
     "gemini-1.5-flash",
+    "llama3.1*",
+    "codellama*",
+    "codegemma*",
+    "gemma*",
+    "deepseek-coder*",
+    "codestral*",
 ]
 
 
-class Ai(AiGoogle, AiOpenAI):
+class Ai(AiGoogle, AiOpenAI, AiOllama):
     def generate(
         self,
         action: str,
@@ -42,10 +50,10 @@ class Ai(AiGoogle, AiOpenAI):
     ):
         with pc_logging.Action("Ai" + action, package, item):
             # Determine the model to use
+            provider = config.get("provider", None)
             if "model" in config and config["model"] is not None:
                 model = config["model"]
             else:
-                provider = config.get("provider", None)
                 if provider is None:
                     if not user_config.openai_api_key is None:
                         provider = "openai"
@@ -64,19 +72,26 @@ class Ai(AiGoogle, AiOpenAI):
                     # else:
                     #     model = "gpt-4"
                     model = "gpt-4o"
+                elif provider == "ollama":
+                    model = "llama3.1:70b"
                 else:
                     error = "Provider %s is not supported" % provider
                     pc_logging.error(error)
                     return []
 
             # Generate the content
-            if not model in models:
+            is_supported = False
+            for supported_model_pattern in supported_models:
+                if fnmatch.fnmatch(model, supported_model_pattern):
+                    is_supported = True
+                    break
+            if not is_supported:
                 error = "Model %s is not supported" % model
                 pc_logging.error(error)
                 return []
 
             result = []
-            if model.startswith("gemini"):
+            if provider == "google":
                 try:
                     result = self.generate_google(
                         model,
@@ -91,7 +106,7 @@ class Ai(AiGoogle, AiOpenAI):
                     )
                     time.sleep(1)  # Safeguard against exceeding quota
 
-            elif model.startswith("gpt"):
+            elif provider == "openai":
                 try:
                     result = self.generate_openai(
                         model,
@@ -105,6 +120,20 @@ class Ai(AiGoogle, AiOpenAI):
                         "Failed to generate with OpenAI: %s" % str(e)
                     )
                     time.sleep(1)  # Safeguard against exceeding quota
+
+            elif provider == "ollama":
+                try:
+                    result = self.generate_ollama(
+                        model,
+                        prompt,
+                        image_filenames,
+                        config,
+                        num_options,
+                    )
+                except Exception as e:
+                    pc_logging.error(
+                        "Failed to generate with Ollama: %s" % str(e)
+                    )
 
             else:
                 pc_logging.error(

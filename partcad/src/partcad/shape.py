@@ -37,10 +37,11 @@ class Shape(ShapeConfiguration):
     svg_url: str
     # shape: None | b3d.TopoDS_Shape | OCP.TopoDS.TopoDS_Solid
 
-    errors: list[str] = []
+    errors: list[str]
 
     def __init__(self, config):
         super().__init__(config)
+        self.errors = []
         self.lock = asyncio.Lock()
         self.shape = None
         self.components = []
@@ -232,6 +233,7 @@ class Shape(ShapeConfiguration):
         request_serialized = base64.b64encode(picklestring).decode()
 
         runtime = ctx.get_python_runtime(python_runtime="none")
+        await runtime.ensure("cadquery")  # SVG wrapper requires cq-serialize
         await runtime.ensure("build123d")
         response_serialized, errors = await runtime.run(
             [

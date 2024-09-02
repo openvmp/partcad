@@ -86,5 +86,41 @@ class UserConfig:
         else:
             self.openai_api_key = None
 
+        # option: ollamaNumThread
+        # description: Ask Ollama to use the given number of CPU threads
+        # values: <integer>
+        # default: None
+        if "ollamaNumThread" in self.config_obj:
+            self.ollama_num_thread = int(self.config_obj["ollamaNumThread"])
+        else:
+            self.ollama_num_thread = None
+
+        # option: maxGeometricModeling
+        # description: the number of attempts for geometric modelling
+        # values: <integer>
+        # default: None
+        if "maxGeometricModeling" in self.config_obj:
+            self.max_geometric_modeling = int(self.config_obj["maxGeometricModeling"])
+        else:
+            self.max_geometric_modeling = None
+
+        # option: maxModelGeneration
+        # description: the number of attempts for CAD script generation
+        # values: <integer>
+        # default: None
+        if "maxModelGeneration" in self.config_obj:
+            self.max_model_generation = int(self.config_obj["maxModelGeneration"])
+        else:
+            self.max_model_generation = None
+
+        # option: maxScriptCorrection
+        # description: the number of attempts to incrementally fix the script if it's not working
+        # values: <integer>
+        # default: None
+        if "maxScriptCorrection" in self.config_obj:
+            self.max_script_correction = int(self.config_obj["maxScriptCorrection"])
+        else:
+            self.max_script_correction = None
+
 
 user_config = UserConfig()

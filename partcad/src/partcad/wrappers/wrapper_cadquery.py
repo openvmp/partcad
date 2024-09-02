@@ -60,8 +60,7 @@ def process(path, request):
     build_result = script_object.build(build_parameters=build_parameters)
 
     if not build_result.success:
-        sys.stderr.write("Exception: ")
-        sys.stderr.write(str(build_result.exception))
+        wrapper_common.handle_exception(build_result.exception, path)
 
     shapes = []
     for result in build_result.results:

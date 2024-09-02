@@ -18,7 +18,8 @@ parts:
   prism:
     type: ai-openscad
     desc: A hexagonal prism
-    provider: openai
+    provider: ollama
+    model: llama3.1:70b
     properties:
       length: 10
   tetrahedron:

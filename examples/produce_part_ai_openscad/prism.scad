@@ -1,6 +1,22 @@
-module hexagonal_prism(length = 10) {
-    h = sqrt(3)*length;
-    cylinder(h=length, r = h*0.5, $fn=6);
+s = 10; // side length of the hexagonal base
+h = 10; // height of the prism
+
+r_outer = s / sqrt(3);
+
+module hexagon(s) {
+    polygon(points=[
+        [s/2, 0],
+        [s/4, s*sqrt(3)/2],
+        [-s/4, s*sqrt(3)/2],
+        [-s/2, 0],
+        [-s/4, -s*sqrt(3)/2],
+        [s/4, -s*sqrt(3)/2]
+    ]);
 }
 
-hexagonal_prism();
+module hexagonal_prism(s, h) {
+    linear_extrude(height=h)
+        hexagon(s);
+}
+
+hexagonal_prism(s, h);
