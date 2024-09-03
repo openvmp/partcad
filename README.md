@@ -20,11 +20,14 @@ And all of that is supercharged by the ultimate versioning and collaboration fea
 
 PartCAD features include:
 
-- 3D part models using STEP, STL and 3MF files
-- 3D part models using CadQuery, build123d and OpenSCAD scripting languages (including AI-generated: Gemini and GPT)
-- 2D blueprints using DXF, build123d and SVG files
-- Fully featured object-oriented approach to maintain part interfaces and mating information (with multiple class inheritance etc)
+- 3D part models using [CadQuery](https://cadquery.readthedocs.io/), [build123d](https://build123d.readthedocs.io/) and [OpenSCAD](https://openscad.org/) scripting languages
+- 3D part models using legacy STEP, STL and 3MF files
+- Generate 3D models using LLM/GenAI: Google AI (Gemini), OpenAI (ChatGPT) or any model published to [Ollama](https://ollama.com/) (Llama 3.1, DeepSeek-Coder-V2, CodeGemma, Code Llama etc)
+- 2D blueprints using [build123d](https://build123d.readthedocs.io/), or legacy DXF and SVG files
+- Fully featured object-oriented approach to maintaining part interfaces and mating information (with multiple class inheritance etc)
 - Live preview of 3D models while coding in VS Code
+- Render models to SVG, PNG and export to STEP, STL, 3MF, ThreeJS and OBJ
+- Render Markdown documentation files
 
 Find [more documentation here](https://partcad.readthedocs.io/en/latest/?badge=latest) and visit [our website](https://partcad.org/).
 
@@ -64,8 +67,8 @@ On Ubuntu, try `apt install libcairo2-dev` if `pip install` fails to install `ca
 
 ## Tools for Mechanical Engineering
 
-Here is an overview of the open-source tools to maintain
-mechanical projects. It demonstrates where this framework fits
+Here is an overview of open source tools to maintain
+mechanical projects. It demonstrates where PartCAD fits
 in the modern mechanical development workflows.
 
 ```mermaid

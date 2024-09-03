@@ -434,16 +434,18 @@ Define parts with CodeCAD scripts using the following syntax:
 AI Generated CAD Scripts
 ------------------------
 
-Generate CadQuery or OpenSCAD scripts with Generative AI using the following syntax:
+Generate OpenSCAD, CadQuery or build123d scripts with Generative AI using the following syntax:
 
 .. code-block:: yaml
 
   parts:
     <part name>:
-      type: <ai-openscad|ai-cadquery>
+      type: <ai-openscad|ai-cadquery|ai-build123d>
       provider: <google|openai|ollama, the model provider to use>
       tokens: <(optional) the limit of token context>
-      top_p: <(optional, openai only) the top_p parameter>
+      temperature: <(optional) the temperature LLM parameter>
+      top_p: <(optional) the top_p LLM parameter>
+      top_k: <(optional, openai|ollama) the top_k LLM parameter>
       images: <(optional) contextual images as input for AI>
         - <image path>
 
