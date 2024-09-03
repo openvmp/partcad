@@ -114,7 +114,12 @@ class PartFactoryBuild123d(PartFactoryPython):
             if len(errors) > 0:
                 error_lines = errors.split("\n")
                 for error_line in error_lines:
-                    part.error("%s: %s" % (part.name, error_line))
+                    error_line = error_line.strip()
+                    if not error_line:
+                        continue
+                    # TODO(clairbee): Move the part name concatenation to where the logging happens
+                    # part.error("%s: %s" % (part.name, error_line))
+                    part.error(error_line)
 
             try:
                 # pc_logging.error("Response: %s" % response_serialized)
@@ -128,7 +133,7 @@ class PartFactoryBuild123d(PartFactoryPython):
                 return None
 
             if not result["success"]:
-                part.error("%s: %s" % (part.name, result["exception"]))
+                pc_logging.error("Failed to produce the part: %s" % part.name)
                 return None
 
             self.ctx.stats_parts_instantiated += 1

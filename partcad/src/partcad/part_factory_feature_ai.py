@@ -18,13 +18,17 @@ from .ai import Ai
 from . import logging as pc_logging
 from . import sync_threads as pc_thread
 from .utils import total_size
+from .user_config import user_config
 
-NUM_ALTERNATIVES_GEOMETRIC_MODELING = 3
-NUM_ALTERNATIVES_MODEL_GENERATION = 3
+DEFAULT_ALTERNATIVES_GEOMETRIC_MODELING = 3
+DEFAULT_ALTERNATIVES_MODEL_GENERATION = 3
+DEFAULT_INCREMENTAL_SCRIPT_CORRECTION = 2
 
 
 class PartFactoryFeatureAi(Ai):
     """Used by all part factories that generate parts with GenAI."""
+
+    LANG_PYTHON = "Python"
 
     part_type: str
     script_type: str
@@ -42,16 +46,47 @@ class PartFactoryFeatureAi(Ai):
             raise Exception(error)
 
         self.ai_config = copy.deepcopy(config)
-        if not "numGeometricModeling" in self.ai_config:
-            self.ai_config["numGeometricModeling"] = (
-                NUM_ALTERNATIVES_GEOMETRIC_MODELING
+        if "numGeometricModeling" in self.ai_config:
+            self.num_geometric_modling = self.ai_config["numGeometricModeling"]
+        else:
+            self.num_geometric_modeling = (
+                DEFAULT_ALTERNATIVES_GEOMETRIC_MODELING
             )
-        if not "numModelGeneration" in self.ai_config:
-            self.ai_config["numModelGeneration"] = (
-                NUM_ALTERNATIVES_MODEL_GENERATION
-            )
+        if (
+            user_config.max_geometric_modeling is not None
+            and self.num_geometric_modeling > user_config.max_geometric_modeling
+        ):
+            self.num_geometric_modeling = user_config.max_geometric_modeling
+
+        if "numModelGeneration" in self.ai_config:
+            self.num_model_generation = self.ai_config[("numModelGeneration")]
+        else:
+            self.num_model_generation = DEFAULT_ALTERNATIVES_MODEL_GENERATION
+        if (
+            user_config.max_model_generation is not None
+            and self.num_model_generation > user_config.max_model_generation
+        ):
+            self.num_model_generation = user_config.max_model_generation
+
+        if "numScriptCorrection" in self.ai_config:
+            self.num_script_correction = self.ai_config[("numScriptCorrection")]
+        else:
+            self.num_script_correction = DEFAULT_INCREMENTAL_SCRIPT_CORRECTION
+        if (
+            user_config.max_script_correction is not None
+            and self.num_script_correction > user_config.max_script_correction
+        ):
+            self.num_script_correction = user_config.max_script_correction
+
         if not "tokens" in self.ai_config:
             self.ai_config["tokens"] = 2000
+
+        # Use `temperature` and `top_p` values recommended for code generation
+        # if no other preferences are set
+        if not "temperature" in self.ai_config:
+            self.ai_config["temperature"] = 0.2
+        if not "top_p" in self.ai_config:
+            self.ai_config["top_p"] = 0.1
 
     def on_init_ai(self):
         """This method must be executed at the very end of the part factory
@@ -82,7 +117,13 @@ class PartFactoryFeatureAi(Ai):
 
         # Geometric modeling
         modeling_options = []
+        max_models = self.num_geometric_modeling
+        max_tries = 2 * max_models
 
+        # TODO(clairbee): Multiple AI calls are a good candidate to paralelize,
+        #                 however it's useless without a paid subscription
+        #                 with huge quotas. De-prioritized for now.
+        #
         # def modeling_task():
         #     modeling_options.extend(self._geometric_modeling())
         # threads = []
@@ -93,12 +134,14 @@ class PartFactoryFeatureAi(Ai):
         # for thread in threads:
         #     thread.join()
 
-        while len(modeling_options) < self.ai_config["numGeometricModeling"]:
+        tries = 0
+        while len(modeling_options) < max_models and tries < max_tries:
             modeling_options.extend(self._geometric_modeling())
             pc_logging.info(
                 "Generated %d geometric modeling candidates"
                 % len(modeling_options)
             )
+            tries += 1
 
         # For each remaining geometric modeling option,
         # generate a model and render an image
@@ -119,9 +162,11 @@ class PartFactoryFeatureAi(Ai):
                     % (candidate_id, script)
                 )
 
-                # Render an image of the model
-                image_filename = self._render_image(script, candidate_id)
-
+                # Validate the image by rendering it,
+                # attempt to correct the script if rendering doesn't work
+                image_filename, script = self._validate_and_fix(
+                    modeling_option, script, candidate_id
+                )
                 # Check if the model was valid
                 if image_filename is not None:
                     # Record the valid model and the image
@@ -197,9 +242,7 @@ The part is further described by the attached images.
             self.name,
             prompt,
             self.ai_config,
-            self.ai_config[
-                "numGeometricModeling"
-            ],  # NUM_ALTERNATIVES_GEOMETRIC_MODELING,
+            self.num_geometric_modeling,
             image_filenames=image_filenames,
         )
         return options
@@ -207,7 +250,12 @@ The part is further described by the attached images.
     def _generate_script(self, geometric_modeling):
         """This method generates a script given specific geometric modeling."""
 
-        prompt = """Generate a %s to define a 3D model of a part defined by
+        prompt = """You are an AI assistant in an engineering department.
+You are helping engineers to create programmatic scripts that produce CAD geometry data
+for parts, mechanisms, buildings or anything else.
+The scripts you create a fully functional and can be used right away, as is, in automated workflows.
+Assume that the scripts you produce are used automatically to render 3D models and to validate them.
+This time you are asked to generate a %s to define a 3D model of a part defined by
 the following geometric modeling:
         %s
         """ % (
@@ -236,7 +284,6 @@ IMPORTANT: Output the %s itself and do not add any text or comments before or af
             self.name,
             prompt,
             self.ai_config,
-            self.ai_config["numModelGeneration"],
             image_filenames=image_filenames,
         )
 
@@ -245,10 +292,17 @@ IMPORTANT: Output the %s itself and do not add any text or comments before or af
 
         return scripts
 
-    def _sanitize_script(self, script):
+    def _sanitize_script(self, script: str):
         """Cleans up the GenAI output to keep the code only."""
 
-        # Remove code blocks
+        # Extract the first block between ``` if any
+        loc_1 = script.find("```")
+        loc_2 = script[loc_1 + 1 :].find("```") + loc_1
+        if loc_2 > 0:
+            # Note: the first ``` (and whatever follows on the same line) is still included
+            script = script[loc_1:loc_2]
+
+        # Remove ```` if anything is left
         script = "\n".join(
             list(
                 filter(
@@ -262,10 +316,122 @@ IMPORTANT: Output the %s itself and do not add any text or comments before or af
             )
         )
 
+        if hasattr(self, "lang") and self.lang == self.LANG_PYTHON:
+            # Strip straight to the import statements (for AIs that don't ```)
+            if script.startswith("from "):
+                loc_from = 0
+            else:
+                loc_from = script.find("\nfrom ")
+            if script.startswith("import "):
+                loc_import = 0
+            else:
+                loc_import = script.find("\nimport ")
+
+            if loc_from != -1 and loc_import != -1:
+                loc = min(loc_import, loc_from)
+            elif loc_from != -1:
+                loc = loc_from
+            else:
+                loc = loc_import
+
+            if loc != -1:
+                script = script[loc:]
+
         return script
+
+    def _validate_and_fix(self, modeling_option, script, candidate_id, depth=0):
+        """
+        Validate the image by rendering it,
+        attempt to correct the script if rendering doesn't work.
+        """
+        next_depth = depth + 1
+
+        # Render this script into an image.
+        # We can't just stop at validating geometry,
+        # as we need to feed the picture into the following AI logic.
+        image_filename, error_text = self._render_image(script, candidate_id)
+        if image_filename is not None:
+            return image_filename, script
+        # Failed to render the image.
+
+        if next_depth <= self.num_script_correction:
+            # Ask AI to make incremental fixes based on the errors.
+            correction_candidate_id = 0
+            for _ in range(self.num_script_correction):
+                corrected_scripts = self._correct_script(
+                    modeling_option, script, error_text
+                )
+                corrected_scripts = list(
+                    map(lambda s: self._sanitize_script(s), corrected_scripts)
+                )
+                for corrected_script in corrected_scripts:
+                    pc_logging.debug(
+                        "Corrected the script candidate %d, correction candidate %d at depth %d: %s"
+                        % (
+                            candidate_id,
+                            correction_candidate_id,
+                            depth,
+                            corrected_script,
+                        )
+                    )
+
+                    image_filename, corrected_script = self._validate_and_fix(
+                        modeling_option,
+                        corrected_script,
+                        candidate_id,
+                        next_depth,
+                    )
+                    if image_filename is not None:
+                        return image_filename, corrected_script
+
+                    correction_candidate_id += 1
+
+        return None, script
+
+    def _correct_script(self, modeling_option, script, error_text):
+        # TODO(clairbee): prove that the use of geometric modeling product
+        #                 in this prompt is benefitial
+        prompt = """You are an AI assistant to a mechanical engineer.
+You are given an automatically generated %s which has flaws that need to be
+corrected.
+
+The generated script that contains errors is (until SCRIPT_END):
+```
+%s
+```
+SCRIPT_END
+
+When the given script is executed, the following error messages are
+produced (until ERRORS_END):
+%s
+ERRORS_END
+
+Please, generate a corrected script so that it does not produce the given errors.
+Make as little changes as possible and prefer not to make any changes that are
+not necessary to fix the errors.
+Very important not to produce exactly the same script: at least something has to change.
+""" % (
+            self.script_type,
+            script,
+            error_text,
+        )
+
+        pc_logging.debug("Correction prompt: %s" % prompt)
+
+        options = self.generate(
+            "ScriptIncr",
+            self.project.name,
+            self.name,
+            prompt,
+            self.ai_config,
+            self.num_script_correction,
+        )
+        return options
 
     def _render_image(self, script, candidate_id):
         """This method ensures the validity of a script candidate by attempting to render it."""
+        error_text = ""
+        exception_text = ""
 
         source_path = tempfile.mktemp(suffix=self.extension)
         with open(source_path, "w") as f:
@@ -291,6 +457,7 @@ IMPORTANT: Output the %s itself and do not add any text or comments before or af
         pc_logging.debug("Part created: %.2f KB" % (total_size(part) / 1024.0))
 
         def render(part):
+            nonlocal exception_text
             try:
                 coro = part.get_shape()
                 with pc_logging.Action(
@@ -301,33 +468,42 @@ IMPORTANT: Output the %s itself and do not add any text or comments before or af
                     part.render_png(self.ctx, None, output_path)
             except Exception as e:
                 part.error("Failed to render the image: %s" % e)
+                exception_text += f"Exception:\n{str(e)}\n"
 
-        try:
-            # Given we don't know whether the current thread is already
-            # running an event loop or not, we need to create a new thread
-            t = threading.Thread(target=render, args=[part])
-            t.start()
-            t.join()
-        except Exception as e:
-            part.error("Failed to render the image: %s" % e)
+        # TODO(clairbee): make it async up until this point, drop threads
+        # Given we don't know whether the current thread is already
+        # running an event loop or not, we need to create a new thread
+        t = threading.Thread(target=render, args=[part])
+        t.start()
+        t.join()
 
-        if len(part.errors) > 0:
+        errors = part.errors  # Save the errors
+        errors = list(
+            filter(
+                lambda e: "Exception while deserializing" not in e,
+                errors,
+            )
+        )
+        if len(errors) > 0:
             pc_logging.debug(
                 "There were errors while attemtping to render the image"
             )
-            pc_logging.debug("%s" % part.errors)
+            pc_logging.debug("%s" % errors)
+            for error in errors:
+                error_text += f"{error}\n"
 
+        error_text = error_text + exception_text
         os.unlink(source_path)
         if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
             pc_logging.info(
                 "Script candidate %d: failed to render the image" % candidate_id
             )
-            return None
+            return None, error_text
         pc_logging.info(
             "Script candidate %d: successfully rendered the image"
             % candidate_id
         )
-        return output_path
+        return output_path, error_text
 
     def select_best_image(self, script_candidates):
         """Iterate over script_candidates and compare images.
@@ -352,6 +528,9 @@ Just the number.
         )
 
         # Ask AI to compare the images
+        pc_logging.info(
+            "Attempting to select the best script by comparing images"
+        )
         responses = self.generate(
             "Compare",
             self.project.name,

@@ -16,6 +16,7 @@ class PartFactoryAiBuild123d(PartFactoryBuild123d, PartFactoryFeatureAi):
     def __init__(self, ctx, source_project, target_project, config):
         # Override the path determined by the parent class to enable "enrich"
         config["path"] = config["name"] + ".py"
+        self.lang = self.LANG_PYTHON
 
         mode = "builder"
         if "mode" in config and config["mode"] == "algebra":

@@ -16,6 +16,7 @@ class PartFactoryAiCadquery(PartFactoryCadquery, PartFactoryFeatureAi):
     def __init__(self, ctx, source_project, target_project, config):
         # Override the path determined by the parent class to enable "enrich"
         config["path"] = config["name"] + ".py"
+        self.lang = self.LANG_PYTHON
 
         with pc_logging.Action("InitAiCq", target_project.name, config["name"]):
             PartFactoryFeatureAi.__init__(

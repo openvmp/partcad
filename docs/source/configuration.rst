@@ -441,7 +441,7 @@ Generate CadQuery or OpenSCAD scripts with Generative AI using the following syn
   parts:
     <part name>:
       type: <ai-openscad|ai-cadquery>
-      provider: <google|openai, the model provider to use>
+      provider: <google|openai|ollama, the model provider to use>
       tokens: <(optional) the limit of token context>
       top_p: <(optional, openai only) the top_p parameter>
       images: <(optional) contextual images as input for AI>

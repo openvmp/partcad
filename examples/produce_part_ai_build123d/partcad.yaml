@@ -1,4 +1,4 @@
-desc: PartCAD parts defined using AI-generated CadQuery scripts.
+desc: PartCAD parts defined using AI-generated build123d scripts.
 
 docs:
   usage: |
@@ -10,22 +10,22 @@ docs:
 
 parts:
   cube:
-    type: ai-cadquery
+    type: ai-build123d
     provider: google
     desc: A cube
     properties:
       length: 10
   prism:
-    type: ai-cadquery
-    provider: ollama
-    model: llama3.1:70b
+    type: ai-build123d
+    provider: openai
+    # provider: ollama  # TODO(clairbee): find an Ollama model that works with build123d
     desc: A hexagonal prism
     properties:
       length: 10
   tetrahedron:
-    type: ai-cadquery
+    type: ai-build123d
     provider: openai
-    tokens: 4000
+    tokens:
     top_p: 0.9
     desc: A tetrahedron
     properties:

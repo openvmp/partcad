@@ -40,11 +40,7 @@ def openai_once():
 
     with lock:
         if openai_genai is None:
-            try:
-                openai_genai = importlib.import_module("openai")
-            except Exception as e:
-                pc_logging.exception(e)
-                return False
+            openai_genai = importlib.import_module("openai")
 
         latest_key = user_config.openai_api_key
         if latest_key != OPENAI_API_KEY:
@@ -55,9 +51,7 @@ def openai_once():
                 return True
 
         if OPENAI_API_KEY is None:
-            error = "OpenAI API key is not set"
-            pc_logging.error(error)
-            return False
+            raise Exception("OpenAI API key is not set")
 
     return True
 
@@ -83,6 +77,11 @@ class AiOpenAI:
             top_p = config["top_p"]
         else:
             top_p = None
+
+        if "temperature" in config:
+            temperature = config["temperature"]
+        else:
+            temperature = None
 
         content = [
             {"type": "text", "text": prompt},
@@ -113,6 +112,7 @@ class AiOpenAI:
             n=options_num,
             max_tokens=tokens,
             top_p=top_p,
+            temperature=temperature,
             model=model,
         )
 

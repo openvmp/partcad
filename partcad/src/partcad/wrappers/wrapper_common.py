@@ -51,3 +51,22 @@ def handle_output(model):
     picklestring = pickle.dumps(model)
     response = base64.b64encode(picklestring)
     print(response.decode())
+
+
+def handle_exception(exc, cqscript=None):
+    sys.stderr.write("Error: [")
+    sys.stderr.write(str(exc).strip())
+    sys.stderr.write("] on the line: [")
+    tb = exc.__traceback__
+    # Switch to the traceback object that contains the script line number
+    tb = tb.tb_next
+    # Get the filename
+    fname = tb.tb_frame.f_code.co_filename
+    if cqscript is not None and fname == "<cqscript>":
+        fname = cqscript
+
+    # Get the line contents
+    with open(fname, "r") as fp:
+        line = fp.read().split("\n")[tb.tb_lineno - 1]
+        sys.stderr.write(line.strip())
+    sys.stderr.write("]\n")

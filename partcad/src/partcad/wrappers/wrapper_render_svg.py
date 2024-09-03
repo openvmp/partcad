@@ -67,6 +67,7 @@ def process(path, request):
             "exception": None,
         }
     except Exception as e:
+        wrapper_common.handle_exception(e)
         return {
             "success": False,
             "exception": str(e.with_traceback(None)),
