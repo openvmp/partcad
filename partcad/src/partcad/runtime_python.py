@@ -57,10 +57,10 @@ class PythonRuntime(runtime.Runtime):
         stdout = stdout.decode()
         stderr = stderr.decode()
 
-        if stdout:
-            pc_logging.debug("Output of %s: %s" % (cmd, stdout))
-        if stderr:
-            pc_logging.debug("Error of %s: %s" % (cmd, stderr))
+        # if stdout:
+        #     pc_logging.debug("Output of %s: %s" % (cmd, stdout))
+        # if stderr:
+        #     pc_logging.debug("Error of %s: %s" % (cmd, stderr))
 
         # TODO(clairbee): remove the below when a better troubleshooting mechanism is introduced
         # f = open("/tmp/log", "w")
@@ -87,9 +87,7 @@ class PythonRuntime(runtime.Runtime):
                     with pc_logging.Action(
                         "PipInst", self.version, python_package
                     ):
-                        await self.run(
-                            ["-m", "pip", "install", python_package]
-                        )
+                        await self.run(["-m", "pip", "install", python_package])
                     pathlib.Path(guard_path).touch()
 
     async def prepare_for_package(self, project):
