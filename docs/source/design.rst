@@ -71,7 +71,7 @@ PartCAD has an evergrowing list of ways to define the part model:
 
   - OpenSCAD
   - CadQuery
-  - build123d (builder and algebra modes, under development)
+  - build123d
 
 Assemblies
 ----------

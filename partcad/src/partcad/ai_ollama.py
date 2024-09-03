@@ -48,9 +48,9 @@ def model_once(model: str):
 
     with lock:
         if not model in models_pulled:
-            pc_logging.info("Pulling %s..." % model)
-            ollama.pull(model)
-            models_pulled[model] = True
+            with pc_logging.Action("OllamaPull", model):
+                ollama.pull(model)
+                models_pulled[model] = True
 
 
 class AiOllama:
