@@ -57,6 +57,11 @@ class PythonRuntime(runtime.Runtime):
         stdout = stdout.decode()
         stderr = stderr.decode()
 
+        if stdout:
+            pc_logging.debug("Output of %s: %s" % (cmd, stdout))
+        if stderr:
+            pc_logging.debug("Error of %s: %s" % (cmd, stderr))
+
         # TODO(clairbee): remove the below when a better troubleshooting mechanism is introduced
         # f = open("/tmp/log", "w")
         # f.write("Completed: %s\n" % cmd)
@@ -83,7 +88,7 @@ class PythonRuntime(runtime.Runtime):
                         "PipInst", self.version, python_package
                     ):
                         await self.run(
-                            ["-m", "pip", "install", "-U", python_package]
+                            ["-m", "pip", "install", python_package]
                         )
                     pathlib.Path(guard_path).touch()
 

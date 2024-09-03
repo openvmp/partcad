@@ -16,7 +16,13 @@ class PartFactoryPython(PartFactoryFile):
     cwd: str
 
     def __init__(
-        self, ctx, source_project, target_project, config, can_create=False
+        self,
+        ctx,
+        source_project,
+        target_project,
+        config,
+        can_create=False,
+        python_version=None,
     ):
         super().__init__(
             ctx,
@@ -27,7 +33,11 @@ class PartFactoryPython(PartFactoryFile):
             can_create=can_create,
         )
         self.cwd = config.get("cwd", None)
-        self.runtime = self.ctx.get_python_runtime(self.project.python_version)
+
+        if python_version is None:
+            # TODO(clairbee): stick to a default constant or configured version
+            python_version = self.project.python_version
+        self.runtime = self.ctx.get_python_runtime(python_version)
 
     async def prepare_python(self):
         """

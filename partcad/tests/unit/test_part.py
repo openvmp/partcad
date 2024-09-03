@@ -36,7 +36,8 @@ def test_part_get_step_1():
     assert repo1 is not None
     bolt = repo1.get_part("bolt")
     assert bolt is not None
-    assert bolt.get_wrapped() is not None
+    wrapped = asyncio.run(bolt.get_wrapped())
+    assert wrapped is not None
 
 
 def test_part_get_step_2():
@@ -89,7 +90,8 @@ def test_part_get_3():
     _ = pc.ProjectFactoryLocal(ctx, None, test_config_local)
     cylinder = ctx.get_part("/primitive_local:cylinder")
     assert cylinder is not None
-    assert cylinder.get_wrapped() is not None
+    wrapped = asyncio.run(cylinder.get_wrapped())
+    assert wrapped is not None
 
 
 # Note: The below test fails if there are braking changes in the way parts are

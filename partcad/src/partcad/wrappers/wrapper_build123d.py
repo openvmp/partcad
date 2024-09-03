@@ -27,15 +27,10 @@ from ocp_tessellate.ocp_utils import (
     is_build123d,
     is_build123d_compound,
     is_build123d_shell,
-    is_build123d_shape,
-    is_cadquery_sketch,
-    is_cadquery,
     is_wrapped,
     is_vector,
     is_topods_compound,
     is_topods_shape,
-    is_compound_list,
-    is_cadquery_sketch,
     vertex,
 )
 

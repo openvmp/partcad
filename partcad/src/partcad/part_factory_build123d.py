@@ -34,6 +34,15 @@ class PartFactoryBuild123d(PartFactoryPython):
     def __init__(
         self, ctx, source_project, target_project, config, can_create=False
     ):
+        python_version = source_project.python_version
+        if python_version is None:
+            # Stay one step ahead of the minimum required Python version
+            python_version = "3.10"
+        if python_version == "3.12" or python_version == "3.11":
+            pc_logging.info(
+                "Downgrading Python version to 3.10 to avoid compatibility issues with build123d"
+            )
+            python_version = "3.10"
         with pc_logging.Action(
             "InitBuild123d", target_project.name, config["name"]
         ):
@@ -43,6 +52,7 @@ class PartFactoryBuild123d(PartFactoryPython):
                 target_project,
                 config,
                 can_create=can_create,
+                python_version=python_version,
             )
             # Complement the config object here if necessary
             self._create(config)
@@ -85,8 +95,11 @@ class PartFactoryBuild123d(PartFactoryPython):
             picklestring = pickle.dumps(request)
             request_serialized = base64.b64encode(picklestring).decode()
 
-            await self.runtime.ensure("build123d")
+            await self.runtime.ensure("numpy==1.24.1")
+            await self.runtime.ensure("nptyping==1.24.1")
+            await self.runtime.ensure("cadquery")
             await self.runtime.ensure("ocp-tessellate")
+            await self.runtime.ensure("build123d")
             cwd = self.project.config_dir
             if self.cwd is not None:
                 cwd = os.path.join(self.project.config_dir, self.cwd)
