@@ -19,7 +19,7 @@ Ideas and Feedback
 ==================
 
 Share your ideas and feedback using
-`PartCAD's Discord channel <https://discord.gg/AXbP47zYw5>`_.
+`the #partcad channel <https://discord.gg/AXbP47zYw5>`_ of the OpenVMP's Discord server.
 
 Participate in Decision Making
 ==============================
@@ -48,6 +48,14 @@ Send a pull request to
 Engage with the community on
 `PartCAD's Discord channel <https://discord.gg/AXbP47zYw5>`_
 if you need help deciding what could be the best project for you to work on.
+
+Documentation and Tutorials
+===========================
+
+Currently, our team is short on skills required to document PartCAD well.
+Join us and bring the word to the world!
+You can make a huge impact on lots of people by simply creating a simple post
+or a basic video tutorial.
 
 =======================================
 Contribute to PartCAD Public Repository
@@ -123,3 +131,20 @@ Decide which one is more appropriate for your business:
 that kind as a reference. Alternatively, reach out to the PartCAD team to get
 help with the implementation. Be at the forefront of the next industrial
 revolution together with PartCAD!
+
+Help a Friend
+=============
+
+Do you know an opensource project that maintains assembly instructions or doing
+something else that can be radically improved by using PartCAD?
+
+Do you know a business that uses legacy tools and struggles to scale
+collaboration in the era of Git?
+
+Do you know a local additive manufacturing shop that can use more local
+customers?
+
+Do you know a collection of parts that the community can really benefit from if
+only these parts and corresponding assembly ideas were easily discoverable?
+
+Help them migrate to PartCAD!
