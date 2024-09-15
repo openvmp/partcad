@@ -105,6 +105,7 @@ class Context(project_config.Configuration):
 
         self.option_create_dirs = False
         self.runtimes_python = {}
+        self.runtimes_python_lock = threading.Lock()
 
         self.stats_packages = 0
         self.stats_packages_instantiated = 0
@@ -929,16 +930,20 @@ class Context(project_config.Configuration):
         project.render(format=format, output_dir=output_dir)
 
     def get_python_runtime(self, version=None, python_runtime=None):
-        if version is None:
-            version = "%d.%d" % (sys.version_info.major, sys.version_info.minor)
-        if python_runtime is None:
-            python_runtime = user_config.python_runtime
-        runtime_name = python_runtime + "-" + version
-        if not runtime_name in self.runtimes_python:
-            self.runtimes_python[runtime_name] = runtime_python_all.create(
-                self, version, python_runtime
-            )
-        return self.runtimes_python[runtime_name]
+        with self.runtimes_python_lock:
+            if version is None:
+                version = "%d.%d" % (
+                    sys.version_info.major,
+                    sys.version_info.minor,
+                )
+            if python_runtime is None:
+                python_runtime = user_config.python_runtime
+            runtime_name = python_runtime + "-" + version
+            if not runtime_name in self.runtimes_python:
+                self.runtimes_python[runtime_name] = runtime_python_all.create(
+                    self, version, python_runtime
+                )
+            return self.runtimes_python[runtime_name]
 
     def ensure_dirs(self, path):
         if not self.option_create_dirs:

@@ -28,13 +28,18 @@ class PythonRuntime(runtime.Runtime):
         # Runtimes are meant to be executed from dedicated threads, outside of
         # the asyncio event loop. So a threading lock is appropriate here.
         self.lock = threading.RLock()
+        self.tls = threading.local()
 
     def get_async_lock(self):
-        locals = threading.local()
-        alock = f"lock_{id(self)}"
-        if alock not in locals.__dict__:
-            locals.__dict__[alock] = asyncio.Lock()
-        return locals.__dict__[alock]
+        if not hasattr(self.tls, "async_locks"):
+            self.tls.async_locks = {}
+        self_id = id(self)
+        if self_id not in self.tls.async_locks:
+            self.tls.async_locks[self_id] = asyncio.Lock()
+        return self.tls.async_locks[self_id]
+
+    async def once(self):
+        pass
 
     async def run(self, cmd, stdin="", cwd=None):
         pc_logging.debug("Running: %s", cmd)
@@ -73,6 +78,8 @@ class PythonRuntime(runtime.Runtime):
         return stdout, stderr
 
     async def ensure(self, python_package):
+        self.once()
+
         # TODO(clairbee): expire the guard file after a certain time
 
         python_package_hash = hashlib.sha256(
@@ -91,6 +98,8 @@ class PythonRuntime(runtime.Runtime):
                     pathlib.Path(guard_path).touch()
 
     async def prepare_for_package(self, project):
+        self.once()
+
         # TODO(clairbee): expire the guard file after a certain time
 
         # Check if this project has python requirements
@@ -126,6 +135,8 @@ class PythonRuntime(runtime.Runtime):
                 await self.ensure(req)
 
     async def prepare_for_shape(self, config):
+        self.once()
+
         # Install dependencies of this part
         if "pythonRequirements" in config:
             for req in config["pythonRequirements"]:
