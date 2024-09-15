@@ -23,9 +23,11 @@ from .utils import normalize_resource_path
 
 
 class AssemblyFactoryAssy(AssemblyFactoryFile):
-    def __init__(self, ctx, project, config):
-        with pc_logging.Action("InitASSY", project.name, config["name"]):
-            super().__init__(ctx, project, config, extension=".assy")
+    def __init__(self, ctx, source_project, target_project, config):
+        with pc_logging.Action("InitASSY", source_project.name, config["name"]):
+            super().__init__(
+                ctx, source_project, target_project, config, extension=".assy"
+            )
             # Complement the config object here if necessary
             self._create(config)
 

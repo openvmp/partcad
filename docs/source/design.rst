@@ -8,7 +8,7 @@ Standards and conventions
 =========================
 
 Packages
---------
+========
 
 All data in PartCAD is bundled into 'packages'.
 Packages are organized in a hierarchical structure where some packages may
@@ -21,7 +21,7 @@ The package is described using the configuration file ``partcad.yaml`` placed
 in the package folder.
 
 Sketches
---------
+========
 
 PartCAD uses 2D sketches to create 3D models (e.g. via `extrude`) and to maintain
 various metadata (such as the geometry of interfaces between parts,
@@ -37,7 +37,7 @@ arbitrary part metadata like camera view angles and so on).
   - `build123d <https://github.com/gumyr/build123d>`_
 
 Interfaces
-----------
+==========
 
 PartCAD uses interfaces to define how parts and assemblies connect to each other.
 
@@ -51,7 +51,7 @@ with no coordinates provided by the user, based on the defined ports, interfaces
 and mating.
 
 Parts
------
+=====
 
 PartCAD has an evergrowing list of ways to define the part model:
 
@@ -74,7 +74,7 @@ PartCAD has an evergrowing list of ways to define the part model:
   - build123d
 
 Assemblies
-----------
+==========
 
 Assemblies are parametrized instructions on how to put parts and other
 assemblies together.
@@ -87,7 +87,7 @@ The idea behind ASSY is to create a simplistic way to enumerate parts,
 define their parameters and define how parts connect.
 
 Scenes
-------
+======
 
 PartCAD does not yet implement scenes. But the idea is to be able to reproduce
 the same features as worlds in Gazebo to the extent that PartCAD scenes can be
@@ -95,7 +95,7 @@ exported to and simulated in Gazebo, but without using XML while creating the
 scene.
 
 Monorepos
----------
+=========
 
 When PartCAD is initialized, the current folder and its ``partcad.yaml`` become
 the `current` package, but not the `root` package. The root package is
@@ -106,7 +106,7 @@ This allows to run PartCAD tools from any sub-directory in a monorepo project
 while maintaining the same meaning of relative and absolute paths.
 
 Paths
------
+=====
 
 PartCAD uses package paths to identify packages and parts declared in them.
 
@@ -116,12 +116,56 @@ For any package ``"<package-path>"``, each sub-directory containing
 ``partcad.yaml`` and each ``import``-ed dependency becomes
 ``"<package-path>/<sub-package>"``.
 
-The complete path of a part or assembly is the combination of the package path
-and the item name: ``<package-path>:<part-name>`` or
-``<package-path>:<assembly-name>``.
+Absolute vs relative
+--------------------
 
-For parametrized parts, the parameter values can be appended to the part name
-after ``;``:
+The absolute package path is the path from the root package to the package.
+If the path starts with ``"/"`` then it is an absolute path.
+
+The relative package path is the path from the current package to the package.
+If the path does not start with ``"/"`` then it is a relative path.
+Sometimes it might help to disambiguate the relative path by prepending ``"./"``.
+
+Multiple packages
+-----------------
+
+Some PartCAD commands and interfaces allow referencing multiple packages at once.
+``"<package-path>/\*"`` is a reference to all sub-packages in ``"<package-path>"``.
+
+``"<package-path>/..."`` is a reference to ``"<package-path>"`` and to all of its
+sub-packages.
+
+Object IDs
+==========
+
+PartCAD packages contain objects of different types: *sketches*, *parts*,
+*assemblies*, *scenes*, *interfaces*, *providers* and so on.
+All of them need to get referenced.
+
+Single object
+-------------
+
+Each object has a unique name within the package (across all object types).
+The object can be globally identified using ``"<package-path>:<object-name>"``.
+
+An attempt to reference an object using the object-name alone is considered
+a reference to the object in the current package.
+
+Multiple objects
+----------------
+
+Some PartCAD commands and interfaces allow referencing multiple objects at once.
+``"<single-or-multiple-package-path>/:\*"`` is a reference to all objects in
+``"<single-or-multiple-package-path>"``.
+
+
+Parametrized objects
+--------------------
+
+Some objects (such as *sketches*, *parts*, *assemblies*, *interfaces* and *providers*)
+may have parameters specified within the object ID to identify an instantiation
+of the object with the given parameters:
+``"<package-path>:<object-name>;param1=value1,param2=value2"``.
 
   .. code-block:: shell
 
@@ -133,6 +177,14 @@ after ``;``:
 
     # Use this:
     pc inspect /pub/std/metric/cqwarehouse:fastener/hexhead-din931;length=30,size=M4-0.7
+
+Objects in a cart
+-----------------
+
+Whenever an object (a *part*) is used for manufacturing or ordering from a store,
+the object ID may also contain the quantity of the object and manufacturing
+process properties:
+``"<package-path>:<object-name>;param1=value1,param2=value2;[<material>,]<quantity>"``.
 
 =====================
 The public repository
@@ -161,14 +213,14 @@ PartCAD tools can operate with public and private repositories for as
 long as they are maintained following the PartCAD standards and conventions.
 
 Command line tools
-------------------
+==================
 
 PartCAD CLI tools get installed using the PyPI module ``partcad-cli``.
 The main tool is called ``pc``.
 The CLI tools are supposed to provide the complete set of PartCAD features.
 
 Visual Studio Code extension
-----------------------------
+============================
 
 PartCAD extension for ``vscode`` is designed to be the primary tool to
 
@@ -178,14 +230,14 @@ Libraries and frameworks
 ========================
 
 Python
-------
+======
 
 The `partcad` Python module is the first PartCAD library. Its development is
 prioritized due to the popularity and the value proposition of such Python
 frameworks such as CadQuery and build123d.
 
 Other languages
----------------
+===============
 
 PartCAD does not aim to stop at supporting Python. Native libraries in other
 languages are planned and all contributors wishing to join the project are

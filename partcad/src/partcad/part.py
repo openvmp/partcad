@@ -40,7 +40,7 @@ class Part(ShapeWithAi):
         if "url" in config:
             self.url = config["url"]
         if "count_per_sku" in config:
-            self.count_per_sku = config["count_per_sku"]
+            self.count_per_sku = int(config["count_per_sku"])
         else:
             self.count_per_sku = 1
         self.count = 0
@@ -59,6 +59,47 @@ class Part(ShapeWithAi):
         cloned = Part(self.name, self.config, self.shape)
         cloned.count = self.count
         return cloned
+
+    async def get_mcftt(self, property: str):
+        # Get the material, color, finish, texture or tolerance of the part
+        if (
+            self.vendor is None
+            and self.sku is None
+            and (
+                not "parameters" in self.config
+                or not property in self.config["parameters"]
+            )
+        ):
+            shape = await self.get_shape()
+            # TODO(clairbee): derive the property from the model
+
+            if property == "finish":
+                # By default, the finish is set to "none"
+                value = "none"
+            else:
+                # By default, the parameter is not set
+                value = None
+
+            if value is not None:
+                if "parameters" not in self.config:
+                    self.config["parameters"] = {}
+                self.config["parameters"][property] = {
+                    "type": "string",
+                    "enum": [value],
+                    "default": value,
+                }
+            else:
+                pc_logging.warning(f"Part '{self.name}' has no '{property}'")
+
+            return value
+
+        if (
+            "parameters" not in self.config
+            or property not in self.config["parameters"]
+            or "default" not in self.config["parameters"][property]
+        ):
+            return None
+        return self.config["parameters"][property]["default"]
 
     def _render_txt_real(self, file):
         file.write(self.name + ": " + self.count + "\n")

@@ -50,7 +50,8 @@ def handle_output(model):
     register_cq_helper()
     picklestring = pickle.dumps(model)
     response = base64.b64encode(picklestring)
-    print(response.decode())
+    sys.stdout.write(response.decode())
+    sys.stdout.flush()
 
 
 def handle_exception(exc, cqscript=None):
@@ -70,3 +71,4 @@ def handle_exception(exc, cqscript=None):
         line = fp.read().split("\n")[tb.tb_lineno - 1]
         sys.stderr.write(line.strip())
     sys.stderr.write("]\n")
+    sys.stderr.flush()

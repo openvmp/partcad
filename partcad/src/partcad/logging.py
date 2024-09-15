@@ -23,6 +23,7 @@ logging.getLogger("partcad").propagate = False
 
 # Wrap the logger to make it easier to use
 setLevel = lambda *a, **kw: logging.getLogger("partcad").setLevel(*a, **kw)
+getLevel = lambda: logging.getLogger("partcad").level
 log = lambda *a, **kw: logging.getLogger("partcad").log(*a, **kw)
 debug = lambda *a, **kw: logging.getLogger("partcad").debug(*a, **kw)
 info = lambda *a, **kw: logging.getLogger("partcad").info(*a, **kw)
@@ -140,10 +141,15 @@ class Process(object):
 
 
 class Action(object):
-    def __init__(self, op: str, package: str, item: str = None):
+    def __init__(
+        self, op: str, package: str, item: str = None, extra: str = None
+    ):
         self.op = op
         self.package = package
-        self.item = item
+        if extra:
+            self.item = item + " : " + extra
+        else:
+            self.item = item
 
     async def __aenter__(self):
         self.__enter__()

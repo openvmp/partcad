@@ -53,3 +53,13 @@ def test_assembly_example_assy_logo_embedded():
     assert asyncio.run(logo.get_shape()) is not None
     assert asyncio.run(logo.get_cadquery()) is not None
     assert asyncio.run(logo.get_build123d()) is not None
+
+
+def test_assembly_example_assy_logo_bom():
+    ctx = pc.init("examples")
+    logo = ctx._get_assembly("/produce_assembly_assy:logo_embedded")
+    assert logo is not None
+    bom = asyncio.run(logo.get_bom())
+    assert bom is not None
+    assert len(bom.keys()) == 3
+    assert sum(bom.values()) == 5

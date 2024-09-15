@@ -38,7 +38,7 @@ class PartFactoryExtrude(PartFactory):
                 config,
             )
 
-            self.depth = config["depth"]
+            self.depth = float(config["depth"])
 
             self.source_sketch_name = config.get("sketch", "sketch")
             if "project" in config:
@@ -61,13 +61,16 @@ class PartFactoryExtrude(PartFactory):
             self.source_sketch_spec = (
                 self.source_project_name + ":" + self.source_sketch_name
             )
-            self.sketch = ctx.get_sketch(self.source_sketch_spec)
 
             self._create(config)
 
     async def instantiate(self, part):
         with pc_logging.Action("Extrude", part.project_name, part.name):
             try:
+                self.sketch = self.project.ctx.get_sketch(
+                    self.source_sketch_spec
+                )
+
                 maker = BRepPrimAPI_MakePrism(
                     await self.sketch.get_shape(),
                     gp_Vec(0.0, 0.0, self.depth),

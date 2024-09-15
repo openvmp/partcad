@@ -40,6 +40,13 @@ Below are some examples of consuming existing modules:
 - Any other Python script:
   - [Import PartCAD parts in Python scripts](./consume_standalone/)
 
+## Get quotes for parts
+
+PartCAD uses `providers` to implement part orders.
+
+- [Provider of the type "store" to buy SKUs](./provider_store/)
+- [Provider of the type "manufacturing" to manufacture a model](./provider_manufacturing/)
+
 ## Features
 
 These examples showcase particular PartCAD features:
