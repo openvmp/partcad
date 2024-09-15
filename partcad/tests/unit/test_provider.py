@@ -16,14 +16,13 @@ from partcad.provider_request_quote import ProviderRequestQuote
 
 
 def test_provider_quote_store_csv():
-    OBJECT_NAME = "/pub/robotics/parts/gobilda:hardware/nut_m4_0_7mm#25"
-    FULL_PART_NAME = "/pub/robotics/parts/gobilda:hardware/nut_m4_0_7mm"
+    FULL_PART_NAME = "/pub/robotics/parts/gobilda:hardware/nut_m4_0_7mm#25"
     FULL_PROVIDER_NAME = "/pub/examples/partcad/provider_store:myGarage"
 
     ctx = pc.init("examples/provider_store")
 
     cart = ProviderCart()
-    asyncio.run(cart.add_object(ctx, OBJECT_NAME))
+    asyncio.run(cart.add_object(ctx, FULL_PART_NAME))
 
     provider = ctx.get_provider("myGarage")
     assert provider is not None
