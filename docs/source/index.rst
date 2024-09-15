@@ -31,3 +31,4 @@ And all of that is supercharged by the ultimate versioning and collaboration fea
    features.rst
    troubleshooting.rst
    implementation_details.rst
+   contributing.rst

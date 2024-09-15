@@ -1,0 +1,87 @@
+desc: Example of a manufacturer provider which is a pseudo 3D printer.
+
+docs:
+  usage: |
+    Get a quote:
+    ```shell
+    $ pc supply quote cylinder#1
+    ...
+    INFO:  The following quotes are received:
+    INFO:  		/pub/examples/partcad/provider_manufacturer:my3dPrinter: 12345: $100.00
+    INFO:  			/pub/examples/partcad/provider_manufacturer:cylinder#1
+    ...
+    ```
+
+    Make an order (assuming the cart id is "12345"):
+    ```shell
+    $ pc supply order 12345
+    ...
+    ```
+
+    See the generated G-code:
+    ```shell
+    $ ls -l nut_m4_0_7mm.gcode
+    ```
+
+# What providers to consider for all parts and assemblies in this package
+suppliers:
+  my3dPrinter:
+
+# Define new providers
+providers:
+  # Introducing a wrapper to demonstrate how the same implementation can be
+  # used with different parameters
+  my3dPrinter:
+    type: enrich
+    source: gcodeWriter # What integration protocol to use
+    with: # Integration protocol parameters
+      output: printer.gcode
+      startOffsetWidth: 10.0
+
+  gcodeWriter:
+    type: manufacturer # No vendors or SKUs, manufacture using blueprints
+    abstract: True # This provider is not meant to be used directly
+    parameters: # Declare supported parameters
+      output:
+        type: string
+        default: output.gcode
+      startOffsetWidth:
+        type: float
+        default: 10.0
+      startOffsetLength:
+        type: float
+        default: -7.0
+      maxWidth:
+        type: float
+        default: 200.0
+      maxLength:
+        type: float
+        default: 200.0
+      maxHeight:
+        type: float
+        default: 200.0
+
+# Define the test parts
+sketches:
+  circle:
+    type: basic
+    circle: 10.0
+
+parts:
+  cylinder:
+    type: extrude
+    sketch: circle
+    depth: 10
+    parameters:
+      color:
+        type: string
+        default: red
+      material:
+        type: string
+        default: /pub/std/manufacturing/material/plastic:pla
+
+render:
+  readme:
+    exclude:
+      - sketches
+      - parts

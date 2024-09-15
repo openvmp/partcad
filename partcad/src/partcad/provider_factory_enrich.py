@@ -1,8 +1,8 @@
 #
-# OpenVMP, 2023
+# OpenVMP, 2024
 #
 # Author: Roman Kuzmenko
-# Created: 2024-01-26
+# Created: 2024-09-07
 #
 # Licensed under Apache License, Version 2.0.
 #
@@ -10,14 +10,14 @@
 import copy
 import typing
 
-from . import part_config
-from . import part_factory as pf
+from . import provider_config
+from . import provider_factory as pf
 from . import logging as pc_logging
 from .utils import resolve_resource_path
 
 
-class PartFactoryEnrich(pf.PartFactory):
-    source_part_name: str
+class ProviderFactoryEnrich(pf.ProviderFactory):
+    source_provider_name: str
     source_project_name: typing.Optional[str]
     source: str
 
@@ -27,14 +27,14 @@ class PartFactoryEnrich(pf.PartFactory):
         ):
             super().__init__(ctx, source_project, target_project, config)
 
-            # Determine the part the 'enrich' points to
+            # Determine the provider the 'enrich' points to
             if "source" in config:
-                self.source_part_name = config["source"]
+                self.source_provider_name = config["source"]
             else:
-                self.source_part_name = config["name"]
+                self.source_provider_name = config["name"]
                 if not "project" in config:
                     raise Exception(
-                        "Enrich needs either the source part name or the source project name"
+                        "Enrich needs either the source provider name or the source project name"
                     )
 
             if "project" in config:
@@ -45,26 +45,28 @@ class PartFactoryEnrich(pf.PartFactory):
                 ):
                     self.source_project_name = source_project.name
             else:
-                if ":" in self.source_part_name:
-                    self.source_project_name, self.source_part_name = (
+                if ":" in self.source_provider_name:
+                    self.source_project_name, self.source_provider_name = (
                         resolve_resource_path(
                             source_project.name,
-                            self.source_part_name,
+                            self.source_provider_name,
                         )
                     )
                 else:
                     self.source_project_name = source_project.name
-            self.source = self.source_project_name + ":" + self.source_part_name
+            self.source = (
+                self.source_project_name + ":" + self.source_provider_name
+            )
 
             pc_logging.debug("Initializing an enrich to %s" % self.source)
 
-            # TODO(clairbee): Delay de-referencing until part's initialization
+            # TODO(clairbee): Delay de-referencing until provider's initialization
 
-            # Get the config of the part the 'enrich' points to
+            # Get the config of the provider the 'enrich' points to
             orig_source_project = source_project
             if self.source_project_name == source_project.name:
-                augmented_config = source_project.get_part_config(
-                    self.source_part_name
+                augmented_config = source_project.get_provider_config(
+                    self.source_provider_name
                 )
             else:
                 source_project = ctx.get_project(self.source_project_name)
@@ -76,20 +78,20 @@ class PartFactoryEnrich(pf.PartFactory):
                     raise Exception(
                         "Package not found: %s" % self.source_project_name
                     )
-                augmented_config = source_project.get_part_config(
-                    self.source_part_name
+                augmented_config = source_project.get_provider_config(
+                    self.source_provider_name
                 )
             if augmented_config is None:
                 pc_logging.error(
-                    "Failed to find the part to enrich: %s"
-                    % self.source_part_name
+                    "Failed to find the provider to enrich: %s"
+                    % self.source_provider_name
                 )
                 return
 
             augmented_config = copy.deepcopy(augmented_config)
             # TODO(clairbee): ideally whatever we pull from the project is already normalized
-            augmented_config = part_config.PartConfiguration.normalize(
-                self.source_part_name,
+            augmented_config = provider_config.ProviderConfiguration.normalize(
+                self.source_provider_name,
                 augmented_config,
             )
 
@@ -118,7 +120,7 @@ class PartFactoryEnrich(pf.PartFactory):
                     augmented_config["parameters"][param]["default"] = config[
                         "with"
                     ][param]
-            orig_source_project.init_part_by_config(
+            orig_source_project.init_provider_by_config(
                 augmented_config,
                 source_project,
             )

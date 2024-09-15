@@ -1,6 +1,29 @@
 Additional Features
 ###################
 
+=============================
+Procurement and Manufacturing
+=============================
+
+PartCAD currently supports two types of providers (entities that can provide
+parts and assemblies): ``store`` and ``manufacturer``.
+``store`` can be used to quote and order parts from existing lists:
+by ``vendor`` and ``SKU``.
+``manufacturer`` can be used to quote and order parts by using their 3D model
+(for example, by 3D printing them).
+
+In the future, PartCAD will support ``assembler``, which is supposed to produce
+an assembly given assembly instructions and using parts ordered from
+``store``-s and ``manufacturer``-s.
+
+Currently, the provider has to be explicitly specified in the quote or order
+request, or explicitly specified as one of the suppliers in the package where
+the parts are declared. In the future PartCAD will be able to select providers
+based on the location and preferences of the requestor, while leaving the
+possibility to enforce the use of a specific provider for corresponding parts
+(for example, for parts that are using a patented design).
+
+
 =============
 Generative AI
 =============

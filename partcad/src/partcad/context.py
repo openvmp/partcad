@@ -21,6 +21,8 @@ from . import project_factory_tar as rft
 from . import sync_threads
 from .user_config import user_config
 from .utils import *
+from .provider_request_quote import ProviderRequestQuote
+from .provider_data_cart import *
 
 
 # Context
@@ -37,6 +39,8 @@ class Context(project_config.Configuration):
     stats_parts_instantiated: int
     stats_assemblies: int
     stats_assemblies_instantiated: int
+    stats_providers: int
+    stats_provider_queries: int
     stats_memory: int
 
     # name is the package path (not a filesystem path) of the root package
@@ -112,6 +116,8 @@ class Context(project_config.Configuration):
         self.stats_parts_instantiated = 0
         self.stats_assemblies = 0
         self.stats_assemblies_instantiated = 0
+        self.stats_providers = 0
+        self.stats_provider_queries = 0
         self.stats_memory = 0
 
         self.mates = {}
@@ -447,6 +453,13 @@ class Context(project_config.Configuration):
             ):
                 # TODO(clairbee): check if this subdir is already imported
                 next_project_path = get_child_project_path(project.name, subdir)
+
+                if next_project_path in self.projects:
+                    # This project is already imported (e.g. the current one)
+                    # TODO(clairbee): is this worth a warning?
+                    pc_logging.debug("Skipping already imported: %s" % subdir)
+                    continue
+
                 pc_logging.debug(
                     "Importing a subfolder (import all): %s..."
                     % next_project_path
@@ -697,6 +710,159 @@ class Context(project_config.Configuration):
 
     def get_interface_shape(self, interface_spec):
         return asyncio.run(self._get_interface(interface_spec).get_wrapped())
+
+    async def find_suppliers(self, cart: ProviderCart) -> dict[str, list[str]]:
+        """Find suppliers for each of the parts in the cart"""
+        suppliers = {}
+        for name, part_spec in cart.parts.items():
+            if not ":" in name:
+                name = ":" + name
+            project_name, part_name = resolve_resource_path(
+                self.current_project_path,
+                name,
+            )
+            prj = self.get_project(project_name)
+            if prj is None:
+                pc_logging.error("Package %s not found" % project_name)
+                pc_logging.error("Packages found: %s" % str(self.projects))
+                return {}
+            pc_logging.debug("Retrieving suppliers from %s" % project_name)
+
+            part_suppliers = prj.get_suppliers(part_spec)
+            if len(part_suppliers) == 0:
+                pc_logging.error(
+                    "No suppliers found for %s in %s"
+                    % (part_name, project_name)
+                )
+                return {}
+
+            pc_logging.debug("Part spec: %s" % str(part_spec))
+            for provider_name, provider_extra_config in part_suppliers.items():
+                provider = self.get_provider(
+                    provider_name, provider_extra_config
+                )
+                if cart.qos is not None and not provider.is_qos_available(
+                    cart.qos
+                ):
+                    continue
+                if not await provider.is_part_available(part_spec):
+                    continue
+
+                if f"{project_name}:{part_name}" not in suppliers:
+                    suppliers[f"{project_name}:{part_name}"] = []
+                suppliers[f"{project_name}:{part_name}"].append(provider.name)
+
+            if f"{project_name}:{part_name}" not in suppliers:
+                pc_logging.error(
+                    f"No supplier found for {project_name}:{part_name}"
+                )
+
+        # TODO(clairbee): calculate the recommended suppliers and
+        #                 reorder the results accordingly
+
+        return suppliers
+
+    def select_preferred_supplier(self, suppliers: list[str]):
+        """From a list of suppliers, select the preferred one."""
+        return suppliers[0]
+
+    def select_preferred_suppliers(
+        self, suppliers_per_part: dict[str, list[str]]
+    ) -> dict[str, str]:
+        """Given a list of suppliers per part, select the preferred supplier for each."""
+        preferred_suppliers = {}
+        for name, suppliers in suppliers_per_part.items():
+            supplier = self.select_preferred_supplier(suppliers)
+            preferred_suppliers[name] = supplier
+
+        return preferred_suppliers
+
+    async def select_supplier(
+        self, provider, cart: ProviderCart
+    ) -> dict[str, str]:
+        """Given a specific provider, confirm it can provide all the parts."""
+        if cart.qos is not None and not provider.is_qos_available(cart.qos):
+            pc_logging.error(f"QoS {cart.qos} is not available from {provider}")
+            return
+        suppliers = {}
+        tasks = []
+
+        async def _set_supplier(name, cart_item):
+            if not await provider.is_part_available(cart_item):
+                pc_logging.error(
+                    "Part %s is not available from %s" % (name, provider.name)
+                )
+                suppliers[str(cart_item)] = ""
+            else:
+                pc_logging.debug("Cart item: %s" % str(cart_item))
+                suppliers[str(cart_item)] = provider.name
+
+        for name, cart_item in cart.parts.items():
+            tasks.append(asyncio.create_task(_set_supplier(name, cart_item)))
+        await asyncio.gather(*tasks)
+
+        return suppliers
+
+    async def prepare_supplier_carts(
+        self, preferred_suppliers: dict[str, str]
+    ) -> dict[str, ProviderCart]:
+        """Given the list of preferred suppliers, prepare the supplier carts."""
+        supplier_carts: dict[str, ProviderCart] = {}
+
+        # Create a supplier cart for each supplier
+        provider_names = set(preferred_suppliers.values())
+        for provider_name in provider_names:
+            supplier_carts[provider_name] = ProviderCart()
+
+        # Place each part in the corresponding supplier cart
+        for part_spec, provider_name in preferred_suppliers.items():
+            if not provider_name in supplier_carts:
+                supplier_carts[provider_name] = ProviderCart()
+            cart_item = await supplier_carts[provider_name].add_part_spec(
+                self, part_spec
+            )
+
+            # If it's not 'None' which means no provider found
+            if provider_name:
+                # Load the provider-supported CAD mode.
+                # This is what makes it a 'supplier cart' instead of a regular cart.
+                provider = self.get_provider(provider_name)
+                await provider.load(cart_item)
+
+        return supplier_carts
+
+    async def supplier_carts_to_quotes(
+        self, preferred_suppliers: dict[str, ProviderCart]
+    ) -> dict[str, ProviderRequestQuote]:
+        """Given the list of suppliers, and a supplier-customized carts,
+        convert them to quotes"""
+        quotes = {}
+        for provider_name, supplier_cart in preferred_suppliers.items():
+
+            pc_logging.debug("Supplier: %s" % str(provider_name))
+
+            quote = ProviderRequestQuote(supplier_cart)
+
+            if provider_name:
+                # If it's not 'None' which means no provider found
+                provider = self.get_provider(provider_name)
+                quote_result = await provider.query_quote(quote)
+                quote.set_result(quote_result)
+            quotes[provider_name] = quote
+        return quotes
+
+    def get_provider(self, part_spec, params=None):
+        project_name, part_name = resolve_resource_path(
+            self.current_project_path,
+            part_spec,
+        )
+        prj = self.get_project(project_name)
+        if prj is None:
+            pc_logging.error("Package %s not found" % project_name)
+            pc_logging.error("Packages found: %s" % str(self.projects))
+            return None
+        pc_logging.debug("Retrieving %s from %s" % (part_name, project_name))
+        return prj.get_provider(part_name, params)
 
     def _get_part(self, part_spec, params=None):
         project_name, part_name = resolve_resource_path(

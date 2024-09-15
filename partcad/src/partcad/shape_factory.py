@@ -9,7 +9,6 @@
 
 from . import factory
 
-from . import factory
 from .file_factory import FileFactory
 from .port import WithPorts
 
@@ -26,7 +25,7 @@ class ShapeFactory(factory.Factory):
 
         if "fileFrom" in config:
             self.fileFactory = factory.instantiate(
-                "file", config["fileFrom"], ctx, project, config
+                "file", config["fileFrom"], ctx, project, project, config
             )
         else:
             self.fileFactory = None

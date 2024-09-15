@@ -44,6 +44,8 @@ from . import part_factory_alias as pfa
 from . import part_factory_enrich as pfe
 from . import assembly
 from . import assembly_config
+from . import provider
+from . import provider_config
 from .render import render_cfg_merge
 from .utils import resolve_resource_path
 
@@ -99,6 +101,20 @@ class Project(project_config.Configuration):
                 prj.assembly_locks[assembly_name] = threading.Lock()
             self.lock = prj.assembly_locks[assembly_name]
             prj.assembly_locks_lock.release()
+
+        def __enter__(self, *_args):
+            self.lock.acquire()
+
+        def __exit__(self, *_args):
+            self.lock.release()
+
+    class ProviderLock(object):
+        def __init__(self, prj, provider_name: str):
+            prj.provider_locks_lock.acquire()
+            if not provider_name in prj.provider_locks:
+                prj.provider_locks[provider_name] = threading.Lock()
+            self.lock = prj.provider_locks[provider_name]
+            prj.provider_locks_lock.release()
 
         def __enter__(self, *_args):
             self.lock.acquire()
@@ -173,6 +189,19 @@ class Project(project_config.Configuration):
         self.assembly_locks = {}
         self.assembly_locks_lock = threading.Lock()
 
+        # self.provider_configs contains the configs of all the providers in this project
+        if (
+            "providers" in self.config_obj
+            and not self.config_obj["providers"] is None
+        ):
+            self.provider_configs = self.config_obj["providers"]
+        else:
+            self.provider_configs = {}
+        # self.providers contains all the initialized providers in this project
+        self.providers = {}
+        self.provider_locks = {}
+        self.provider_locks_lock = threading.Lock()
+
         if (
             "desc" in self.config_obj
             and not self.config_obj["desc"] is None
@@ -187,6 +216,8 @@ class Project(project_config.Configuration):
         self.init_mates()  # After interfaces
         self.init_parts()  # After sketches and interfaces, and mates
         self.init_assemblies()  # after parts
+        self.init_providers()  # after parts
+        self.init_suppliers()  # after suppliers
 
     # TODO(clairbee): Implement get_cover()
     # def get_cover(self):
@@ -626,7 +657,7 @@ class Project(project_config.Configuration):
                     self.ctx, source_project, self, alias_part_config
                 )
 
-    def get_part(self, part_name, func_params=None) -> part.Part:
+    def get_part(self, part_name, func_params=None, quiet=False) -> part.Part:
         if func_params is None or not func_params:
             has_func_params = False
         else:
@@ -638,8 +669,8 @@ class Project(project_config.Configuration):
             base_part_name = part_name.split(";")[0]
             part_name_params_string = part_name.split(";")[1]
 
-            for kv in part_name_params_string.split[","]:
-                k, v = kv.split("")
+            for kv in part_name_params_string.split(","):
+                k, v = kv.split("=")
                 params[k] = v
         else:
             has_name_params = False
@@ -674,9 +705,10 @@ class Project(project_config.Configuration):
                 # This is just a regular part name, no params (part_name == result_name)
                 if not part_name in self.part_configs:
                     # We don't know anything about such a part
-                    pc_logging.error(
-                        "Part '%s' not found in '%s'", part_name, self.name
-                    )
+                    if not quiet:
+                        pc_logging.error(
+                            "Part '%s' not found in '%s'", part_name, self.name
+                        )
                     return None
                 # This is not yet created (invalidated?)
                 config = self.get_part_config(part_name)
@@ -804,7 +836,7 @@ class Project(project_config.Configuration):
                 assembly_name, config
             )
             factory.instantiate(
-                "assembly", config["type"], self.ctx, self, config
+                "assembly", config["type"], self.ctx, self, self, config
             )
 
     def get_assembly(
@@ -821,8 +853,8 @@ class Project(project_config.Configuration):
             base_assembly_name = assembly_name.split(";")[0]
             assembly_name_params_string = assembly_name.split(";")[1]
 
-            for kv in assembly_name_params_string.split[","]:
-                k, v = kv.split("")
+            for kv in assembly_name_params_string.split(","):
+                k, v = kv.split("=")
                 params[k] = v
         else:
             has_name_params = False
@@ -872,7 +904,7 @@ class Project(project_config.Configuration):
                     assembly_name, config
                 )
                 factory.instantiate(
-                    "assembly", config["type"], self.ctx, self, config
+                    "assembly", config["type"], self.ctx, self, self, config
                 )
 
                 if (
@@ -970,7 +1002,7 @@ class Project(project_config.Configuration):
             #     % pformat(config)
             # )
             factory.instantiate(
-                "assembly", config["type"], self.ctx, self, config
+                "assembly", config["type"], self.ctx, self, self, config
             )
 
             # See if it worked
@@ -983,6 +1015,234 @@ class Project(project_config.Configuration):
                 return None
 
             return self.assemblies[result_name]
+
+    def get_provider_config(self, provider_name):
+        if not provider_name in self.provider_configs:
+            return None
+        return self.provider_configs[provider_name]
+
+    def init_providers(self):
+        if self.provider_configs is None:
+            return
+
+        for provider_name in self.provider_configs:
+            config = self.get_provider_config(provider_name)
+            config = provider_config.ProviderConfiguration.normalize(
+                provider_name, config
+            )
+            factory.instantiate(
+                "provider", config["type"], self.ctx, self, self, config
+            )
+
+    # TODO(clairbee): either call init_*_by_config or call
+    #                  factory->instantite everywhere.
+    #                  Recall what waas the thinking about it when the factory
+    #                  class was introduced.
+
+    def init_provider_by_config(self, config, source_project=None):
+        if source_project is None:
+            source_project = self
+        factory.instantiate(
+            "provider", config["type"], self.ctx, source_project, self, config
+        )
+
+    def get_provider(
+        self, provider_name, func_params=None
+    ) -> provider.Provider:
+        if func_params is None or not func_params:
+            has_func_params = False
+        else:
+            has_func_params = True
+
+        params: dict[str, typing.Any] = {}
+        if ";" in provider_name:
+            has_name_params = True
+            base_provider_name = provider_name.split(";")[0]
+            provider_name_params_string = provider_name.split(";")[1]
+
+            for kv in provider_name_params_string.split(","):
+                k, v = kv.split("=")
+                params[k] = v
+        else:
+            has_name_params = False
+            base_provider_name = provider_name
+
+        if has_func_params:
+            params = {**params, **func_params}
+            has_name_params = True
+
+        if not has_name_params:
+            result_name = provider_name
+        else:
+            # Determine the name we want this parameterized provider to have
+            result_name = base_provider_name + ";"
+            result_name += ",".join(
+                map(lambda n: n + "=" + str(params[n]), sorted(params))
+            )
+
+        self.lock.acquire()
+
+        # See if it's already available
+        if (
+            result_name in self.providers
+            and not self.providers[result_name] is None
+        ):
+            p = self.providers[result_name]
+            self.lock.release()
+            return p
+
+        with Project.ProviderLock(self, result_name):
+            # Release the project lock, and continue with holding the part lock only
+            self.lock.release()
+
+            if not has_name_params:
+                # This is just a regular provider name, no params (provider_name == result_name)
+                if not provider_name in self.provider_configs:
+                    # We don't know anything about such an provider
+                    pc_logging.error(
+                        "Provider '%s' not found in '%s'",
+                        provider_name,
+                        self.name,
+                    )
+                    return None
+                # This is not yet created (invalidated?)
+                config = self.get_provider_config(provider_name)
+                config = provider_config.ProviderConfiguration.normalize(
+                    provider_name, config
+                )
+                factory.instantiate(
+                    "provider", config["type"], self.ctx, self, self, config
+                )
+
+                if (
+                    not provider_name in self.providers
+                    or self.providers[provider_name] is None
+                ):
+                    pc_logging.error(
+                        "Failed to instantiate a non-parametrized provider %s"
+                        % provider_name
+                    )
+                return self.providers[provider_name]
+
+            # This provider has params (part_name != result_name)
+            if not base_provider_name in self.providers:
+                pc_logging.error(
+                    "Base provider '%s' not found in '%s'",
+                    base_provider_name,
+                    self.name,
+                )
+                return None
+            pc_logging.debug("Found the base provider: %s" % base_provider_name)
+
+            # Now we have the original assembly name and the complete set of parameters
+            config = self.provider_configs[base_provider_name]
+            if config is None:
+                pc_logging.error(
+                    "The config for the base provider '%s' is not found in '%s'",
+                    base_provider_name,
+                    self.name,
+                )
+                return None
+
+            config = copy.deepcopy(config)
+            if (
+                not "parameters" in config or config["parameters"] is None
+            ) and (config["type"] != "enrich"):
+                pc_logging.error(
+                    "Attempt to parametrize '%s' of '%s' which has no parameters: %s",
+                    base_provider_name,
+                    self.name,
+                    str(config),
+                )
+                return None
+
+            # Expand the config object so that the parameter values can be set
+            config = provider_config.ProviderConfiguration.normalize(
+                result_name, config
+            )
+            config["orig_name"] = base_provider_name
+
+            # Fill in the parameter values
+            param_name: str
+            if "parameters" in config and not config["parameters"] is None:
+                # Filling "parameters"
+                for param_name, param_value in params.items():
+                    if config["parameters"][param_name]["type"] == "string":
+                        config["parameters"][param_name]["default"] = str(
+                            param_value
+                        )
+                    elif config["parameters"][param_name]["type"] == "int":
+                        config["parameters"][param_name]["default"] = int(
+                            param_value
+                        )
+                    elif config["parameters"][param_name]["type"] == "float":
+                        config["parameters"][param_name]["default"] = float(
+                            param_value
+                        )
+                    elif config["parameters"][param_name]["type"] == "bool":
+                        if isinstance(param_value, str):
+                            if param_value.lower() == "true":
+                                config["parameters"][param_name][
+                                    "default"
+                                ] = True
+                            else:
+                                config["parameters"][param_name][
+                                    "default"
+                                ] = False
+                        else:
+                            config["parameters"][param_name]["default"] = bool(
+                                param_value
+                            )
+            else:
+                # Filling "with"
+                if not "with" in config:
+                    config["with"] = {}
+                for param_name, param_value in params.items():
+                    config["with"][param_name] = param_value
+
+            # Now initialize the provider
+            pc_logging.debug(
+                "Initializing a parametrized provider: %s" % result_name
+            )
+            # pc_logging.debug(
+            #     "Initializing a parametrized provider using the following config: %s"
+            #     % pformat(config)
+            # )
+            factory.instantiate(
+                "provider", config["type"], self.ctx, self, self, config
+            )
+
+            # See if it worked
+            if not result_name in self.providers:
+                pc_logging.error(
+                    "Failed to instantiate parameterized assembly '%s' in '%s'",
+                    result_name,
+                    self.name,
+                )
+                return None
+
+            return self.providers[result_name]
+
+    def get_suppliers(self, part_spec):
+        # TODO(clirbee): return the eligible subset of suppliers
+        # part_name = part_spec["name"]
+        return self.suppliers
+
+    def init_suppliers(self):
+        cfg = self.config_obj.get("suppliers", {})
+        if isinstance(cfg, str):
+            cfg = {cfg: {}}
+        elif isinstance(cfg, list):
+            cfg = {c: {} for c in cfg}
+        elif not isinstance(cfg, dict):
+            pc_logging.error(
+                "Invalid suppliers configuration in '%s': %s",
+                self.name,
+                str(cfg),
+            )
+            return
+
+        self.suppliers = cfg
 
     def add_import(self, alias, location):
         if ":" in location:
@@ -1539,6 +1799,7 @@ class Project(project_config.Configuration):
                 columns += ['<img src="%s" height="200">' % image_path]
             else:
                 image_path = None
+                test_image_path = None
 
             if image_path is None or not os.path.exists(
                 os.path.join(output_dir, test_image_path)

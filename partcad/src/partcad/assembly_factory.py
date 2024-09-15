@@ -18,8 +18,10 @@ class AssemblyFactory(ShapeFactory):
     path: typing.Optional[str] = None
     assembly: Assembly
 
-    def __init__(self, ctx, project, config, extension=""):
-        super().__init__(ctx, project, config)
+    def __init__(
+        self, ctx, source_project, target_project, config, extension=""
+    ):
+        super().__init__(ctx, source_project, config)
         self.name = config["name"]
         self.orig_name = config["orig_name"]
 

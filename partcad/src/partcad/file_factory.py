@@ -13,10 +13,10 @@ import typing
 class FileFactory:
     path: typing.Optional[str] = None
 
-    def __init__(self, ctx, project, config):
+    def __init__(self, ctx, source_project, target_project, config):
         self.config = config
         self.ctx = ctx
-        self.project = project
+        self.project = source_project
 
     async def download(self, path):
         raise NotImplementedError(

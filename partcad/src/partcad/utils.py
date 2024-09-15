@@ -33,13 +33,11 @@ def get_child_project_path(parent_path, child_name):
 
 
 def resolve_resource_path(current_project_name, pattern: str):
-    if ":" in pattern:
-        project_pattern, item_pattern = pattern.split(":")
-        if project_pattern == "":
-            project_pattern = current_project_name
-    else:
-        project_pattern = pattern
-        item_pattern = "*"
+    if not ":" in pattern:
+        pattern = ":" + pattern
+    project_pattern, item_pattern = pattern.split(":")
+    if project_pattern == "":
+        project_pattern = current_project_name
 
     project_pattern = project_pattern.replace("...", "*")
     if not project_pattern.startswith("/"):

@@ -111,7 +111,7 @@ Sketches are declared in ``partcad.yaml`` using the following syntax:
       type: <basic|dxf|svg>
       desc: <(optional) textual description>
       path: <(optional) the source file path, "{sketch name}.{ext}" otherwise>
-      <... type-specific options ...>
+      # ... type-specific options ...
 
 Basic
 -----
@@ -331,7 +331,7 @@ get resolved and applied as inheritance or connection coordinate offsets.
   # Interface inheritance with parameters
   interfaces:
     <interface name>:
-      ...
+      # ...
       inherits: # (optional) the list of other interfaces to inherit from
         <parent interface name>:
           <instance name>:
@@ -341,7 +341,7 @@ get resolved and applied as inheritance or connection coordinate offsets.
   # Interface implementation with parameters
     parts:
     <part name>:
-      ...
+      # ...
       implements: # (optional) the list of other interfaces to inherit from
         <interface name>:
           <instance name>:
@@ -374,7 +374,7 @@ Parts are declared in ``partcad.yaml`` using the following syntax:
       type: <openscad|cadquery|build123d|ai-openscad|ai-cadquery|ai-build123d|step|stl|3mf>
       desc: <(optional) textual description, also used by AI>
       path: <(optional) the source file path, "{part name}.{ext}" otherwise>
-      <... type-specific options ...>
+      # ... type-specific options ...
       offset: <OCCT Location object, e.g. "[[0,0,0], [0,0,1], 0]">
 
       # The below syntax is similar to the one used for interfaces,
@@ -405,7 +405,7 @@ Define parts with CodeCAD scripts using the following syntax:
       type: <openscad|cadquery|build123d>
       cwd: <alternative current working directory>
       patch:
-        <...regexp substitutions to apply...>
+        # ...regexp substitutions to apply...
         "patern": "repl"
       pythonRequirements: <(python scripts only) the list of dependencies to install>
       parameters:
@@ -514,12 +514,81 @@ already defined elsewhere.
 +---------+----------------------------------------+----------------------------+
 
 
-Other
------
+Other Part Types
+----------------
 
 Other methods to define parts are coming soon (e.g. `SDF <https://github.com/fogleman/sdf>`_).
 Please, express your interest in support for other formats by filing a corresponding issue on GitHub
 or sending an email to `openvmp@proton.me <mailto:openvmp@proton.me>`_.
+
+Parameters
+----------
+
+Each part may have a list of parameters that are passed into the scripts to
+modify the part.
+The parameters can be of types ``string``, ``float``, ``int`` and ``bool``.
+The parameter values can be restricted by specifying the list of possibe values
+in ``enum``.
+The initial parameter value is set using ``default``.
+
+.. code-block:: yaml
+
+  parts:
+    <part name>:
+      # ...
+      parameters:
+        <param name>:
+          type: <string|float|int|bool>
+          enum: <(optional) list of possible values>
+          default: <default value>
+
+There are several parameter names that are reserved for values used in
+visualisation, simulation calculations and, if applicable, manufacturing
+(also referred to as ``MCFTT prameters`` using their first letters):
+
+- ``material``
+
+  Must point at an object of type ``material``.
+  Some of them are defined in ``/pub/std/manufacturing/material``.
+  When a request is made to a manufacturing API,
+  a close enough material is selected from the materials provided by the
+  manufacturer. The responsibility to select the right material is on the
+  implementation of the manufacturing API (the ``provider`` object in PartCAD).
+
+  **Not implemented yet. Use hardcoded values for now.**
+
+- ``color``
+
+  **Not implemented yet. Use color names for now.**
+
+- ``finish``
+
+  Optional. Can be omitted for no finish.
+
+  **Not implemented yet.**
+
+- ``texture``
+
+  Optional. Can be omitted for no texture.
+
+  **Not implemented yet.**
+
+- ``tolerance``
+
+  Optional. Can be omitted for a claim to perfect precision during manufacturing.
+
+  **Not implemented yet.**
+
+If the part has variable MCFTT parameters depending on the surface,
+then either this part must be broken down into multiple parts,
+or the values must be derived from CAD files/scripts (not implemented yet).
+In the latter case the part will not be eligible for manufacturing features,
+unless a specific manufacturing service provider recognises (vendor,SKU) values
+and have received corresponding manufacturing instructions out-of-band.
+
+The MCFTT parameters are not required and have no impact on parts that have
+``vendor`` and ``sku`` set and that are procured using providers of the type
+``store``.
 
 ==========
 Assemblies
@@ -595,6 +664,25 @@ assemblies.
 |         |       type: alias                          || make it easier to         |
 |         |       source: </path/to:existing-assembly> || reference it locally.     |
 +---------+--------------------------------------------+----------------------------+
+
+=========
+Providers
+=========
+
+Providers are declared in ``partcad.yaml`` using the following syntax:
+
+.. code-block:: yaml
+
+  providers:
+    <provider name>:
+      type: <store|manufacturer|enrich>
+      desc: <(optional) textual description>
+      # ... type-specific options ...
+      parameters:  # (optional)
+        <param name>:
+          type: <string|float|int|bool>
+          enum: <(optional) list of possible values>
+          default: <default value>
 
 ==============
 Common Options

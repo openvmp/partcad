@@ -108,6 +108,27 @@ class Assembly(ShapeWithAi):
             #     self.shape
             # )  # TODO(clairbee): fix this for the case when the parts are made with cadquery
 
+    async def get_bom(self):
+        await self.do_instantiate()
+        async with self.lock:
+            bom = {}
+            for child in self.children:
+                if hasattr(child.item, "get_bom"):
+                    # This is an assembly
+                    child_bom = await child.item.get_bom()
+                    for child_part_name, child_part_count in child_bom.items():
+                        if child_part_name in bom:
+                            bom[child_part_name] += child_part_count
+                        else:
+                            bom[child_part_name] = child_part_count
+                else:
+                    part_name = child.item.project_name + ":" + child.item.name
+                    if part_name in bom:
+                        bom[part_name] += 1
+                    else:
+                        bom[part_name] = 1
+            return bom
+
     async def _render_txt_real(self, file):
         await self.do_instantiate()
         for child in self.children:

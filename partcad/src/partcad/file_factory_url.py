@@ -18,8 +18,8 @@ from .logging import debug
 class FileFactoryUrl(FileFactory):
     url: str = None
 
-    def __init__(self, ctx, project, config):
-        super().__init__(ctx, project, config)
+    def __init__(self, ctx, source_project, target_project, config):
+        super().__init__(ctx, source_project, target_project, config)
 
         self.url = config["fileUrl"]
 

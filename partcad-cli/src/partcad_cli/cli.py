@@ -24,6 +24,10 @@ from .cli_list import *
 from .cli_render import *
 from .cli_inspect import *
 from .cli_status import *
+from .cli_supply_find import *
+from .cli_supply_caps import *
+from .cli_supply_order import *
+from .cli_supply_quote import *
 
 
 # Initialize plugins that are not enabled by default
@@ -62,6 +66,8 @@ def main():
         dest="config_path",
     )
     # TODO(clairbee): add a config option to change logging mechanism and level
+
+    # Top level commands
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser(
         "version",
@@ -76,6 +82,20 @@ def main():
     cli_help_inspect(subparsers)
     cli_help_status(subparsers)
 
+    # Supply subcommands
+    parser_supply = subparsers.add_parser(
+        "supply",
+        help="Supplier related commands",
+    )
+    supply_subparsers = parser_supply.add_subparsers(
+        dest="supply_command",
+        required=True,
+    )
+    cli_help_supply_find(supply_subparsers)
+    cli_help_supply_caps(supply_subparsers)
+    cli_help_supply_quote(supply_subparsers)
+    cli_help_supply_order(supply_subparsers)
+
     args = parser.parse_args()
 
     # Configure logging
@@ -85,7 +105,7 @@ def main():
         logging.basicConfig()
 
     if args.quiet > 0:
-        pc.logging.setLevel(logging.ERROR)
+        pc.logging.setLevel(logging.CRITICAL + 1)
     else:
         if args.verbosity > 0:
             pc.logging.setLevel(logging.DEBUG)
@@ -171,6 +191,23 @@ def main():
         elif args.command == "inspect":
             with pc_logging.Process("inspect", "this"):
                 cli_inspect(args, ctx)
+
+        elif args.command == "supply":
+            if args.supply_command == "find":
+                with pc_logging.Process("SupplyFind", "this"):
+                    cli_supply_find(args, ctx)
+            elif args.supply_command == "caps":
+                with pc_logging.Process("SupplyCaps", "this"):
+                    cli_supply_caps(args, ctx)
+            elif args.supply_command == "quote":
+                with pc_logging.Process("SupplyQuote", "this"):
+                    cli_supply_quote(args, ctx)
+            elif args.supply_command == "order":
+                with pc_logging.Process("SupplyOrder", "this"):
+                    cli_supply_order(args, ctx)
+            else:
+                print("Unknown supply command.\n")
+                parser.print_help()
 
         else:
             print("Unknown command.\n")
