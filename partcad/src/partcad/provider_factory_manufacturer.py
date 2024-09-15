@@ -19,7 +19,7 @@ from . import logging as pc_logging
 # from . import sync_threads as pc_thread
 
 
-class ProviderFactoryManufacturing(ProviderFactoryPython):
+class ProviderFactoryManufacturer(ProviderFactoryPython):
     def __init__(self, ctx, source_project, target_project, config):
         with pc_logging.Action(
             "InitManuf", target_project.name, config["name"]

@@ -181,10 +181,16 @@ of the object with the given parameters:
 Objects in a cart
 -----------------
 
-Whenever an object (a *part*) is used for manufacturing or ordering from a store,
-the object ID may also contain the quantity of the object and manufacturing
-process properties:
-``"<package-path>:<object-name>;param1=value1,param2=value2;[<material>,]<quantity>"``.
+Whenever an object (a *part* or an *assembly*) is used for manufacturing or
+ordering from a store, the object ID may optionally contain the quantity:
+``"<package-path>:<object-name>;param1=value1,param2=value2#<quantity>"``.
+
+  .. code-block:: shell
+
+    # Quote for parts needed to assemble 10 gearboxes
+    pc supply quote \
+      --provider /pub/svc/commerce/gobilda:gobilda \
+      /pub/robotics/multimodal/openvmp/robots/don1:assembly-wormgear#10
 
 =====================
 The public repository

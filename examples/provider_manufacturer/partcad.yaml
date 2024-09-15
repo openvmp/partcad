@@ -1,4 +1,4 @@
-desc: Example of a manufacturing provider which is a pseudo 3D printer.
+desc: Example of a manufacturer provider which is a pseudo 3D printer.
 
 docs:
   usage: |
@@ -7,8 +7,8 @@ docs:
     $ pc supply quote cylinder#1
     ...
     INFO:  The following quotes are received:
-    INFO:  		/pub/examples/partcad/provider_manufacturing:my3dPrinter: 12345: $100.00
-    INFO:  			/pub/examples/partcad/provider_manufacturing:cylinder#1
+    INFO:  		/pub/examples/partcad/provider_manufacturer:my3dPrinter: 12345: $100.00
+    INFO:  			/pub/examples/partcad/provider_manufacturer:cylinder#1
     ...
     ```
 
@@ -39,7 +39,7 @@ providers:
       startOffsetWidth: 10.0
 
   gcodeWriter:
-    type: manufacturing # No vendors or SKUs, manufacture using blueprints
+    type: manufacturer # No vendors or SKUs, manufacture using blueprints
     abstract: True # This provider is not meant to be used directly
     parameters: # Declare supported parameters
       output:

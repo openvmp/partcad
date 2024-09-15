@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 NOW = datetime.now(timezone.utc)
-CYLINDER = "/pub/examples/partcad/provider_manufacturing:cylinder"
+CYLINDER = "/pub/examples/partcad/provider_manufacturer:cylinder"
 
 if not "request" in globals():
     request = {

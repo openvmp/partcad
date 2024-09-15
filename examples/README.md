@@ -45,7 +45,7 @@ Below are some examples of consuming existing modules:
 PartCAD uses `providers` to implement part orders.
 
 - [Provider of the type "store" to buy SKUs](./provider_store/)
-- [Provider of the type "manufacturing" to manufacture a model](./provider_manufacturing/)
+- [Provider of the type "manufacturer" to manufacture a model](./provider_manufacturer/)
 
 ## Features
 

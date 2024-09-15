@@ -15,7 +15,7 @@ from .assembly import Assembly
 from .assembly_factory_assy import AssemblyFactoryAssy
 from .assembly_factory_alias import AssemblyFactoryAlias
 from .file_factory_url import FileFactoryUrl
-from .provider_factory_manufacturing import ProviderFactoryManufacturing
+from .provider_factory_manufacturer import ProviderFactoryManufacturer
 from .provider_factory_enrich import ProviderFactoryEnrich
 from .provider_factory_store import ProviderFactoryStore
 from .part import Part
@@ -30,7 +30,7 @@ _partcad_context_lock = threading.Lock()
 factory.register("assembly", "assy", AssemblyFactoryAssy)
 factory.register("assembly", "alias", AssemblyFactoryAlias)
 factory.register("file", "url", FileFactoryUrl)
-factory.register("provider", "manufacturing", ProviderFactoryManufacturing)
+factory.register("provider", "manufacturer", ProviderFactoryManufacturer)
 factory.register("provider", "enrich", ProviderFactoryEnrich)
 factory.register("provider", "store", ProviderFactoryStore)
 
