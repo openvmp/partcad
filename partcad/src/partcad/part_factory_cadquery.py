@@ -34,7 +34,7 @@ class PartFactoryCadquery(PartFactoryPython):
             # Stay one step ahead of the minimum required Python version
             python_version = "3.10"
         if python_version == "3.12" or python_version == "3.11":
-            pc_logging.info(
+            pc_logging.debug(
                 "Downgrading Python version to 3.10 to avoid compatibility issues with CadQuery"
             )
             python_version = "3.10"

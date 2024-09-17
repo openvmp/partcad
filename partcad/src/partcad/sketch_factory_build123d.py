@@ -88,8 +88,11 @@ class SketchFactoryBuild123d(SketchFactoryPython):
             picklestring = pickle.dumps(request)
             request_serialized = base64.b64encode(picklestring).decode()
 
-            await self.runtime.ensure("build123d")
+            await self.runtime.ensure("numpy==1.24.1")
+            await self.runtime.ensure("nptyping==1.24.1")
+            await self.runtime.ensure("cadquery")
             await self.runtime.ensure("ocp-tessellate")
+            await self.runtime.ensure("build123d")
             cwd = self.project.config_dir
             if self.cwd is not None:
                 cwd = os.path.join(self.project.config_dir, self.cwd)
@@ -104,7 +107,12 @@ class SketchFactoryBuild123d(SketchFactoryPython):
             if len(errors) > 0:
                 error_lines = errors.split("\n")
                 for error_line in error_lines:
-                    sketch.error("%s: %s" % (sketch.name, error_line))
+                    error_line = error_line.strip()
+                    if not error_line:
+                        continue
+                    # TODO(clairbee): Move the sketch name concatenation to where the logging happens
+                    # part.error("%s: %s" % (sketch.name, error_line))
+                    sketch.error(error_line)
 
             try:
                 # pc_logging.error("Response: %s" % response_serialized)
