@@ -38,7 +38,7 @@ class PythonRuntime(runtime.Runtime):
             self.tls.async_locks[self_id] = asyncio.Lock()
         return self.tls.async_locks[self_id]
 
-    async def once(self):
+    def once(self):
         pass
 
     async def run(self, cmd, stdin="", cwd=None):

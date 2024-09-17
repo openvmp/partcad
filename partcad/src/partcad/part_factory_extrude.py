@@ -66,6 +66,7 @@ class PartFactoryExtrude(PartFactory):
 
     async def instantiate(self, part):
         with pc_logging.Action("Extrude", part.project_name, part.name):
+            shape = None
             try:
                 self.sketch = self.project.ctx.get_sketch(
                     self.source_sketch_spec

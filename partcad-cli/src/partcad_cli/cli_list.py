@@ -200,7 +200,11 @@ def cli_list_sketches(args, ctx):
 
     output = "PartCAD sketches:\n"
     for project_name in ctx.projects:
-        if not args.recursive and args.package != project_name:
+        if (
+            not args.recursive
+            and args.package is not None
+            and args.package != project_name
+        ):
             continue
 
         if (
@@ -272,7 +276,11 @@ def cli_list_interfaces(args, ctx):
 
     output = "PartCAD interfaces:\n"
     for project_name in ctx.projects:
-        if not args.recursive and args.package != project_name:
+        if (
+            not args.recursive
+            and args.package is not None
+            and args.package != project_name
+        ):
             continue
 
         if (
@@ -469,7 +477,11 @@ def cli_list_parts(args, ctx):
 
     output = "PartCAD parts:\n"
     for project_name in ctx.projects:
-        if not args.recursive and args.package != project_name:
+        if (
+            not args.recursive
+            and args.package is not None
+            and args.package != project_name
+        ):
             continue
 
         if (
@@ -539,7 +551,11 @@ def cli_list_assemblies(args, ctx):
 
     output = "PartCAD assemblies:\n"
     for project_name in ctx.projects:
-        if not args.recursive and args.package != project_name:
+        if (
+            not args.recursive
+            and args.package is not None
+            and args.package != project_name
+        ):
             continue
 
         if (
