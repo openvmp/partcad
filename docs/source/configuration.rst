@@ -684,6 +684,108 @@ Providers are declared in ``partcad.yaml`` using the following syntax:
           enum: <(optional) list of possible values>
           default: <default value>
 
+``enrich`` providers are just references to other providers with some prameters
+modified to specific values.
+
+``store`` and ``manufacturer`` providers are implemented as Python scripts.
+These scripts are invoked using the ``runpy`` module which allows to pass input
+as values of global objects. The outputs are also extracted from the value of
+global objects.
+
+The input is passed as the dictionary ``request``.
+The output is extracted from the dictionary ``output``
+
+Store
+-----
+
+``store`` providers use the following input and output values:
+
+- `request["parameters"]`: The configuration parameters of the provider.
+- `request["api"]`: The API method called.
+
+  - `request["api"] == "caps"`
+
+    Get capabilities of this provider.
+    Currently PartCAD does not use capabilities for ``store`` providers.
+
+    - `output`: no output is expected
+
+  - `request["api"] == "avail"`
+
+    Check availability of the specific part.
+
+    - `request["vendor"]`: the vendor of the part
+    - `request["sku"]`: the SKU of the part
+    - `request["count"]`: the requested quantity of the parts
+    - `request["count_per_sku"]`: the known number of parts per SKU
+    - `output["available"]`: boolean, whether it is available in this store
+
+  - `request["api"] == "quote"`
+
+    Get a quote for the specific cart of parts.
+    Quote API is the core of the provider.
+    It is expected to return the price of a cart.
+
+    - `request["cart"]["parts"]`: the dictionary of parts
+    - `request["cart"]["parts"][<id>]["vendor"]`: the vendor of the part
+    - `request["cart"]["parts"][<id>]["sku"]`: the SKU of the part
+    - `request["cart"]["parts"][<id>]["count"]`: the requested quantity of the parts
+    - `request["cart"]["parts"][<id>]["count_per_sku"]`: the known number of parts per SKU
+    - `output["price"]`: the total price of the cart
+    - `output["cartId"]`: the id of the cart (to be used for the order later)
+
+  - `request["api"] == "order"`
+
+    Order the specific quote.
+    Order API does not need to be implemented as there is no infrastructure
+    for payments yet.
+
+    - `request["cartId"]`: the id of the cart to be purchased
+
+Manufacturer
+------------
+
+``manufacturer`` providers use the following input and output values:
+
+- `request["parameters"]`: The configuration parameters of the provider.
+- `request["api"]`: The API method called.
+
+  - `request["api"] == "caps"`
+
+    Get capabilities of this provider.
+
+    - `output["materials"]`: the dictionary of supported materials
+
+      .. code-block:: json
+
+        {
+            "/pub/std/manufacturing/material/plastic:pla": {
+                "colors": [{"name": "red"}],
+                "finishes": [{"name": "none"}]
+            }
+        }
+    - `output["format"]`: the list of supported formats (e.g. `["step"]`)
+
+  - `request["api"] == "quote"`
+
+    Get a quote for the specific cart of parts.
+    Quote API is the core of the provider.
+    It is expected to return the price of a cart.
+
+    - `request["cart"]["parts"]`: the dictionary of parts
+    - `request["cart"]["parts"][<id>]["format"]`: the format of the binary (e.g. `"step"`)
+    - `request["cart"]["parts"][<id>]["binary"]`: the geometry data
+    - `output["price"]`: the total price of the cart
+    - `output["cartId"]`: the id of the cart (to be used for the order later)
+
+  - `request["api"] == "order"`
+
+    Order the specific quote.
+    Order API does not need to be implemented as there is no infrastructure
+    for payments yet.
+
+    - `request["cartId"]`: the id of the cart to be purchased
+
 ==============
 Common Options
 ==============
