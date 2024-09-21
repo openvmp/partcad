@@ -68,7 +68,9 @@ def handle_exception(exc, cqscript=None):
 
     # Get the line contents
     with open(fname, "r") as fp:
-        line = fp.read().split("\n")[tb.tb_lineno - 1]
-        sys.stderr.write(line.strip())
+        lines = fp.read().split("\n")
+        if tb.tb_lineno - 1 < len(lines):
+            line = lines[tb.tb_lineno - 1]
+            sys.stderr.write(line.strip())
     sys.stderr.write("]\n")
     sys.stderr.flush()
