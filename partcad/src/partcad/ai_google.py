@@ -8,6 +8,7 @@
 #
 
 import importlib
+import re
 import threading
 import time
 from typing import Any
@@ -68,7 +69,6 @@ class AiGoogle:
         self,
         model: str,
         prompt: str,
-        image_filenames: list[str] = [],
         config: dict[str, Any] = {},
         options_num: int = 1,
     ):
@@ -95,13 +95,21 @@ class AiGoogle:
         else:
             temperature = None
 
-        images = list(
-            map(
-                lambda f: pil_image.open(f),
-                image_filenames,
-            )
-        )
-        contents = [prompt, *images]
+        image_content = []
+
+        def insert_image(match):
+            filename = match.group(1)
+            image_content.append(pil_image.open(filename))
+            return "IMAGE_INSERTED_HERE"
+
+        prompt = re.sub(r"INSERT_IMAGE_HERE\(([^)]*)\)", insert_image, prompt)
+        text_content = prompt.split("IMAGE_INSERTED_HERE")
+
+        content = []
+        for i in range(len(text_content)):
+            content.append(text_content[i])
+            if i < len(image_content):
+                content.append(image_content[i])
 
         client = google_genai.GenerativeModel(
             model,
@@ -121,9 +129,7 @@ class AiGoogle:
             while retry == True:
                 retry = False
                 try:
-                    response = client.generate_content(
-                        contents,
-                    )
+                    response = client.generate_content(content)
                 except google_api_core_exceptions.ResourceExhausted as e:
                     pc_logging.exception(e)
                     retry = True

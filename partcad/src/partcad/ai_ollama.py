@@ -58,7 +58,6 @@ class AiOllama:
         self,
         model: str,
         prompt: str,
-        image_filenames: list[str] = [],
         config: dict[str, Any] = {},
         options_num: int = 1,
     ):
@@ -71,7 +70,7 @@ class AiOllama:
         if not ollama_once():
             return None
 
-        if len(image_filenames) > 0:
+        if "INSERT_IMAGE_HERE" in prompt:
             raise NotImplementedError("Images are not supported by Ollama")
 
         if "tokens" in config:

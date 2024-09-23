@@ -442,12 +442,29 @@ Generate OpenSCAD, CadQuery or build123d scripts with Generative AI using the fo
     <part name>:
       type: <ai-openscad|ai-cadquery|ai-build123d>
       provider: <google|openai|ollama, the model provider to use>
+      model: <(optional) the model to use>
       tokens: <(optional) the limit of token context>
       temperature: <(optional) the temperature LLM parameter>
       top_p: <(optional) the top_p LLM parameter>
       top_k: <(optional, openai|ollama) the top_k LLM parameter>
       images: <(optional) contextual images as input for AI>
         - <image path>
+
+The following models are recommended for use:
+
++----------+----------------------------+
+| Provider | Model                      |
++==========+============================+
+| google   | - gemini-1.5-pro (default) |
+|          | - gemini-1.5-flash         |
++----------+----------------------------+
+| openai   | - gpt-4o (default)         |
+|          | - gpt-4o-mini              |
++----------+----------------------------+
+| ollama   | - llama-3.1:8b             |
+|          | - llama-3.1:70b (default)  |
+|          | - llama-3.1:405b           |
++----------+----------------------------+
 
 +---------------------------+-------------------------------------------------------------------------------------------------------------------------+
 | Example                   | Result                                                                                                                  |
