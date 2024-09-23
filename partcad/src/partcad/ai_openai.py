@@ -11,6 +11,7 @@ import base64
 import importlib
 import mimetypes
 from pathlib import Path
+import re
 import threading
 from typing import Any
 
@@ -30,8 +31,8 @@ model_tokens = {
     "gpt-3.5-turbo": 4096,
     "gpt-4": 8000,  # 32600,
     "gpt-4-vision-preview": 8192,
-    "gpt-4o": 4096,  # 32600,
-    "gpt-4o-mini": 8000,  # 32600,
+    "gpt-4o": 16000,  # 32600,
+    "gpt-4o-mini": 16000,  # 32600,
 }
 
 
@@ -61,7 +62,6 @@ class AiOpenAI:
         self,
         model: str,
         prompt: str,
-        image_filenames: list[str] = [],
         config: dict[str, Any] = {},
         options_num: int = 1,
     ):
@@ -83,29 +83,45 @@ class AiOpenAI:
         else:
             temperature = None
 
-        content = [
-            {"type": "text", "text": prompt},
-            *list(
-                map(
-                    lambda f: {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": "data:%s;base64,%s"
-                            % (
-                                mimetypes.guess_type(f, False)[0],
-                                base64.b64encode(Path(f).read_bytes()).decode(),
-                            ),
-                            "detail": "high",
-                        },
+        pc_logging.debug("Prompt: %s", prompt)
+
+        image_content = []
+
+        def insert_image(match):
+            filename = match.group(1)
+            image_content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "data:%s;base64,%s"
+                        % (
+                            mimetypes.guess_type(filename, False)[0],
+                            base64.b64encode(
+                                Path(filename).read_bytes()
+                            ).decode(),
+                        ),
+                        "detail": "high",
                     },
-                    image_filenames,
-                )
-            ),
-        ]
+                }
+            )
+            return "IMAGE_INSERTED_HERE"
+
+        prompt = re.sub(r"INSERT_IMAGE_HERE\(([^)]*)\)", insert_image, prompt)
+        text_content = list(
+            map(
+                lambda prompt_section: {"type": "text", "text": prompt_section},
+                prompt.split("IMAGE_INSERTED_HERE"),
+            )
+        )
+
+        content = []
+        for i in range(len(text_content)):
+            content.append(text_content[i])
+            if i < len(image_content):
+                content.append(image_content[i])
 
         cc = openai_client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "You are a mechanical engineer"},
                 {"role": "user", "content": content},
             ],
             stream=False,

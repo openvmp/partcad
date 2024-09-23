@@ -78,9 +78,18 @@ class PartFactoryFeatureAi(Ai):
         ):
             self.num_script_correction = user_config.max_script_correction
 
-        if not "tokens" in self.ai_config:
-            self.ai_config["tokens"] = 2000
+        # Normalize the input configuration
+        pc_logging.debug("AI configuration: %s" % self.ai_config)
 
+        if (
+            not "tokens" in self.ai_config
+            or not isinstance(self.ai_config["tokens"], int)
+            or self.ai_config["tokens"] == 0
+        ):
+            self.ai_config["tokens"] = 2048
+            pc_logging.debug("Setting the default number of tokens: 2048")
+        if not "images" in self.ai_config:
+            self.ai_config["images"] = []
         # Use `temperature` and `top_p` values recommended for code generation
         # if no other preferences are set
         if not "temperature" in self.ai_config:
@@ -108,14 +117,18 @@ class PartFactoryFeatureAi(Ai):
         """This is a wrapper for the instantiate method that ensures that
         the part is (re)generated before the instantiation."""
         if not os.path.exists(part.path) or os.path.getsize(part.path) == 0:
-            self._create_file(part.path)
+            try:
+                self._create_file(part.path)
+            except Exception as e:
+                pc_logging.error(f"Failed to create the file: {e}")
+                raise e
 
         return await self.instantiate_orig(part)
 
     def _create_file(self, path):
         """This method is called to (re)generate the part."""
 
-        # Geometric modeling
+        # CSG modeling
         modeling_options = []
         max_models = self.num_geometric_modeling
         max_tries = 2 * max_models
@@ -125,7 +138,7 @@ class PartFactoryFeatureAi(Ai):
         #                 with huge quotas. De-prioritized for now.
         #
         # def modeling_task():
-        #     modeling_options.extend(self._geometric_modeling())
+        #     modeling_options.extend(self._csg_modeling())
         # threads = []
         # for _ in range(NUM_ALTERNATIVES_GEOMETRIC_MODELING):
         #     thread = threading.Thread(target=modeling_task)
@@ -136,10 +149,9 @@ class PartFactoryFeatureAi(Ai):
 
         tries = 0
         while len(modeling_options) < max_models and tries < max_tries:
-            modeling_options.extend(self._geometric_modeling())
+            modeling_options.extend(self._csg_modeling())
             pc_logging.info(
-                "Generated %d geometric modeling candidates"
-                % len(modeling_options)
+                "Generated %d CSG modeling candidates" % len(modeling_options)
             )
             tries += 1
 
@@ -172,6 +184,32 @@ class PartFactoryFeatureAi(Ai):
                     # Record the valid model and the image
                     script_candidates.append((image_filename, script))
 
+                    # Once we generated a valid script and rendered the result,
+                    # Attempt to improve the script by comparing the result with
+                    # the original request
+                    improved_scripts = self._improve_script(
+                        modeling_option, script, image_filename
+                    )
+                    for improved_script in improved_scripts:
+                        pc_logging.debug(
+                            "Generated the improved script candidate %d: %s"
+                            % (candidate_id, improved_script)
+                        )
+
+                        # Validate the image by rendering it,
+                        # attempt to correct the script if rendering doesn't work
+                        image_filename, improved_script = (
+                            self._validate_and_fix(
+                                modeling_option, improved_script, candidate_id
+                            )
+                        )
+                        # Check if the model was valid
+                        if image_filename is not None:
+                            # Record the valid model and the image
+                            script_candidates.append(
+                                (image_filename, improved_script)
+                            )
+
                 candidate_id += 1
 
             pc_logging.info(
@@ -195,20 +233,26 @@ class PartFactoryFeatureAi(Ai):
             f.write(script)
             f.close()
 
-    def _geometric_modeling(self):
-        """This method generates geometric modeling options for the part."""
+    def _csg_modeling(self):
+        """This method generates CSG for the part."""
 
         prompt = (
-            """You are an engineer performing geometric modeling of mechanical parts.
-Given a short verbal description of a part,
-you are creating a detailed description of the geometric shapes
-required to reproduce that part.
-Create a detailed listing of all geometric shapes and how they are
-located against each other
-(including dimensions, distances and offset in millimeters,
-and angles in degrees),
-to reproduce the part with the following description:
+            """You are an AI assistant to engineers modeling mechanical parts using constructive solid geometry.
+Given a description of the part,
+create a detailed sequence of instructions how to model this part using constructive solid geometry.
+First, select an intuitive coordinate system for ease of placement for all primitives.
+Then specify the minimum possible number of initial geometric primitives, their dimensions, location and orientation.
+For simplicity, consider using large fillets on two edges of the cuboid to make a cylindrical end on a cuboid if needed, instead of adding a cylinder.
+Also, for simplicity, consider using a chamfer to make a conical end on a cylinder if needed, insted of adding a cone.
+Then specify how to locate and orient the primitives against each other.
+Then specify what CSG operations to perform on sets of primitives
+(unions, differences and intersections)
+and on each of these primitives individually
+(including but not limited to adding fillets, chamfers, paddings and cutting holes).
+
+The part is described by (until DESCRIPTION END):
 %s
+DESCRIPTION END
 """
             % self.ai_config["desc"]
         )
@@ -233,42 +277,60 @@ The part is further described by the following properties:
         if len(image_filenames) > 0:
             prompt += """
             
-The part is further described by the attached images.
+The part is further described by the images:
+"""
+            for image_filename in image_filenames:
+                prompt += "INSERT_IMAGE_HERE(%s)\n" % image_filename
+
+        prompt += """
+
+Ensure all dimensions, distances and angles specified int the input data
+are reflected in the output CSG instructions.
+Use milimeters for dimensions and degrees for angles.
 """
 
+        config = self.ai_config
+        config = copy.copy(config)
+        # if config["temperature"] < 0.8:
+        #     config["temperature"] += 0.4
+        # if config["top_p"] < 0.4:
+        #     config["top_p"] += 0.2
         options = self.generate(
             "Geometric",
             self.project.name,
             self.name,
             prompt,
-            self.ai_config,
+            config,
             self.num_geometric_modeling,
-            image_filenames=image_filenames,
         )
         return options
 
-    def _generate_script(self, geometric_modeling):
-        """This method generates a script given specific geometric modeling."""
+    def _generate_script(self, csg_instructions):
+        """This method generates a script given specific CSG description."""
 
         prompt = """You are an AI assistant in an engineering department.
 You are helping engineers to create programmatic scripts that produce CAD geometry data
 for parts, mechanisms, buildings or anything else.
-The scripts you create a fully functional and can be used right away, as is, in automated workflows.
+The scripts you create are fully functional and can be used right away, as is, in automated workflows.
 Assume that the scripts you produce are used automatically to render 3D models and to validate them.
 This time you are asked to generate a %s to define a 3D model of a part defined by
-the following geometric modeling:
-        %s
-        """ % (
+the following CSG instructions (until CSG END):
+%s
+CSG END
+Ensure that all primitives are placed in the correct coordinates and that all dimensions are correct.
+""" % (
             self.script_type,
-            geometric_modeling,
+            csg_instructions,
         )
 
         image_filenames = self.ai_config.get("images", [])
         if len(image_filenames) > 0:
             prompt += """
             
-The part is further described by the attached images.
+The part is further described by the images:
 """
+            for image_filename in image_filenames:
+                prompt += "INSERT_IMAGE_HERE(%s)\n" % image_filename
 
         prompt += """%s
 
@@ -278,13 +340,105 @@ IMPORTANT: Output the %s itself and do not add any text or comments before or af
             self.script_type,
         )
 
+        config = self.ai_config
+        config = copy.copy(config)
+        # if config["temperature"] < 0.8:
+        #     config["temperature"] += 0.4
+        # if config["top_p"] < 0.4:
+        #     config["top_p"] += 0.2
         scripts = self.generate(
             "Script",
             self.project.name,
             self.name,
             prompt,
-            self.ai_config,
-            image_filenames=image_filenames,
+            config,
+        )
+
+        # Sanitize the output to remove the decorations
+        scripts = list(map(lambda s: self._sanitize_script(s), scripts))
+
+        return scripts
+
+    def _improve_script(self, csg_instructions, script, rendered_image):
+        """This method improves the script given the original request and the produced script."""
+
+        config = copy.copy(self.ai_config)
+
+        prompt = """You are an AI assistant in an engineering department.
+You are asked to create a %s matching the given description%s.
+
+The given description follows (until DESCRIPTION END): 
+%s
+DESCRIPTION END
+""" % (
+            self.script_type,
+            " and images" if len(config["images"]) > 0 else "",
+            config["desc"],
+        )
+
+        image_filenames = config["images"]
+        if len(image_filenames) > 0:
+            prompt += """
+
+The given images are:
+"""
+            for image_filename in image_filenames:
+                prompt += "INSERT_IMAGE_HERE(%s)\n" % image_filename
+
+        prompt += (
+            """
+
+You considered the following constructive solid geometry model (until CSG END):
+%s
+CSG END
+"""
+            % csg_instructions
+        )
+
+        prompt += (
+            """
+You produced the following script (until SCRIPT END):
+%s
+SCRIPT END
+"""
+            % script
+        )
+
+        prompt += """
+When rendered, this script produces the following image:
+"""
+        prompt += "INSERT_IMAGE_HERE(%s)\n" % rendered_image
+
+        prompt += """
+
+Please, analyze whether the produced script and image match the original request
+(where the original image and description take precedence
+over the constructive solid geometry instructions).
+Analyze both the shape and the dimensions.
+Pay special attention to the coordinates used to place the initial geometric primitives.
+Make sure every single dimension provided in the request are reflected in the produced script.
+
+If they do precisely match the request, repeat the same script.
+Otherwise, produce a corrected script following the instructions:
+Do not generate exactly the same script
+(make the changes necessary to address identified issues).
+%s
+""" % (
+            self.prompt_suffix,
+        )
+
+        if config["temperature"] < 0.8:
+            config["temperature"] += 0.8
+        if config["top_p"] < 0.4:
+            config["top_p"] += 0.4
+
+        scripts = self.generate(
+            "Improve",
+            self.project.name,
+            self.name,
+            prompt,
+            config,
+            self.num_script_correction,  # TODO(clairbee): add a separate user config param and loop around this until the needed number is produced
         )
 
         # Sanitize the output to remove the decorations
@@ -354,7 +508,7 @@ IMPORTANT: Output the %s itself and do not add any text or comments before or af
             return image_filename, script
         # Failed to render the image.
 
-        if next_depth <= self.num_script_correction:
+        if next_depth <= self.num_script_correction and error_text:
             # Ask AI to make incremental fixes based on the errors.
             correction_candidate_id = 0
             for _ in range(self.num_script_correction):
@@ -389,7 +543,7 @@ IMPORTANT: Output the %s itself and do not add any text or comments before or af
         return None, script
 
     def _correct_script(self, modeling_option, script, error_text):
-        # TODO(clairbee): prove that the use of geometric modeling product
+        # TODO(clairbee): prove that the use of CSG instructions product
         #                 in this prompt is benefitial
         prompt = """You are an AI assistant to a mechanical engineer.
 You are given an automatically generated %s which has flaws that need to be
@@ -407,8 +561,7 @@ produced (until ERRORS_END):
 ERRORS_END
 
 Please, generate a corrected script so that it does not produce the given errors.
-Make as little changes as possible and prefer not to make any changes that are
-not necessary to fix the errors.
+Limit the changes to the script to the minimum necessary to fix the errors.
 Very important not to produce exactly the same script: at least something has to change.
 """ % (
             self.script_type,
@@ -465,6 +618,11 @@ Very important not to produce exactly the same script: at least something has to
                 ):
                     shape = asyncio.run(coro)
                 if not shape is None:
+                    try:
+                        # Best effort to provide an interactive experience
+                        part.show()
+                    except Exception as e:
+                        pass
                     part.render_png(self.ctx, None, output_path)
             except Exception as e:
                 part.error("Failed to render the image: %s" % e)
@@ -516,16 +674,38 @@ Very important not to produce exactly the same script: at least something has to
 
         prompt = (
             """
-From the attached images, select the image that is the best fit
-for the following description:
+You are an AI assistant to a mechanical engineer.
+The mechanical engineer was given a task to create a 3D model of a part.
+The engineer has produced several models and rendered an image per model.
+
+The part is described as (until DESCRIPTION END):
 %s
+DESCRIPTION END
+"""
+            % self.ai_config["desc"]
+        )
+
+        if "images" in self.ai_config and len(self.ai_config["images"]) > 0:
+            prompt += """
+The part is further described by the images:
+"""
+            for image_filename in self.ai_config["images"]:
+                prompt += "INSERT_IMAGE_HERE(%s)\n" % image_filename
+
+        prompt += """
+
+From the following images,
+select the rendered image that matches the part the best:
+"""
+        for image_filename in image_filenames:
+            prompt += "INSERT_IMAGE_HERE(%s)\n" % image_filename
+
+        prompt += """
 
 Respond with the numeric index (starting with 1) of the best fit image.
 No other text is acceptable.
 Just the number.
 """
-            % self.ai_config["desc"]
-        )
 
         # Ask AI to compare the images
         pc_logging.info(
@@ -538,7 +718,6 @@ Just the number.
             prompt,
             self.ai_config,
             1,
-            image_filenames=image_filenames,
         )
 
         pc_logging.debug("Image comparison responses: %s" % responses)

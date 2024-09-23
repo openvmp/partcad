@@ -1392,6 +1392,9 @@ class Project(project_config.Configuration):
     def update_part_config(
         self, part_name, part_config_update: dict[str, typing.Any]
     ):
+        pc_logging.debug(
+            "Updating part config: %s: %s" % (part_name, part_config_update)
+        )
         yaml = ruamel.yaml.YAML()
         yaml.preserve_quotes = True
         with open(self.config_path) as fp:
@@ -1403,7 +1406,11 @@ class Project(project_config.Configuration):
             if part_name in parts:
                 part_config = parts[part_name]
                 for key, value in part_config_update.items():
-                    part_config[key] = value
+                    if value is not None:
+                        part_config[key] = value
+                    else:
+                        if key in part_config:
+                            del part_config[key]
 
                 with open(self.config_path, "w") as fp:
                     yaml.dump(config, fp)
@@ -1764,6 +1771,27 @@ class Project(project_config.Configuration):
             ):
                 return []
 
+            path = None
+            if "path" in config:
+                path = config["path"]
+            else:
+                path = name
+                if "type" in config:
+                    if (
+                        config["type"] == "cadquery"
+                        or config["type"] == "build123d"
+                        or config["type"] == "ai-cadquery"
+                        or config["type"] == "ai-build123d"
+                    ):
+                        path += ".py"
+                    elif (
+                        config["type"] == "openscad"
+                        or config["type"] == "ai-openscad"
+                    ):
+                        path += ".scad"
+                    else:
+                        path += "." + config["type"]
+
             columns = []
             if "svg" in render_cfg or (
                 "type" in config and config["type"] == "svg"
@@ -1781,9 +1809,13 @@ class Project(project_config.Configuration):
                     svg_cfg.get("prefix", "."),
                     name + ".svg",
                 )
-                columns += [
-                    '<img src="%s" width="200" height="200">' % image_path
-                ]
+                img_text = (
+                    '<img src="%s" style="width: auto; height: auto; max-width: 200px; max-height: 200px;">'
+                    % image_path
+                )
+                if path:
+                    img_text = '<a href="%s">%s</a>' % (path, img_text)
+                columns += [img_text]
             elif "png" in render_cfg:
                 png_cfg = render_cfg["png"]
                 png_cfg = png_cfg if png_cfg is not None else {}
@@ -1796,7 +1828,13 @@ class Project(project_config.Configuration):
                     png_cfg.get("prefix", "."),
                     name + ".png",
                 )
-                columns += ['<img src="%s" height="200">' % image_path]
+                img_text = (
+                    '<img src="%s" style="width: auto; height: auto; max-width: 200px; max-height: 200px;">'
+                    % image_path
+                )
+                if path:
+                    img_text = '<a href="%s">%s</a>' % (path, img_text)
+                columns += [img_text]
             else:
                 image_path = None
                 test_image_path = None
@@ -1814,21 +1852,33 @@ class Project(project_config.Configuration):
                 columns += [config["desc"]]
 
             if "parameters" in config:
-                parameters = "Parameters:<br/><ul>"
+                parameters = "Parameters:<br/><ul>\n"
                 for param_name, param in config["parameters"].items():
                     if "enum" in param:
-                        value = "<ul>"
+                        value = "<ul>\n"
                         for enum_value in param["enum"]:
                             if enum_value == param["default"]:
-                                value += "<li><b>%s</b></li>" % enum_value
+                                value += "<li><b>%s</b></li>\n" % enum_value
                             else:
                                 value += "<li>%s</li>" % enum_value
-                        value += "</ul>"
+                        value += "</ul>\n"
                     else:
                         value = param["default"]
-                    parameters += "<li>%s: %s</li>" % (param_name, value)
-                parameters += "</ul>"
+                    parameters += "<li>%s: %s</li>\n" % (param_name, value)
+                parameters += "</ul>\n"
                 columns += [parameters]
+
+            if "images" in config:
+                images = "Input images:\n"
+                for image in config["images"]:
+                    images += (
+                        '</br><img src="%s" alt="%s" style="width: auto; height: auto; max-width: 200px; max-height: 200px;" />\n'
+                        % (
+                            image,
+                            image,
+                        )
+                    )
+                columns += [images]
 
             if "aliases" in config:
                 aliases = "Aliases:<br/><ul>"
@@ -1856,25 +1906,33 @@ class Project(project_config.Configuration):
         if self.assemblies and not "assemblies" in exclude:
             lines += ["## Assemblies"]
             lines += [""]
-            for name, shape in self.assemblies.items():
+            shape_names = sorted(self.assemblies.keys())
+            for name in shape_names:
+                shape = self.assemblies[name]
                 lines += add_section(name, shape, render_cfg)
 
         if self.parts and not "parts" in exclude:
             lines += ["## Parts"]
             lines += [""]
-            for name, shape in self.parts.items():
+            shape_names = sorted(self.parts.keys())
+            for name in shape_names:
+                shape = self.parts[name]
                 lines += add_section(name, shape, render_cfg)
 
         if self.interfaces and not "interfaces" in exclude:
             lines += ["## Interfaces"]
             lines += [""]
-            for name, shape in self.interfaces.items():
+            shape_names = sorted(self.interfaces.keys())
+            for name in shape_names:
+                shape = self.interfaces[name]
                 lines += add_section(name, shape, render_cfg)
 
         if self.sketches and not "sketches" in exclude:
             lines += ["## Sketches"]
             lines += [""]
-            for name, shape in self.sketches.items():
+            shape_names = sorted(self.sketches.keys())
+            for name in shape_names:
+                shape = self.sketches[name]
                 lines += add_section(name, shape, render_cfg)
 
         lines += [

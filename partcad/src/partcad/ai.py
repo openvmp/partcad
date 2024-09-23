@@ -24,6 +24,7 @@ supported_models = [
     "gpt-4-vision-preview",
     "gpt-4o",
     "gpt-4o-mini",
+    "o1-*",
     "gemini-pro",
     "gemini-pro-vision",
     "gemini-1.5-pro",
@@ -46,12 +47,15 @@ class Ai(AiGoogle, AiOpenAI, AiOllama):
         prompt: str,
         config: dict[str, str],
         num_options: int = 1,
-        image_filenames: list[str] = [],
     ):
         with pc_logging.Action("Ai" + action, package, item):
             # Determine the model to use
             provider = config.get("provider", None)
-            if "model" in config and config["model"] is not None:
+            if (
+                "model" in config
+                and config["model"] is not None
+                and config["model"] != ""
+            ):
                 model = config["model"]
             else:
                 if provider is None:
@@ -68,9 +72,9 @@ class Ai(AiGoogle, AiOpenAI, AiOllama):
                     model = "gemini-1.5-pro"
                 elif provider == "openai":
                     # if len(image_filenames) > 0:
-                    #     model = "gpt-4-vision-preview"
+                    #     model = "gpt-4o"
                     # else:
-                    #     model = "gpt-4"
+                    #     model = "gpt-4o"
                     model = "gpt-4o"
                 elif provider == "ollama":
                     model = "llama3.1:70b"
@@ -96,7 +100,6 @@ class Ai(AiGoogle, AiOpenAI, AiOllama):
                     result = self.generate_google(
                         model,
                         prompt,
-                        image_filenames,
                         config,
                         num_options,
                     )
@@ -111,7 +114,6 @@ class Ai(AiGoogle, AiOpenAI, AiOllama):
                     result = self.generate_openai(
                         model,
                         prompt,
-                        image_filenames,
                         config,
                         num_options,
                     )
@@ -126,7 +128,6 @@ class Ai(AiGoogle, AiOpenAI, AiOllama):
                     result = self.generate_ollama(
                         model,
                         prompt,
-                        image_filenames,
                         config,
                         num_options,
                     )
