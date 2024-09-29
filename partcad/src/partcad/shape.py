@@ -115,6 +115,12 @@ class Shape(ShapeConfiguration):
         else:
             pc_logging.error("No generation function found")
 
+    def do_change(self, change=None):
+        if hasattr(self, "change"):
+            self.change(self.path, change)
+        else:
+            pc_logging.error("No change function found")
+
     async def show_async(self, show_object=None):
         with pc_logging.Action("Show", self.project_name, self.name):
             if show_object is None:
