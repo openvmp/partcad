@@ -238,7 +238,10 @@ class Shape(ShapeConfiguration):
         picklestring = pickle.dumps(request)
         request_serialized = base64.b64encode(picklestring).decode()
 
-        runtime = ctx.get_python_runtime(python_runtime="none")
+        # We don't care about customer preferences much here
+        # as this is expected to be hermetic.
+        # Stick to the version where CadQuery and build123d are known to work.
+        runtime = ctx.get_python_runtime(version="3.10")
         await runtime.ensure("cadquery")  # SVG wrapper requires cq-serialize
         await runtime.ensure("build123d")
         response_serialized, errors = await runtime.run(
@@ -658,7 +661,10 @@ class Shape(ShapeConfiguration):
             picklestring = pickle.dumps(request)
             request_serialized = base64.b64encode(picklestring).decode()
 
-            runtime = ctx.get_python_runtime(python_runtime="none")
+            # We don't care about customer preferences much here
+            # as this is expected to be hermetic.
+            # Stick to the version where CadQuery and build123d are known to work.
+            runtime = ctx.get_python_runtime(version="3.10")
             await runtime.ensure("cadquery")
             response_serialized, errors = await runtime.run(
                 [
