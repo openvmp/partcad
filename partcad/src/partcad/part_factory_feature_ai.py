@@ -102,6 +102,7 @@ class PartFactoryFeatureAi(Ai):
         constructor to finalize the AI initialization. At the time of the call
         self.part and self.instantiate must be already defined."""
         self.part.generate = lambda path: self._create_file(path)
+        self.part.change = lambda path, change=None: self._change_file(path, change)
 
         # If uncommented out, this makes the package initialization
         # unaccceptably slow
@@ -177,7 +178,7 @@ class PartFactoryFeatureAi(Ai):
                 # Validate the image by rendering it,
                 # attempt to correct the script if rendering doesn't work
                 image_filename, script = self._validate_and_fix(
-                    modeling_option, script, candidate_id
+                    script, candidate_id
                 )
                 # Check if the model was valid
                 if image_filename is not None:
@@ -185,29 +186,29 @@ class PartFactoryFeatureAi(Ai):
                     script_candidates.append((image_filename, script))
 
                     # Once we generated a valid script and rendered the result,
-                    # Attempt to improve the script by comparing the result with
+                    # Attempt to change the script by comparing the result with
                     # the original request
-                    improved_scripts = self._improve_script(
+                    changed_scripts = self._change_script(
                         modeling_option, script, image_filename
                     )
-                    for improved_script in improved_scripts:
+                    for changed_script in changed_scripts:
                         pc_logging.debug(
-                            "Generated the improved script candidate %d: %s"
-                            % (candidate_id, improved_script)
+                            "Generated the changed script candidate %d: %s"
+                            % (candidate_id, changed_script)
                         )
 
                         # Validate the image by rendering it,
                         # attempt to correct the script if rendering doesn't work
-                        image_filename, improved_script = (
+                        image_filename, changed_script = (
                             self._validate_and_fix(
-                                modeling_option, improved_script, candidate_id
+                                changed_script, candidate_id
                             )
                         )
                         # Check if the model was valid
                         if image_filename is not None:
                             # Record the valid model and the image
                             script_candidates.append(
-                                (image_filename, improved_script)
+                                (image_filename, changed_script)
                             )
 
                 candidate_id += 1
@@ -231,6 +232,61 @@ class PartFactoryFeatureAi(Ai):
         if not script is None:
             f = open(path, "w")
             f.write(script)
+            f.close()
+
+    def _change_file(self, path, change=None):
+        """This method is called to change the part."""
+
+        script = open(path, "r").read()
+
+        image_filename, error_text = self._render_image(script, 0)
+        if image_filename is None or error_text:
+            pc_logging.error(
+                "Failed to render the image for the script %s" % script
+            )
+            return
+
+        script_candidates = []
+        script_candidates.append((image_filename, script))
+
+        # Attempt to change the script once more by comparing the result with
+        # the original request
+        changed_scripts = self._change_script(None, script, image_filename, change)
+        for changed_script in changed_scripts:
+            pc_logging.debug(
+                "Generated the changed script: %s" % changed_script
+            )
+
+            # Validate the image by rendering it,
+            # attempt to correct the script if rendering doesn't work
+            new_image_filename, changed_script = self._validate_and_fix(
+                changed_script,
+                0,
+            )
+            # Check if the model was valid
+            if new_image_filename is not None:
+                # Record the valid model and the image
+                script_candidates.append((new_image_filename, changed_script))
+
+        if len(script_candidates) == 0:
+            pc_logging.error(
+                "No valid script generated. Try changing the prompt."
+            )
+            return
+
+        if len(script_candidates) == 1:
+            new_script = script_candidates[0][1]
+        else:
+            # Compare the images and select the best one
+            new_script = self.select_best_image(script_candidates, change=change)
+
+        if new_script == script:
+            pc_logging.info("The script was not changed")
+            return
+
+        if not new_script is None:
+            f = open(path, "w")
+            f.write(new_script)
             f.close()
 
     def _csg_modeling(self):
@@ -359,8 +415,8 @@ IMPORTANT: Output the %s itself and do not add any text or comments before or af
 
         return scripts
 
-    def _improve_script(self, csg_instructions, script, rendered_image):
-        """This method improves the script given the original request and the produced script."""
+    def _change_script(self, csg_instructions, script, rendered_image, change=None):
+        """This method changes the script given the original request and the produced script."""
 
         config = copy.copy(self.ai_config)
 
@@ -385,15 +441,16 @@ The given images are:
             for image_filename in image_filenames:
                 prompt += "INSERT_IMAGE_HERE(%s)\n" % image_filename
 
-        prompt += (
-            """
+        if csg_instructions is not None:
+            prompt += (
+                """
 
 You considered the following constructive solid geometry model (until CSG END):
 %s
 CSG END
 """
-            % csg_instructions
-        )
+                % csg_instructions
+            )
 
         prompt += (
             """
@@ -409,7 +466,10 @@ When rendered, this script produces the following image:
 """
         prompt += "INSERT_IMAGE_HERE(%s)\n" % rendered_image
 
-        prompt += """
+        if change is not None:
+            prompt += f"\n\n{change}\n"
+        else:
+          prompt += """
 
 Please, analyze whether the produced script and image match the original request
 (where the original image and description take precedence
@@ -417,7 +477,10 @@ over the constructive solid geometry instructions).
 Analyze both the shape and the dimensions.
 Pay special attention to the coordinates used to place the initial geometric primitives.
 Make sure every single dimension provided in the request are reflected in the produced script.
+It's okay for some coordinates and offsets to be negative.
+"""
 
+        prompt += """
 If they do precisely match the request, repeat the same script.
 Otherwise, produce a corrected script following the instructions:
 Do not generate exactly the same script
@@ -433,7 +496,7 @@ Do not generate exactly the same script
             config["top_p"] += 0.4
 
         scripts = self.generate(
-            "Improve",
+            "Change",
             self.project.name,
             self.name,
             prompt,
@@ -493,7 +556,7 @@ Do not generate exactly the same script
 
         return script
 
-    def _validate_and_fix(self, modeling_option, script, candidate_id, depth=0):
+    def _validate_and_fix(self, script, candidate_id, depth=0):
         """
         Validate the image by rendering it,
         attempt to correct the script if rendering doesn't work.
@@ -512,9 +575,7 @@ Do not generate exactly the same script
             # Ask AI to make incremental fixes based on the errors.
             correction_candidate_id = 0
             for _ in range(self.num_script_correction):
-                corrected_scripts = self._correct_script(
-                    modeling_option, script, error_text
-                )
+                corrected_scripts = self._correct_script(script, error_text)
                 corrected_scripts = list(
                     map(lambda s: self._sanitize_script(s), corrected_scripts)
                 )
@@ -530,7 +591,6 @@ Do not generate exactly the same script
                     )
 
                     image_filename, corrected_script = self._validate_and_fix(
-                        modeling_option,
                         corrected_script,
                         candidate_id,
                         next_depth,
@@ -542,7 +602,7 @@ Do not generate exactly the same script
 
         return None, script
 
-    def _correct_script(self, modeling_option, script, error_text):
+    def _correct_script(self, script, error_text):
         # TODO(clairbee): prove that the use of CSG instructions product
         #                 in this prompt is benefitial
         prompt = """You are an AI assistant to a mechanical engineer.
@@ -663,7 +723,7 @@ Very important not to produce exactly the same script: at least something has to
         )
         return output_path, error_text
 
-    def select_best_image(self, script_candidates):
+    def select_best_image(self, script_candidates, change=None):
         """Iterate over script_candidates and compare images.
         Each script candidate is [<image_filename>, <script>]."""
 
@@ -692,17 +752,26 @@ The part is further described by the images:
             for image_filename in self.ai_config["images"]:
                 prompt += "INSERT_IMAGE_HERE(%s)\n" % image_filename
 
+        if change is not None:
+            prompt += """
+
+Subsequently, the following changes were requested (until "CHANGE END"):
+%s
+CHANGE END
+""" % change
+
         prompt += """
 
 From the following images,
-select the rendered image that matches the part the best:
+select the rendered image that matches the requirements the best:
 """
         for image_filename in image_filenames:
             prompt += "INSERT_IMAGE_HERE(%s)\n" % image_filename
 
         prompt += """
 
-Respond with the numeric index (starting with 1) of the best fit image.
+Respond with the numeric index (starting with 1) of the rendered image
+that fits the requirements the best.
 No other text is acceptable.
 Just the number.
 """
@@ -711,12 +780,17 @@ Just the number.
         pc_logging.info(
             "Attempting to select the best script by comparing images"
         )
+        config = copy.copy(self.ai_config)
+        if config["temperature"] > 0.1:
+            config["temperature"] = 0.05
+        if config["top_p"] > 0.1:
+            config["top_p"] = 0.05
         responses = self.generate(
             "Compare",
             self.project.name,
             self.name,
             prompt,
-            self.ai_config,
+            config,
             1,
         )
 
