@@ -28,6 +28,7 @@ from .sketch_factory_basic import SketchFactoryBasic
 from .sketch_factory_dxf import SketchFactoryDxf
 from .sketch_factory_svg import SketchFactorySvg
 from .sketch_factory_build123d import SketchFactoryBuild123d
+from .sketch_factory_cadquery import SketchFactoryCadquery
 from . import part
 from . import part_config
 from .part_factory_extrude import PartFactoryExtrude
@@ -378,6 +379,8 @@ class Project(project_config.Configuration):
             )
         elif config["type"] == "build123d":
             SketchFactoryBuild123d(self.ctx, source_project, self, config)
+        elif config["type"] == "cadquery":
+            SketchFactoryCadquery(self.ctx, source_project, self, config)
         elif config["type"] == "dxf":
             SketchFactoryDxf(self.ctx, source_project, self, config)
         elif config["type"] == "svg":
