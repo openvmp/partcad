@@ -173,6 +173,9 @@ class Shape(ShapeConfiguration):
                         options={},
                     )
 
+    def test(self):
+        _ = asyncio.run(self.get_wrapped())
+
     def show(self, show_object=None):
         asyncio.run(self.show_async(show_object))
 

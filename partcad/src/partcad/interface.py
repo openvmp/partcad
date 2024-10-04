@@ -503,6 +503,9 @@ class Interface:
                 continue
             project.ctx.add_mate(self, target_interface, mate_target_config)
 
+    def test(self):
+        _ = self.get_ports()
+
     def info(self):
         info = {
             "name": self.name,

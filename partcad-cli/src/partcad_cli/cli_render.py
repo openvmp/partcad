@@ -33,7 +33,7 @@ def cli_help_render(subparsers: argparse.ArgumentParser):
     )
     parser_render.add_argument(
         "-t",
-        help="The object is an assembly",
+        help="The type of file to export",
         dest="format",
         type=str,
         nargs="?",
