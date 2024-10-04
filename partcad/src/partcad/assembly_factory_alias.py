@@ -56,6 +56,7 @@ class AssemblyFactoryAlias(pf.AssemblyFactory):
             self.source = (
                 self.source_project_name + ":" + self.source_assembly_name
             )
+            config["source_resolved"] = self.source
 
             if self.source_project_name == self.project.name:
                 self.assembly.desc = "Alias to %s" % self.source_assembly_name
