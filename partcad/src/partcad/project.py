@@ -1419,6 +1419,16 @@ class Project(project_config.Configuration):
                     yaml.dump(config, fp)
                     fp.close()
 
+    def test(self):
+        for interface in self.interfaces.values():
+            interface.test()
+        for sketch in self.sketches.values():
+            sketch.test()
+        for part in self.parts.values():
+            part.test()
+        for assembly in self.assemblies.values():
+            assembly.test()
+
     async def render_async(
         self,
         sketches=None,
