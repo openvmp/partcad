@@ -54,6 +54,7 @@ class PartFactoryAlias(pf.PartFactory):
                 else:
                     self.source_project_name = source_project.name
             self.source = self.source_project_name + ":" + self.source_part_name
+            config["source_resolved"] = self.source
 
             if self.source_project_name == target_project.name:
                 self.part.desc = "Alias to %s" % self.source_part_name

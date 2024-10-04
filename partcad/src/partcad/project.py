@@ -48,7 +48,7 @@ from . import assembly_config
 from . import provider
 from . import provider_config
 from .render import render_cfg_merge
-from .utils import resolve_resource_path
+from .utils import resolve_resource_path, normalize_resource_path
 
 
 class Project(project_config.Configuration):
@@ -1764,7 +1764,7 @@ class Project(project_config.Configuration):
                         lines += columns
                     lines += [""]
 
-        def add_section(name, shape, render_cfg):
+        def add_section(name, display_name, shape, render_cfg):
             config = shape.config
 
             if (
@@ -1806,11 +1806,11 @@ class Project(project_config.Configuration):
                 image_path = os.path.join(
                     return_path,
                     svg_cfg.get("prefix", "."),
-                    name + ".svg",
+                    shape.name + ".svg",
                 )
                 test_image_path = os.path.join(
                     svg_cfg.get("prefix", "."),
-                    name + ".svg",
+                    shape.name + ".svg",
                 )
                 img_text = (
                     '<img src="%s" style="width: auto; height: auto; max-width: 200px; max-height: 200px;">'
@@ -1825,11 +1825,11 @@ class Project(project_config.Configuration):
                 image_path = os.path.join(
                     return_path,
                     png_cfg.get("prefix", "."),
-                    name + ".png",
+                    shape.name + ".png",
                 )
                 test_image_path = os.path.join(
                     png_cfg.get("prefix", "."),
-                    name + ".png",
+                    shape.name + ".png",
                 )
                 img_text = (
                     '<img src="%s" style="width: auto; height: auto; max-width: 200px; max-height: 200px;">'
@@ -1896,7 +1896,7 @@ class Project(project_config.Configuration):
                     interfaces += "- %s<br/>" % interface.name
                 columns += [interfaces]
 
-            lines = ["### %s" % name]
+            lines = ["### %s" % display_name]
             if len(columns) > 1:
                 lines += ["<table><tr>"]
                 lines += map(lambda c: "<td valign=top>" + c + "</td>", columns)
@@ -1912,7 +1912,15 @@ class Project(project_config.Configuration):
             shape_names = sorted(self.assemblies.keys())
             for name in shape_names:
                 shape = self.assemblies[name]
-                lines += add_section(name, shape, render_cfg)
+                if shape.config["type"] == "alias":
+                    source_path = normalize_resource_path(
+                        self.name, shape.config["source_resolved"]
+                    )
+                    shape = self.ctx.get_assembly(source_path)
+                    display_name = name + " (alias to " + shape.name + ")"
+                else:
+                    display_name = name
+                lines += add_section(name, display_name, shape, render_cfg)
 
         if self.parts and not "parts" in exclude:
             lines += ["## Parts"]
@@ -1920,7 +1928,15 @@ class Project(project_config.Configuration):
             shape_names = sorted(self.parts.keys())
             for name in shape_names:
                 shape = self.parts[name]
-                lines += add_section(name, shape, render_cfg)
+                if shape.config["type"] == "alias":
+                    source_path = normalize_resource_path(
+                        self.name, shape.config["source_resolved"]
+                    )
+                    shape = self.ctx.get_part(source_path)
+                    display_name = name + " (alias to " + shape.name + ")"
+                else:
+                    display_name = name
+                lines += add_section(name, display_name, shape, render_cfg)
 
         if self.interfaces and not "interfaces" in exclude:
             lines += ["## Interfaces"]
@@ -1928,7 +1944,7 @@ class Project(project_config.Configuration):
             shape_names = sorted(self.interfaces.keys())
             for name in shape_names:
                 shape = self.interfaces[name]
-                lines += add_section(name, shape, render_cfg)
+                lines += add_section(name, name, shape, render_cfg)
 
         if self.sketches and not "sketches" in exclude:
             lines += ["## Sketches"]
@@ -1936,7 +1952,7 @@ class Project(project_config.Configuration):
             shape_names = sorted(self.sketches.keys())
             for name in shape_names:
                 shape = self.sketches[name]
-                lines += add_section(name, shape, render_cfg)
+                lines += add_section(name, name, shape, render_cfg)
 
         lines += [
             "<br/><br/>",
