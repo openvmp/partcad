@@ -28,6 +28,7 @@ from .cli_supply_find import *
 from .cli_supply_caps import *
 from .cli_supply_order import *
 from .cli_supply_quote import *
+from .cli_test import *
 
 
 # Initialize plugins that are not enabled by default
@@ -81,6 +82,7 @@ def main():
     cli_help_render(subparsers)
     cli_help_inspect(subparsers)
     cli_help_status(subparsers)
+    cli_help_test(subparsers)
 
     # Supply subcommands
     parser_supply = subparsers.add_parser(
@@ -208,6 +210,10 @@ def main():
             else:
                 print("Unknown supply command.\n")
                 parser.print_help()
+
+        elif args.command == "test":
+            with pc_logging.Process("Test", "this"):
+                cli_test(args, ctx)
 
         else:
             print("Unknown command.\n")
