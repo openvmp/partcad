@@ -287,6 +287,10 @@ def register():
     copyreg.pickle(
         cq.Location, lambda loc: (cq.Location, (loc.wrapped.Transformation(),))
     )
+    copyreg.pickle(
+        TopLoc_Location,
+        lambda loc: (TopLoc_Location, (loc.Transformation(),)),
+    )
 
     for cls in (
         TopoDS_Shape,

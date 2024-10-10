@@ -1,8 +1,8 @@
 #
-# OpenVMP, 2024
+# OpenVMP, 2023
 #
 # Author: Roman Kuzmenko
-# Created: 2024-04-20
+# Created: 2023-08-19
 #
 # Licensed under Apache License, Version 2.0.
 #
@@ -30,7 +30,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "wrappers"))
 from cq_serialize import register as register_cq_helper
 
 
-class SketchFactoryBuild123d(SketchFactoryPython):
+class SketchFactoryCadquery(SketchFactoryPython):
     def __init__(
         self, ctx, source_project, target_project, config, can_create=False
     ):
@@ -40,11 +40,11 @@ class SketchFactoryBuild123d(SketchFactoryPython):
             python_version = "3.10"
         if python_version == "3.12" or python_version == "3.11":
             pc_logging.debug(
-                "Downgrading Python version to 3.10 to avoid compatibility issues with build123d"
+                "Downgrading Python version to 3.10 to avoid compatibility issues with CadQuery"
             )
             python_version = "3.10"
         with pc_logging.Action(
-            "InitBuild123d", target_project.name, config["name"]
+            "InitCadQuery", target_project.name, config["name"]
         ):
             super().__init__(
                 ctx,
@@ -60,13 +60,13 @@ class SketchFactoryBuild123d(SketchFactoryPython):
     async def instantiate(self, sketch):
         await super().instantiate(sketch)
 
-        with pc_logging.Action("Build123d", sketch.project_name, sketch.name):
+        with pc_logging.Action("CadQuery", sketch.project_name, sketch.name):
             if (
                 not os.path.exists(sketch.path)
                 or os.path.getsize(sketch.path) == 0
             ):
                 pc_logging.error(
-                    "build123d script is empty or does not exist: %s"
+                    "CadQuery script is empty or does not exist: %s"
                     % sketch.path
                 )
                 return None
@@ -77,7 +77,7 @@ class SketchFactoryBuild123d(SketchFactoryPython):
 
             # Get the path to the wrapper script
             # which needs to be executed
-            wrapper_path = wrapper.get("build123d.py")
+            wrapper_path = wrapper.get("cadquery.py")
 
             # Build the request
             request = {"build_parameters": {}}
@@ -85,10 +85,6 @@ class SketchFactoryBuild123d(SketchFactoryPython):
                 for param_name, param in self.config["parameters"].items():
                     request["build_parameters"][param_name] = param["default"]
             patch = {}
-            if "show" in self.config:
-                patch["\\Z"] = "\nshow(%s)\n" % self.config["show"]
-            if "showObject" in self.config:
-                patch["\\Z"] = "\nshow_object(%s)\n" % self.config["show"]
             if "patch" in self.config:
                 patch.update(self.config["patch"])
             request["patch"] = patch
@@ -104,7 +100,6 @@ class SketchFactoryBuild123d(SketchFactoryPython):
             await self.runtime.ensure("numpy-quaternion==2023.0.4")
             await self.runtime.ensure("nptyping==1.24.1")
             await self.runtime.ensure("typing_extensions>=4.6.0,<5")
-            await self.runtime.ensure("build123d")
             cwd = self.project.config_dir
             if self.cwd is not None:
                 cwd = os.path.join(self.project.config_dir, self.cwd)
@@ -119,12 +114,7 @@ class SketchFactoryBuild123d(SketchFactoryPython):
             if len(errors) > 0:
                 error_lines = errors.split("\n")
                 for error_line in error_lines:
-                    error_line = error_line.strip()
-                    if not error_line:
-                        continue
-                    # TODO(clairbee): Move the sketch name concatenation to where the logging happens
-                    # part.error("%s: %s" % (sketch.name, error_line))
-                    sketch.error(error_line)
+                    sketch.error("%s: %s" % (sketch.name, error_line))
 
             try:
                 # pc_logging.error("Response: %s" % response_serialized)
@@ -142,12 +132,13 @@ class SketchFactoryBuild123d(SketchFactoryPython):
                 return None
 
             self.ctx.stats_sketches_instantiated += 1
-            sketch.components = []
 
             if result["shapes"] is None:
                 return None
             if len(result["shapes"]) == 0:
                 return None
+            if len(result["shapes"]) == 1:
+                return result["shapes"][0]
 
             builder = TopoDS_Builder()
             compound = TopoDS_Compound()

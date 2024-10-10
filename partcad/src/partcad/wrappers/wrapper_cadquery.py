@@ -65,6 +65,8 @@ def process(path, request):
     shapes = []
     for result in build_result.results:
         shape = result.shape
+        if hasattr(shape, "toOCC"):
+            shape = shape.toOCC()
         if hasattr(shape, "val"):
             shape = shape.val()
         if hasattr(shape, "toCompound"):

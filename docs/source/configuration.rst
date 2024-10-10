@@ -108,7 +108,7 @@ Sketches are declared in ``partcad.yaml`` using the following syntax:
 
   sketches:
     <sketch-name>:
-      type: <basic|dxf|svg>
+      type: <basic|dxf|svg|cadquery|build123d>
       desc: <(optional) textual description>
       path: <(optional) the source file path, "{sketch name}.{ext}" otherwise>
       # ... type-specific options ...
@@ -177,6 +177,11 @@ Such sketches are declared using the following syntax:
       use-faces: <(optional) boolean>
       ignore-visibility: <(optional) boolean>
       flip-y: <(optional) boolean>
+
+CAD Scripts
+-----------
+
+See the "CAD Scripts" section in the "Parts" chapter below.
 
 ==========
 Interfaces
