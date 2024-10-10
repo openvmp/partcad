@@ -41,6 +41,7 @@ jobs:
           PYTHONWARNINGS: ignore
         run: |
           rm -rf ~/.partcad
+          pip freeze
           pytest -x -p no:error-for-skips
       - name: Basic integration test for CLI
         run: |
