@@ -40,6 +40,7 @@ jobs:
           PYTHONPATH: partcad/src
           PYTHONWARNINGS: ignore
         run: |
+          rm -rf ~/.partcad
           pytest -x -p no:error-for-skips
       - name: Basic integration test for CLI
         run: |
