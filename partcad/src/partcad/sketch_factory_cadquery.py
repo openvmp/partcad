@@ -12,10 +12,15 @@ import os
 import pickle
 import sys
 
+from OCP.gp import gp_Ax1
 from OCP.TopoDS import (
     TopoDS_Builder,
     TopoDS_Compound,
+    TopoDS_Edge,
+    TopoDS_Wire,
+    TopoDS_Face,
 )
+from OCP.TopLoc import TopLoc_Location
 
 from .sketch_factory_python import SketchFactoryPython
 from . import wrapper
@@ -136,6 +141,46 @@ class SketchFactoryCadquery(SketchFactoryPython):
             builder = TopoDS_Builder()
             compound = TopoDS_Compound()
             builder.MakeCompound(compound)
-            for shape in result["shapes"]:
-                builder.Add(compound, shape)
+
+            def process(shapes, components_list):
+                for shape in shapes:
+                    # pc_logging.info("Returned: %s" % type(shape))
+                    try:
+                        if shape is None or isinstance(shape, str):
+                            # pc_logging.info("String: %s" % shape)
+                            continue
+
+                        if isinstance(shape, list):
+                            child_component_list = list()
+                            process(shape, child_component_list)
+                            components_list.append(child_component_list)
+                            continue
+
+                        # TODO(clairbee): add support for the below types
+                        if isinstance(shape, TopLoc_Location) or isinstance(
+                            shape, gp_Ax1
+                        ):
+                            continue
+
+                        if (
+                            isinstance(shape, TopoDS_Edge)
+                            or isinstance(shape, TopoDS_Wire)
+                            or isinstance(shape, TopoDS_Face)
+                        ):
+                            builder.Add(compound, shape)
+                            components_list.append(shape)
+                        elif False:
+                            # TODO(clairbee) Add all metadata types here
+                            components_list.append(shape)
+                        else:
+                            pc_logging.error(
+                                "Unsupported shape type: %s" % type(shape)
+                            )
+                    except Exception as e:
+                        pc_logging.error(
+                            "Error adding shape to compound: %s" % e
+                        )
+
+            process(result["shapes"], sketch.components)
+
             return compound

@@ -7,5 +7,5 @@ sk1 = (
     .regularPolygon(0.5, 6, 90, mode="s")
 )
 
-result = cq.Workplane("front").placeSketch(sk1).extrude(0.25)
+result = cq.Workplane("front").placeSketch(sk1)
 show_object(result)
