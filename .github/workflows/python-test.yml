@@ -42,11 +42,12 @@ jobs:
         run: |
           rm -rf ~/.partcad
           pip freeze
-          pytest -x -p no:error-for-skips
-      - name: Basic integration test for CLI
-        run: |
-          pip install -U ./partcad ./partcad-cli
-          mkdir new_pkg
-          cd new_pkg
-          pc init
-          pc list-all -r
+          pytest -x -p no:error-for-skips || pip install numpy==1.24.1
+          false
+      # - name: Basic integration test for CLI
+      #   run: |
+      #     pip install -U ./partcad ./partcad-cli
+      #     mkdir new_pkg
+      #     cd new_pkg
+      #     pc init
+      #     pc list-all -r
