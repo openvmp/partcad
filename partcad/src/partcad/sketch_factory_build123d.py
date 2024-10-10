@@ -99,11 +99,11 @@ class SketchFactoryBuild123d(SketchFactoryPython):
             request_serialized = base64.b64encode(picklestring).decode()
 
             await self.runtime.ensure("ocp-tessellate")
+            await self.runtime.ensure("cadquery")
             await self.runtime.ensure("numpy==1.24.1")
             await self.runtime.ensure("numpy-quaternion==2023.0.4")
             await self.runtime.ensure("nptyping==1.24.1")
             await self.runtime.ensure("typing_extensions>=4.6.0,<5")
-            await self.runtime.ensure("cadquery")
             await self.runtime.ensure("build123d")
             cwd = self.project.config_dir
             if self.cwd is not None:
