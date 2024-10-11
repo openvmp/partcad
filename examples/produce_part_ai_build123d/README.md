@@ -14,19 +14,19 @@ pc inspect tetrahedron
 
 ### cube
 <table><tr>
-<td valign=top><img src="././cube.svg" width="200" height="200"></td>
+<td valign=top><a href="cube.py"><img src="././cube.svg" style="width: auto; height: auto; max-width: 200px; max-height: 200px;"></a></td>
 <td valign=top>A cube</td>
 </tr></table>
 
 ### prism
 <table><tr>
-<td valign=top><img src="././prism.svg" width="200" height="200"></td>
+<td valign=top><a href="prism.py"><img src="././prism.svg" style="width: auto; height: auto; max-width: 200px; max-height: 200px;"></a></td>
 <td valign=top>A hexagonal prism</td>
 </tr></table>
 
 ### tetrahedron
 <table><tr>
-<td valign=top><img src="././tetrahedron.svg" width="200" height="200"></td>
+<td valign=top><a href="tetrahedron.py"><img src="././tetrahedron.svg" style="width: auto; height: auto; max-width: 200px; max-height: 200px;"></a></td>
 <td valign=top>A tetrahedron</td>
 </tr></table>
 
