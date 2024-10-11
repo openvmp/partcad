@@ -34,6 +34,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -U pytest
           pip install -r partcad/requirements.txt
+          # Install a subset of CLI dependencies, that are required for tests
+          pip install svglib
           # pip install -r partcad-cli/requirements.txt
       - name: Test with pytest
         env:
