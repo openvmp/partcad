@@ -70,11 +70,11 @@ class AssemblyFactoryAlias(pf.AssemblyFactory):
 
     def instantiate(self, assembly):
         with pc_logging.Action("Alias", assembly.project_name, assembly.name):
-
             source = self.ctx._get_assembly(self.source)
-            shape = source.shape
-            if not shape is None:
-                assembly.shape = shape
+            children = source.children
+            if children:
+                assembly.children = children
+                assembly.shape = source.shape
                 return
 
             self.ctx.stats_assemblies_instantiated += 1
