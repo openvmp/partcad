@@ -559,6 +559,8 @@ class Project(project_config.Configuration):
                             config["parameters"][param_name]["default"] = bool(
                                 param_value
                             )
+                    elif config["parameters"][param_name]["type"] == "array":
+                        config["parameters"][param_name]["default"] = param_value
             else:
                 # Filling "with"
                 if not "with" in config:
@@ -796,6 +798,8 @@ class Project(project_config.Configuration):
                             config["parameters"][param_name]["default"] = bool(
                                 param_value
                             )
+                    elif config["parameters"][param_name]["type"] == "array":
+                        config["parameters"][param_name]["default"] = param_value
             else:
                 # Filling "with"
                 if not "with" in config:
@@ -989,6 +993,8 @@ class Project(project_config.Configuration):
                             config["parameters"][param_name]["default"] = bool(
                                 param_value
                             )
+                    elif config["parameters"][param_name]["type"] == "array":
+                        config["parameters"][param_name]["default"] = param_value
             else:
                 # Filling "with"
                 if not "with" in config:
@@ -1196,6 +1202,8 @@ class Project(project_config.Configuration):
                             config["parameters"][param_name]["default"] = bool(
                                 param_value
                             )
+                    elif config["parameters"][param_name]["type"] == "array":
+                        config["parameters"][param_name]["default"] = param_value
             else:
                 # Filling "with"
                 if not "with" in config:

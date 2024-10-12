@@ -46,6 +46,11 @@ class ProviderConfiguration:
                         "type": "bool",
                         "default": param_value,
                     }
+                elif isinstance(param_value, list):
+                    config["parameters"][param_name] = {
+                        "type": "array",
+                        "default": param_value,
+                    }
                 # All params are float unless another type is explicitly speciifed
                 elif (
                     isinstance(param_value, dict) and not "type" in param_value
