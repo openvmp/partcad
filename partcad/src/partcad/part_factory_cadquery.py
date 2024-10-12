@@ -79,7 +79,7 @@ class PartFactoryCadquery(PartFactoryPython):
             if "show" in self.config:
                 patch["\\Z"] = "\nshow(%s)\n" % self.config["show"]
             if "showObject" in self.config:
-                patch["\\Z"] = "\nshow_object(%s)\n" % self.config["show"]
+                patch["\\Z"] = "\nshow_object(%s)\n" % self.config["showObject"]
             if "patch" in self.config:
                 patch.update(self.config["patch"])
             request["patch"] = patch
