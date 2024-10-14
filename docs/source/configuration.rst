@@ -409,6 +409,7 @@ Define parts with CodeCAD scripts using the following syntax:
     <part name>:
       type: <openscad|cadquery|build123d>
       cwd: <alternative current working directory>
+      showObject: <(optional) the name of the object to show using "show_object(...)">
       patch:
         # ...regexp substitutions to apply...
         "patern": "repl"

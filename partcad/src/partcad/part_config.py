@@ -28,19 +28,19 @@ class PartConfiguration(ShapeConfiguration):
                         "type": "string",
                         "default": param_value,
                     }
-                elif isinstance(param_value, float):
+                elif isinstance(param_value, bool):
                     config["parameters"][param_name] = {
-                        "type": "int",
+                        "type": "bool",
                         "default": param_value,
                     }
-                elif isinstance(param_value, int):
+                elif isinstance(param_value, float):
                     config["parameters"][param_name] = {
                         "type": "float",
                         "default": param_value,
                     }
-                elif isinstance(param_value, bool):
+                elif isinstance(param_value, int):
                     config["parameters"][param_name] = {
-                        "type": "bool",
+                        "type": "int",
                         "default": param_value,
                     }
                 elif isinstance(param_value, list):
