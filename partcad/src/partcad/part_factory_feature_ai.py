@@ -102,7 +102,9 @@ class PartFactoryFeatureAi(Ai):
         constructor to finalize the AI initialization. At the time of the call
         self.part and self.instantiate must be already defined."""
         self.part.generate = lambda path: self._create_file(path)
-        self.part.change = lambda path, change=None: self._change_file(path, change)
+        self.part.change = lambda path, change=None: self._change_file(
+            path, change
+        )
 
         # If uncommented out, this makes the package initialization
         # unaccceptably slow
@@ -199,10 +201,8 @@ class PartFactoryFeatureAi(Ai):
 
                         # Validate the image by rendering it,
                         # attempt to correct the script if rendering doesn't work
-                        image_filename, changed_script = (
-                            self._validate_and_fix(
-                                changed_script, candidate_id
-                            )
+                        image_filename, changed_script = self._validate_and_fix(
+                            changed_script, candidate_id
                         )
                         # Check if the model was valid
                         if image_filename is not None:
@@ -239,6 +239,11 @@ class PartFactoryFeatureAi(Ai):
 
         script = open(path, "r").read()
 
+        if change is not None:
+            change = change.strip()
+            if change == "":
+                change = None
+
         image_filename, error_text = self._render_image(script, 0)
         if image_filename is None or error_text:
             pc_logging.error(
@@ -251,7 +256,9 @@ class PartFactoryFeatureAi(Ai):
 
         # Attempt to change the script once more by comparing the result with
         # the original request
-        changed_scripts = self._change_script(None, script, image_filename, change)
+        changed_scripts = self._change_script(
+            None, script, image_filename, change
+        )
         for changed_script in changed_scripts:
             pc_logging.debug(
                 "Generated the changed script: %s" % changed_script
@@ -278,7 +285,9 @@ class PartFactoryFeatureAi(Ai):
             new_script = script_candidates[0][1]
         else:
             # Compare the images and select the best one
-            new_script = self.select_best_image(script_candidates, change=change)
+            new_script = self.select_best_image(
+                script_candidates, change=change
+            )
 
         if new_script == script:
             pc_logging.info("The script was not changed")
@@ -365,7 +374,7 @@ Use milimeters for dimensions and degrees for angles.
         """This method generates a script given specific CSG description."""
 
         prompt = """You are an AI assistant in an engineering department.
-You are helping engineers to create programmatic scripts that produce CAD geometry data
+You are helping engineers by writing scripts that produce CAD geometry data
 for parts, mechanisms, buildings or anything else.
 The scripts you create are fully functional and can be used right away, as is, in automated workflows.
 Assume that the scripts you produce are used automatically to render 3D models and to validate them.
@@ -415,7 +424,9 @@ IMPORTANT: Output the %s itself and do not add any text or comments before or af
 
         return scripts
 
-    def _change_script(self, csg_instructions, script, rendered_image, change=None):
+    def _change_script(
+        self, csg_instructions, script, rendered_image, change=None
+    ):
         """This method changes the script given the original request and the produced script."""
 
         config = copy.copy(self.ai_config)
@@ -469,7 +480,7 @@ When rendered, this script produces the following image:
         if change is not None:
             prompt += f"\n\n{change}\n"
         else:
-          prompt += """
+            prompt += """
 
 Please, analyze whether the produced script and image match the original request
 (where the original image and description take precedence
@@ -753,12 +764,15 @@ The part is further described by the images:
                 prompt += "INSERT_IMAGE_HERE(%s)\n" % image_filename
 
         if change is not None:
-            prompt += """
+            prompt += (
+                """
 
 Subsequently, the following changes were requested (until "CHANGE END"):
 %s
 CHANGE END
-""" % change
+"""
+                % change
+            )
 
         prompt += """
 
