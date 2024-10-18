@@ -7,8 +7,11 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import base64
 import importlib
 import httpx
+from path import Path
+import re
 import threading
 import time
 from typing import Any
@@ -70,8 +73,18 @@ class AiOllama:
         if not ollama_once():
             return None
 
-        if "INSERT_IMAGE_HERE" in prompt:
-            raise NotImplementedError("Images are not supported by Ollama")
+        image_content = []
+
+        def insert_image(match):
+            filename = match.group(1)
+            image_index = len(image_content)
+            image_content.append(
+                Path(filename).read_bytes(),
+                # base64.b64encode(Path(filename).read_bytes()).decode(),
+            )
+            return f"The attached image number {image_index}.\n"
+
+        prompt = re.sub(r"INSERT_IMAGE_HERE\(([^)]*)\)", insert_image, prompt)
 
         if "tokens" in config:
             tokens = config["tokens"]
@@ -106,10 +119,13 @@ class AiOllama:
                         top_k=top_k,
                         temperature=temperature,
                     )
+                    pc_logging.debug("Prompt: %s" % prompt)
+                    pc_logging.debug("Images: %d" % len(image_content))
                     response = ollama.generate(
                         model=model,
                         context=[],  # do not accumulate context uncontrollably
                         prompt=prompt,
+                        images=image_content,
                         options=options,
                     )
                 except httpx.ConnectError as e:
