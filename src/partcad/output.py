@@ -74,6 +74,15 @@ ALL_SECTIONS = SECTIONS + ANALYSIS_SECTIONS
 # 'pc cae' to be offered. It is an 'Implementation' like any other: a script,
 # the sandbox it needs, and the parameters it is handed. See
 # 'partcad.simulation'.
+#
+# Like 'cae:', PartCAD implements *nothing* of it. There is no
+# '//builtin/simulate', on purpose and for the reason there is no built-in
+# solver: a simulator is somebody's program with a release cycle of its own, and
+# shipping one inside the wheel would make every PartCAD release a statement
+# about which version of it you get. PartCAD ships the concept -- this section,
+# 'wrappers/wrapper_simulate.py', the runner in 'partcad.simulation', and the
+# MJCF export a plugin is handed a scene through -- and a package supplies the
+# simulator. The MuJoCo one is 'partcad/partcad-sim-mujoco'.
 SIMULATE = "simulation"
 
 # Where the built-in packages live, both as package paths and on disk. They are
@@ -83,18 +92,17 @@ BUILTIN_ROOT_PACKAGE = "//builtin"
 BUILTIN_PACKAGES = {
     EXPORT: "//builtin/export",
     RENDER: "//builtin/render",
-    SIMULATE: "//builtin/simulate",
 }
 # The one built-in package that declares objects rather than implementations:
-# the scene every 'simulate:' that names no scene of its own is run in, whose
-# 'subject' parameter is whatever is being simulated.
+# the scene a 'simulate:' that names no scene of its own is run in, whose
+# 'subject' parameter is whatever is being simulated. Unlike the simulator that
+# runs it, an empty world costs nothing to ship and depends on nothing.
 BUILTIN_SCENE_PACKAGE = "//builtin/scene"
 BUILTIN_ROOT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "builtin")
 BUILTIN_PATHS = {
     BUILTIN_ROOT_PACKAGE: BUILTIN_ROOT_PATH,
     BUILTIN_PACKAGES[EXPORT]: os.path.join(BUILTIN_ROOT_PATH, EXPORT),
     BUILTIN_PACKAGES[RENDER]: os.path.join(BUILTIN_ROOT_PATH, RENDER),
-    BUILTIN_PACKAGES[SIMULATE]: os.path.join(BUILTIN_ROOT_PATH, "simulate"),
     BUILTIN_SCENE_PACKAGE: os.path.join(BUILTIN_ROOT_PATH, "scene"),
 }
 
@@ -174,6 +182,15 @@ SIMULATION_KEYS = frozenset({"format", "formatOptions"})
 # directory (see wrappers/wrapper_export.py, which spells this out again -- a
 # wrapper runs in a sandbox and cannot import 'partcad').
 SCRIPT_KEY = "__script__"
+
+# The request key a file type sets to 'true' to be handed what the shapes it is
+# given report about themselves. It is an ordinary export parameter rather than
+# a reserved one - a format with no way to state a material or a mass never
+# declares it - and it is named here so that the core can tell whether the
+# properties will be read at all. Its twin is 'wrapper_export.PROPERTIES_KEY',
+# spelled out there for the same reason SCRIPT_KEY is: a wrapper runs in a
+# sandbox and cannot import this.
+PROPERTIES_KEY = "properties"
 
 # The request key that says whether the sandbox rebuilds the shape and assembly
 # envelopes into live OCCT geometry before the implementation sees them. The
@@ -504,6 +521,10 @@ async def materialize_script(ctx, impl) -> str:
             % (impl.format_name, builtin_package)
         )
 
+    # 'stamp()' fills 'package' in for every layer that names a 'path', so the
+    # fallback is only reached by a file type whose implementation is the
+    # built-in one. A section with no built-in - 'cae:' and 'simulation:' -
+    # cannot reach here without a package.
     package_name = impl.config.get("package") or builtin_package
     if package_name is None:
         raise Exception("The implementation of '%s' does not say which package it lives in" % impl.format_name)
