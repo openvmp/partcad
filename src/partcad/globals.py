@@ -18,9 +18,8 @@ from .assembly import Assembly
 from .assembly_factory_alias import AssemblyFactoryAlias
 from .assembly_factory_assy import AssemblyFactoryAssy
 from .assembly_factory_enrich import AssemblyFactoryEnrich
+from .assembly_factory_imported import AssemblyFactoryImported, SceneFactoryImported
 from .assembly_factory_step import AssemblyFactoryStep
-from .assembly_factory_mjcf import AssemblyFactoryMjcf
-from .assembly_factory_urdf import AssemblyFactoryUrdf
 from .context import Context
 from .file_factory_plugin import FileFactoryPlugin
 from .file_factory_url import FileFactoryUrl
@@ -55,8 +54,11 @@ from .plugin_factory_repository_basic import PluginFactoryRepositoryBasic
 from .plugin_factory_repository_enrich import PluginFactoryRepositoryEnrich
 from .scene import Scene
 from .scene_factory import SceneFactoryAlias, SceneFactoryAssy, SceneFactoryEnrich
-from .scene_factory_mjcf import SceneFactoryMjcf
-from .scene_factory_world import SceneFactoryWorld
+from .sketch_factory_basic import SketchFactoryBasic
+from .sketch_factory_cadquery import SketchFactoryCadquery
+from .sketch_factory_build123d import SketchFactoryBuild123d
+from .sketch_factory_dxf import SketchFactoryDxf
+from .sketch_factory_svg import SketchFactorySvg
 from .sketch_factory_alias import SketchFactoryAlias
 from .sketch_factory_basic import SketchFactoryBasic
 from .sketch_factory_build123d import SketchFactoryBuild123d
@@ -100,15 +102,18 @@ factory.register("part", "compound", PartFactoryCompound)
 factory.register("part", "wrapper", PartFactoryWrapper)
 factory.register("assembly", "assy", AssemblyFactoryAssy)
 factory.register("assembly", "step", AssemblyFactoryStep)
-factory.register("assembly", "urdf", AssemblyFactoryUrdf)
-factory.register("assembly", "mjcf", AssemblyFactoryMjcf)
+# Every object type that is somebody else's file format - 'urdf' and whatever a
+# plugin package declares - reaches this one factory, which resolves the
+# 'import:' declaration the type names and runs the reader it points at. It is
+# registered under a reserved key rather than a type name because the type
+# names are not PartCAD's to know; see 'factory.IMPORTED_KINDS'.
+factory.register("assembly", factory.IMPORTED_KINDS["assembly"], AssemblyFactoryImported)
+factory.register("scene", factory.IMPORTED_KINDS["scene"], SceneFactoryImported)
 factory.register("assembly", "alias", AssemblyFactoryAlias)
 factory.register("assembly", "enrich", AssemblyFactoryEnrich)
 # A scene is declared by pointing at the file that holds it - an ASSY file, or
 # a Gazebo world - with no assembly object in between. See 'partcad.scene'.
 factory.register("scene", "assy", SceneFactoryAssy)
-factory.register("scene", "world", SceneFactoryWorld)
-factory.register("scene", "mjcf", SceneFactoryMjcf)
 factory.register("scene", "alias", SceneFactoryAlias)
 factory.register("scene", "enrich", SceneFactoryEnrich)
 factory.register("file", "url", FileFactoryUrl)
