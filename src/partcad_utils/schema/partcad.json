@@ -729,7 +729,7 @@
     "export": { "$ref": "#/definitions/output-section" },
     "cae": { "$ref": "#/definitions/output-section" },
     "simulation": { "$ref": "#/definitions/simulation-section" },
-    "importers": { "$ref": "#/definitions/import-section" },
+    "import": { "$ref": "#/definitions/import-section" },
     "materials": { "$ref": "#/definitions/materials" },
     "dependencies": {
       "type": ["object", "null"],
@@ -1037,7 +1037,7 @@
             },
             {
               "type": "object",
-              "description": "An assembly read from a third-party file format by a plugin package (its 'type' names an entry of that package's 'importers:' section, by full path). The reader's own parameters are allowed.",
+              "description": "An assembly read from a third-party file format by a plugin package (its 'type' names an entry of that package's 'import:' section, by full path). The reader's own parameters are allowed.",
               "properties": {
                 "type": {
                   "type": "string",
@@ -1136,7 +1136,7 @@
             },
             {
               "type": "object",
-              "description": "A scene read from a third-party file format by a plugin package (its 'type' names an entry of that package's 'importers:' section, by full path). The reader's own parameters are allowed.",
+              "description": "A scene read from a third-party file format by a plugin package (its 'type' names an entry of that package's 'import:' section, by full path). The reader's own parameters are allowed.",
               "properties": {
                 "type": {
                   "type": "string",
