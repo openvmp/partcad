@@ -202,11 +202,10 @@ def test_a_dependency_under_import_is_reported_and_not_migrated(package):
     would be fetched as a package, and the failure would surface nowhere near
     the file that caused it.
 
-    Reported and the package marked broken rather than raised, which is how
-    every other unreadable 'partcad.yaml' is handled. It is still loud - an
-    error names the package and the entry, and the command exits non-zero - but
-    one legacy package reached through an index does not abort every command
-    that walks past it.
+    In the *root* package - the one the user is standing in, and the one they
+    can fix - that is an error and the package is broken, which is how every
+    other unreadable 'partcad.yaml' is handled. An imported one is somebody
+    else's; see the test below.
     """
     (package / "partcad.yaml").write_text(
         "name: //p\n" "import:\n" "  robots:\n" "    type: git\n" "    url: https://github.com/openvmp/robots.git\n",
@@ -220,6 +219,49 @@ def test_a_dependency_under_import_is_reported_and_not_migrated(package):
     # Not migrated: that is the whole point.
     assert not project.config_obj.get("dependencies")
     assert "import" not in project.config_obj
+
+
+def test_a_legacy_dependency_in_somebody_elses_package_is_a_warning(package):
+    """One legacy package in an index must not fail every command walking past it.
+
+    The public index carries such a package today, several levels below
+    anything a user wrote. Marking it broken would be reported by
+    'Context.import_project()' as an error of its own, so a 'pc list' that
+    merely enumerates the index would exit non-zero over a section the user
+    cannot reach, let alone rename.
+
+    So it warns, and the package goes on providing everything else it declares.
+    What is lost is what the section named, and nothing besides.
+    """
+    legacy = package / "legacy"
+    legacy.mkdir()
+    (legacy / "partcad.yaml").write_text(
+        "name: //legacy\n"
+        "dependencies: {}\n"
+        "import:\n"
+        "  robots:\n"
+        "    type: git\n"
+        "    url: https://example.invalid/r.git\n"
+        "parts:\n"
+        "  cube:\n"
+        "    type: stl\n"
+        "    path: %s\n" % CUBE.replace("\\", "/"),
+        encoding="utf-8",
+    )
+    (package / "partcad.yaml").write_text(
+        "name: //root\ndependencies:\n  legacy:\n    type: local\n    path: ./legacy\n",
+        encoding="utf-8",
+    )
+    ctx = pc.Context(str(package))
+
+    imported = ctx.get_project("//root/legacy")
+    assert imported is not None
+    assert not imported.broken
+    # Not migrated, and the entry it named is simply gone.
+    assert not imported.config_obj.get("dependencies")
+    assert "import" not in imported.config_obj
+    # ...while the rest of the package is untouched.
+    assert ctx.get_part("//root/legacy:cube") is not None
 
 
 def test_a_half_written_dependency_is_recognised_too(package):

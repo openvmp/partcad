@@ -119,8 +119,11 @@ class Configuration:
         # The location is authoritative for every package except the root. The
         # root has no parent to derive a location from, so it adopts the name it
         # declares - that is what lets a package developed standalone use the
-        # same package path its consumers will see it at.
-        if name == consts.ROOT and self.declared_name:
+        # same package path its consumers will see it at. Captured before that
+        # rename, because 'is this the package the user is standing in' is a
+        # question the legacy-'import:' report below has to ask afterwards.
+        is_root = name == consts.ROOT
+        if is_root and self.declared_name:
             name = self.declared_name
             self.name = name
         else:
@@ -143,30 +146,44 @@ class Configuration:
         # rest are the other transport-only keys, listed so that a
         # half-finished dependency is still recognised as one.
         #
-        # Reported and the package marked broken, rather than raised. Loud
-        # either way -- this is an error, so the command it was reached from
-        # exits non-zero, and it names the package, the entry that gave it away
-        # and what to do -- but a package this reaches is very often somebody
-        # else's, reached through an index, and one legacy package must not
-        # abort every command that walks past it. That is also how every other
-        # unreadable 'partcad.yaml' is handled; see 'ProjectLocal.__init__'.
+        # Reported, never migrated: an automatic rewrite is what made the two
+        # ambiguous, and doing it again with a better guess would only move the
+        # day it goes wrong. So the section is dropped and said to be dropped.
         #
-        # The section is dropped rather than migrated, which is the whole point:
-        # an automatic rewrite is what made the two ambiguous, and doing it
-        # again with a better guess would only move the day it goes wrong.
+        # How loudly depends on whose package it is, and that is the only thing
+        # the two cases differ in.
+        #
+        # The *root* package is the one the user is standing in and the one they
+        # can fix, so it is an error and the package is broken: the command
+        # exits non-zero and nothing loads out of a configuration PartCAD can no
+        # longer read the way it was meant. That is how every other unreadable
+        # 'partcad.yaml' is handled; see 'ProjectLocal.__init__'.
+        #
+        # An *imported* package is somebody else's -- very often reached through
+        # the public index, several levels away from anything the user wrote --
+        # so it is a warning naming the package, the entry and the fix, and the
+        # package goes on being usable for everything else it declares. It has
+        # to be: 'Context.import_project()' reports a broken import as an error
+        # of its own, so marking it broken here would make one legacy package
+        # anywhere in the index fail every command that merely walks past it.
+        # What is lost is exactly what the section said -- those dependencies,
+        # and whatever was underneath them.
         obsolete = self._obsolete_import_entries(self.config_obj.get("import"))
         if obsolete:
-            pc_logging.error(
+            report = pc_logging.error if is_root else pc_logging.warning
+            report(
                 "%s: 'import:' now declares object types this package can read, not its dependencies. "
-                "The %s %s %s a dependency, not a reader. Rename the section to 'dependencies:'."
+                "The %s %s %s a dependency, not a reader, and %s ignored. "
+                "Rename the section to 'dependencies:'."
                 % (
                     name,
                     "entries" if len(obsolete) > 1 else "entry",
                     ", ".join("'%s'" % entry for entry in obsolete),
                     "describe" if len(obsolete) > 1 else "describes",
+                    "are" if len(obsolete) > 1 else "is",
                 )
             )
-            self.broken = True
+            self.broken = self.broken or is_root
             del self.config_obj["import"]
 
         # option: "partcad"

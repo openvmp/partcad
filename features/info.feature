@@ -106,7 +106,7 @@ Feature: `pc info` command
   Scenario: Show 'Url' & 'Path' as package info for remote imports(git/tar)
     Given a file named "partcad.yaml" with content:
       """
-      import:
+      dependencies:
         rob:
           type: git
           relPath: robotics/parts

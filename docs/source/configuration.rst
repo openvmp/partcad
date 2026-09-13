@@ -2264,11 +2264,20 @@ static tree cannot hold, and the division of labour is that the *reader* counts
 what it had to drop and the *declaration* says what to call it.
 
 The section shares its name with what ``dependencies:`` used to be called, and
-that spelling is now an error rather than a silent migration: a package whose
+that spelling is reported rather than silently migrated now: a package whose
 ``import:`` entries carry a ``type:`` of ``git``/``tar``/``local``/``external``,
 or any of the transport-only keys (``url``, ``relPath``, ``revision``, ...), is
-reported and marked broken, and is told to rename the section, instead of having its readers fetched as
-packages. Nothing is migrated for it.
+told to rename the section, and those entries are dropped instead of being
+fetched as packages. Nothing is migrated for it.
+
+How loudly depends on whose package it is. In the package you are standing in it
+is an error and the package is broken -- the command exits non-zero and nothing
+loads out of it, because that is the file you can fix. In an imported package it
+is a warning naming the package, the entry and the fix: such a package is very
+often somebody else's, several levels below anything you wrote, and one of them
+anywhere in an index must not fail every command that merely walks past it. That
+package goes on providing everything else it declares; what is lost is exactly
+what the section named.
 
 PartCAD ships three of these, in ``//builtin/import``. ``urdf`` stays there
 because a URDF describes a robot rather than any one engine's world, and ROS,
