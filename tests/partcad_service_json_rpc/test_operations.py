@@ -1156,6 +1156,23 @@ def test_test_run_recursive_tests_the_object_in_each_package(monkeypatch):
     assert sub.parts_requested == ["widget"]
 
 
+def test_test_run_recursive_runs_a_qualified_object_once(monkeypatch):
+    # '//sub:widget' resolves to the same package whatever package it is reached
+    # from, so a recursive run must not schedule -- and report -- that one object
+    # once per package in the subtree.
+    install_fake_tests(monkeypatch)
+    session, _ = make_session()
+    root = session.partcad_ctx.projects["//"]
+    root.add("parts", FakeObject("widget"))
+    sub = FakeProject(name="//sub").add("parts", FakeObject("widget"))
+    session.partcad_ctx.projects["//sub"] = sub
+
+    operations.test_run(session, {"recursive": True, "object": "//sub:widget"})
+
+    assert sub.parts_requested == ["widget"]
+    assert root.parts_requested == []
+
+
 def test_test_run_reports_a_package_a_qualified_object_name_cannot_reach(monkeypatch):
     # '--package' is checked by the caller, but '//nope:widget' names a package
     # of its own -- which used to be dereferenced as None.

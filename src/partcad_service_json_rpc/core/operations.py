@@ -868,6 +868,7 @@ async def _test_async(ctx, pc, packages, filter_prefix, sketch, interface, assem
     if filter_prefix:
         tests_to_run = list(filter(lambda t: t.name.startswith(filter_prefix), tests_to_run))
 
+    scheduled = set()
     for package in packages:
         obj = object_name
         target = package
@@ -881,6 +882,14 @@ async def _test_async(ctx, pc, packages, filter_prefix, sketch, interface, assem
             # does carry a prefix still names its own package, exactly as a
             # recursive render resolves one (see '_render_packages_async').
             target, obj = pc.utils.resolve_resource_path(package, obj)
+        # A '//elsewhere:name' resolves to the same pair whatever package it was
+        # reached from, so a recursive run would otherwise schedule that one
+        # object once per package in the subtree and report it as many times. An
+        # unqualified name resolves to a different package each time, so it
+        # still runs in each of them.
+        if (target, obj) in scheduled:
+            continue
+        scheduled.add((target, obj))
         prj = ctx.get_project(target)
         if prj is None:
             # Reachable through a qualified object name: '--package' is checked
