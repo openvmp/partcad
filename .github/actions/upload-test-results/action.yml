@@ -18,10 +18,16 @@ inputs:
     default: "7"
   coverage-data:
     description: >
-      Path to the raw coverage.py data file this job produced, if it produced
-      one. Uploaded separately from the test results so that the merge in the
-      "Coverage" job can ask for coverage data and get only coverage data. Leave
-      empty in a job that measures nothing.
+      Glob matching the raw coverage.py data this job produced, if it produced
+      any -- ".coverage*", not ".coverage". Uploaded separately from the test
+      results so that the merge in the "Coverage" job can ask for coverage data
+      and get only coverage data. Leave empty in a job that measures nothing.
+
+      A glob rather than a filename because a job that failed mid-suite has not
+      reached its own "coverage combine": what is on disk then is the
+      parallel-mode parts (".coverage.<host>.<pid>.<n>") and no combined
+      ".coverage" at all. Both are data files the merge can read, so the pattern
+      is what gets uploaded and the merge unions whatever arrives.
     required: false
     default: ""
 
@@ -51,14 +57,19 @@ runs:
       env:
         COVERAGE_DATA: ${{ inputs.coverage-data }}
       run: |
-        if [ -n "${COVERAGE_DATA}" ] && [ -f "${COVERAGE_DATA}" ]; then
-          echo "found=true" >> "$GITHUB_OUTPUT"
-        elif [ -z "${COVERAGE_DATA}" ]; then
+        # Expanded unquoted on purpose: the input is a glob (see its
+        # description), and this is what asks whether it matches anything. An
+        # unmatched pattern comes back as itself, which "-e" then rejects.
+        set -- ${COVERAGE_DATA}
+        if [ -z "${COVERAGE_DATA}" ]; then
           echo "found=false" >> "$GITHUB_OUTPUT"
           echo "This job measures no coverage."
+        elif [ -e "$1" ]; then
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          echo "Uploading: $*"
         else
           echo "found=false" >> "$GITHUB_OUTPUT"
-          echo "No coverage data at '${COVERAGE_DATA}'."
+          echo "No coverage data matching '${COVERAGE_DATA}'."
         fi
 
     # "coverage-data-" prefixed, because that prefix is the contract: the

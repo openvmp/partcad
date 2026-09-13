@@ -34,12 +34,14 @@ Three parts do not, and they are what these tests are about:
 """
 
 import importlib.util
+import io
 import json
 import os
 import pathlib
 import shutil
 import subprocess
 import types
+import urllib.error
 
 import pytest
 import yaml
@@ -190,6 +192,46 @@ def test_the_packages_the_report_groups_by_are_the_packages_that_exist(report_mo
     listed = {package for package in report_module.PACKAGES if package.startswith("src/")}
     assert listed == on_disk
     assert "cad/freecad" in report_module.PACKAGES
+
+
+def test_a_file_no_job_imported_is_nought_percent_rather_than_absent(report_module, tmp_path):
+    """The hole this gate would otherwise have exactly the wrong shape of.
+
+    coverage.py reports the files it saw. `[run] include` filters tracing; it
+    does not discover. So a module no test imports is *absent* from the merged
+    data rather than zero in it -- and absent means `patch_summary` counts none
+    of its statements, `evaluate` says "nothing to measure", and a pull request
+    whose new module has never been executed passes the requirement.
+    """
+    coverage_data = pytest.importorskip("coverage.sqldata").CoverageData
+
+    root = tmp_path / "repo"
+    (root / "src" / "partcad").mkdir(parents=True)
+    (root / "src" / "partcad" / "seen.py").write_text("a = 1\n")
+    (root / "src" / "partcad" / "never_imported.py").write_text("def f():\n    return 1\n")
+    # Under an `omit` pattern, so it must stay out however new it is.
+    (root / "src" / "partcad" / "sandbox").mkdir()
+    (root / "src" / "partcad" / "sandbox" / "inner.py").write_text("b = 2\n")
+
+    merged = tmp_path / "merged.coverage"
+    written = coverage_data(str(merged))
+    written.add_lines({str(root / "src" / "partcad" / "seen.py"): [1]})
+    written.write()
+
+    added_count = report_module.touch_unmeasured(merged, root, str(COVERAGE_RC))
+    assert added_count == 1
+
+    data = coverage_data(str(merged))
+    data.read()
+    measured = {pathlib.Path(name).name for name in data.measured_files()}
+    assert measured == {"seen.py", "never_imported.py"}
+
+
+def test_the_omit_list_is_read_from_the_config_rather_than_repeated(report_module):
+    """Two copies of "what is not PartCAD's code" would drift on the third entry."""
+    patterns = report_module.omit_patterns(str(COVERAGE_RC))
+    assert patterns
+    assert all(pattern.startswith("*") for pattern in patterns)
 
 
 # --- Patch coverage -------------------------------------------------------
@@ -391,6 +433,53 @@ def test_compress_reads_like_coverage_pys_own_missing_lines(report_module):
     assert report_module.compress([]) == ""
 
 
+@pytest.fixture(scope="module")
+def comment_module():
+    """The comment poster, imported the same way as the report script."""
+    return load(COMMENT_SCRIPT, "partcad_pr_comment")
+
+
+def refusing(module, code):
+    """A `request` that always answers with one HTTP status."""
+
+    def refuse(*_args, **_kwargs):
+        raise urllib.error.HTTPError("https://example.invalid", code, "refused", {}, io.BytesIO(b"{}"))
+
+    module.request = refuse
+
+
+@pytest.mark.parametrize(
+    "code, expected",
+    [
+        # The fork case: an authenticated token refused the write. Survivable --
+        # the job summary carries the same report and the gate still gates.
+        pytest.param(403, 0, id="fork-is-survivable"),
+        # A credential that does not work at all. Treating this as the fork case
+        # would hide a broken token on every pull request, branches included,
+        # for as long as nobody wondered where the comment went.
+        pytest.param(401, 1, id="bad-token-is-a-failure"),
+        pytest.param(500, 1, id="server-error-is-a-failure"),
+    ],
+)
+def test_only_a_refused_write_is_survivable(comment_module, tmp_path, monkeypatch, code, expected):
+    body = tmp_path / "comment.md"
+    body.write_text("<!-- partcad-coverage-report -->\nhello\n")
+    monkeypatch.setenv("GITHUB_TOKEN", "x")
+    monkeypatch.setattr(comment_module, "request", None)
+    refusing(comment_module, code)
+    argv = ["--body-file", str(body), "--marker", "<!-- partcad-coverage-report -->", "--repo", "o/r", "--pr", "1"]
+    assert comment_module.main(argv) == expected
+
+
+def test_a_body_without_the_marker_is_refused(comment_module, tmp_path, monkeypatch):
+    """It would post, and then the next run would post another beside it."""
+    body = tmp_path / "comment.md"
+    body.write_text("no marker here\n")
+    monkeypatch.setenv("GITHUB_TOKEN", "x")
+    argv = ["--body-file", str(body), "--marker", "<!-- partcad-coverage-report -->", "--pr", "1"]
+    assert comment_module.main(argv) == 1
+
+
 # --- The contract between the jobs and the merge --------------------------
 
 
@@ -442,6 +531,29 @@ def test_every_job_that_measures_coverage_hands_its_data_to_the_merge():
     # And the prefix both ends agree on, which is the whole contract.
     assert "coverage-data-${{ inputs.name }}" in UPLOAD_ACTION.read_text()
     assert "pattern: coverage-data-*" in text
+
+
+def test_every_producer_uploads_its_coverage_even_when_its_suite_failed():
+    """A failed suite still measured what it ran, and that data is only additive.
+
+    Two halves, and the first is useless without the second. `if: always()` is
+    what gets the step to run at all; the glob is what it finds when it does --
+    a job that died mid-suite never reached its own `coverage combine`, so what
+    is on disk is the parallel-mode parts and no combined `.coverage`. Uploading
+    a bare filename there uploads nothing, and the merge silently loses a whole
+    job -- which moves the requirement's floor, not just the number on it.
+    """
+    jobs = workflow("test.yml")["jobs"]
+    producers = 0
+    for name, job in jobs.items():
+        for step in job.get("steps", []):
+            data = step.get("with", {}).get("coverage-data") if step.get("with") else None
+            if not str(step.get("uses", "")).endswith("upload-test-results") or not data:
+                continue
+            producers += 1
+            assert "always()" in str(step.get("if")), f"{name} skips its upload when the suite fails"
+            assert data.endswith(".coverage*"), f"{name} uploads a filename rather than a glob: {data}"
+    assert producers == 5
 
 
 def test_the_coverage_job_runs_after_every_suite_and_survives_their_failure():

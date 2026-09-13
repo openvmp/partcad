@@ -54,12 +54,16 @@ and overall rates are reported beside them for the reader.
 """
 
 import argparse
+import configparser
+import fnmatch
 import json
 import os
 import re
 import subprocess
 import sys
 from pathlib import Path
+
+from coverage.sqldata import CoverageData
 
 # What marks this script's comment on a pull request as this script's, so that
 # the next run edits it rather than adding a second one. `pr_comment.py` matches
@@ -128,6 +132,70 @@ def find_data_files(data_dir):
     # beside it if a process died mid-write. Handing one to `combine` is an
     # error, and it carries nothing the data file does not.
     return [path for path in found if not path.name.endswith(("-journal", "-wal", "-shm"))]
+
+
+def omit_patterns(rcfile):
+    """The `[run] omit` list, read from the same file the jobs measured with.
+
+    Read rather than repeated: a second copy of those patterns here would be a
+    second answer to "what is not PartCAD's code", and the two would drift the
+    day somebody adds a third.
+    """
+    parser = configparser.ConfigParser()
+    parser.read(rcfile)
+    raw = parser.get("run", "omit", fallback="")
+    return [line.strip() for line in raw.splitlines() if line.strip()]
+
+
+def in_scope_files(root, rcfile):
+    """Every file the report should have an opinion about, measured or not.
+
+    `PACKAGES` is the scope, and it is the same scope `[run] include` in
+    `coverage.rc` traces -- the test above this module's `PACKAGES` list keeps
+    the two honest. `fnmatch` is a shade more permissive than coverage.py's own
+    globbing (its `*` crosses a directory separator), which for the two patterns
+    in that `omit` list only means they exclude what they were written to
+    exclude.
+    """
+    patterns = omit_patterns(rcfile)
+    for package in PACKAGES:
+        base = root / package
+        if not base.is_dir():
+            continue
+        for path in sorted(base.rglob("*.py")):
+            relative = path.relative_to(root).as_posix()
+            if any(fnmatch.fnmatch("/" + relative, pattern) for pattern in patterns):
+                continue
+            yield path
+
+
+def touch_unmeasured(merged, root, rcfile):
+    """Put the in-scope files nothing imported into the data, at nought percent.
+
+    coverage.py reports the files it *saw*: `[run] include` filters what gets
+    traced, and a module no test ever imports is therefore absent from the
+    merged data altogether -- not zero, absent. That is a hole under the gate
+    rather than a cosmetic gap, and it is the shape of hole that swallows
+    exactly the change worth catching: add a new module with no test at all and
+    every statement in it is missing from `coverage.json`, so `patch_summary`
+    finds nothing to count, `evaluate` reports "nothing to measure", and the
+    requirement passes a pull request whose new code has never been executed.
+
+    `CoverageData.touch_files` is coverage.py's own answer to this: it records
+    the file as measured with no lines executed, so every report from here on
+    counts its statements as missing. The project rate drops when this first
+    runs, and that is the point -- it was never that high.
+
+    Returns how many files were added, for the log.
+    """
+    data = CoverageData(str(merged))
+    data.read()
+    measured = set(data.measured_files())
+    absent = [str(path) for path in in_scope_files(root, rcfile) if str(path) not in measured]
+    if absent:
+        data.touch_files(absent)
+        data.write()
+    return len(absent)
 
 
 def added_lines(base, head):
@@ -277,6 +345,11 @@ def merge(args):
     # artifact holds. `--keep` leaves the downloaded files alone: combine deletes
     # what it read otherwise, and they are what a debug run wants to re-read.
     coverage("combine", "--keep", *[str(path) for path in data_files], rcfile=args.rcfile, data_file=merged)
+
+    # Before any report is written, because every one of them reads this data.
+    touched = touch_unmeasured(merged, Path.cwd(), args.rcfile)
+    print(f"Added {touched} in-scope file(s) that no job imported, at nought percent")
+    summary["untouched_files"] = touched
 
     coverage("html", "-d", str(report_dir / "htmlcov"), "--title", args.title, rcfile=args.rcfile, data_file=merged)
     coverage("xml", "-o", str(report_dir / "coverage.xml"), rcfile=args.rcfile, data_file=merged)

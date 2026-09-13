@@ -115,10 +115,17 @@ def main(argv=None):
             posted = request("PATCH", url, token, {"body": body})
             print(f"Updated {posted['html_url']}")
     except urllib.error.HTTPError as error:
-        if error.code in (401, 403):
-            # The fork case above. Said once, plainly, so that a maintainer
-            # reading a fork's run knows where the report went rather than
-            # thinking this broke.
+        # 403 and only 403. GitHub answers 403 -- "Resource not accessible by
+        # integration" -- when an authenticated token is refused the write,
+        # which is the fork case; 401 means the credential itself is bad. They
+        # were handled together at first, and that is a hole rather than a
+        # simplification: a token that has stopped working is a real breakage
+        # this script exists to do something about, and reporting it as "this is
+        # a fork, never mind" would hide it on every pull request, forks and
+        # branches alike, for as long as nobody wondered where the comment went.
+        if error.code == 403:
+            # Said once, plainly, so that a maintainer reading a fork's run
+            # knows where the report went rather than thinking this broke.
             print(
                 "::warning title=PR comment::this run's token cannot write to the repository "
                 "(a pull request from a fork), so the comment was not posted. "

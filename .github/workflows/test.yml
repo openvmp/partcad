@@ -956,13 +956,20 @@ jobs:
           coverage xml --rcfile=./dev-tools/coverage.rc --data-file=.coverage -o ./pytest-test-results/coverage.xml
           mamba deactivate
 
+      # "always()", because a suite that failed still measured everything it ran
+      # before it failed, and that data is only ever additive: the merge is a
+      # union, so partial data can raise the reported rate but never lower it.
+      # Skipping the upload instead loses a whole job's coverage from the report
+      # -- and, because the requirement's floor is the project's own rate, moves
+      # the bar rather than just the number.
       - name: Upload test results and coverage data
+        if: always()
         uses: ./.github/actions/upload-test-results
         with:
           name: pytest-test-results-${{matrix.os}}-${{matrix.python-version}}
           path: pytest-test-results/
           retention-days: 7
-          coverage-data: .coverage
+          coverage-data: .coverage*
 
   test-behave:
     name: "Behave"
@@ -1099,13 +1106,20 @@ jobs:
           fi
           mamba deactivate
 
+      # "always()", because a suite that failed still measured everything it ran
+      # before it failed, and that data is only ever additive: the merge is a
+      # union, so partial data can raise the reported rate but never lower it.
+      # Skipping the upload instead loses a whole job's coverage from the report
+      # -- and, because the requirement's floor is the project's own rate, moves
+      # the bar rather than just the number.
       - name: Upload test results and coverage data
+        if: always()
         uses: ./.github/actions/upload-test-results
         with:
           name: behave-test-results-${{matrix.os}}-${{matrix.python-version}}-${{matrix.shard}}
           path: behave-test-results/
           retention-days: 7
-          coverage-data: .coverage
+          coverage-data: .coverage*
 
   test-examples-partcad:
     name: "Examples (PartCAD)"
@@ -1282,13 +1296,20 @@ jobs:
             exit 1
           fi
 
+      # "always()", because a suite that failed still measured everything it ran
+      # before it failed, and that data is only ever additive: the merge is a
+      # union, so partial data can raise the reported rate but never lower it.
+      # Skipping the upload instead loses a whole job's coverage from the report
+      # -- and, because the requirement's floor is the project's own rate, moves
+      # the bar rather than just the number.
       - name: Upload test results and coverage data
+        if: always()
         uses: ./.github/actions/upload-test-results
         with:
           name: examples-partcad-test-results-${{matrix.os}}-${{matrix.python-version}}
           path: examples-partcad-test-results/
           retention-days: 7
-          coverage-data: examples/.coverage
+          coverage-data: examples/.coverage*
 
   test-examples-all:
     name: "Examples (All)"
@@ -1380,14 +1401,15 @@ jobs:
 
       - name: Upload test results and coverage data
         # As in "Repo //pub" below: that step gates as of this branch, so the
-        # failing run must still upload the report that says what failed.
+        # failing run must still upload the report that says what failed -- and,
+        # as in every producer above, the coverage it had measured by then.
         if: always()
         uses: ./.github/actions/upload-test-results
         with:
           name: examples-all-test-results-${{matrix.os}}-${{matrix.python-version}}
           path: examples-all-test-results/
           retention-days: 7
-          coverage-data: examples/.coverage
+          coverage-data: examples/.coverage*
 
   test-pub-repo:
     name: "Repo //pub"
@@ -1511,7 +1533,7 @@ jobs:
           name: pub-repo-test-results-${{matrix.os}}-${{matrix.python-version}}
           path: pub-repo-test-results/
           retention-days: 7
-          coverage-data: examples/.coverage
+          coverage-data: examples/.coverage*
 
   # Every job above measured one slice of the same source, and no one of those
   # numbers means anything on its own: "Pytest" never starts a CAD sandbox,

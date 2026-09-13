@@ -394,7 +394,13 @@ what the others cannot. What makes that union possible is the `[paths]` section 
 mapping the three roots one file is recorded under — the checkout, `site-packages`, and either with Windows
 separators — onto one; without it the report is produced, uploaded and commented on with every rate silently
 too low. A job joins the merged report by passing `coverage-data:` to `.github/actions/upload-test-results`
-and nothing else; that prefix is the whole contract.
+and nothing else; that prefix is the whole contract. Two details there are load-bearing rather than
+incidental: the value is a **glob** (`.coverage*`) and the step runs on `always()`, because a suite that died
+mid-run never reached its own `coverage combine` and what is on disk then is the parallel-mode parts — so a
+bare filename on a `success()` step silently drops a whole job from the merge, and with it moves the
+requirement's floor. The merge also **records every in-scope file no job imported, at nought percent**, before
+writing any report: coverage.py reports the files it saw, so without that a brand-new module with no test at
+all is absent from the data rather than zero in it, and the gate finds nothing to hold it to.
 
 The requirement is a floor under **patch** coverage — the statements the pull request touched — set to the
 project's own statement rate in the same run. Nothing is stored between runs, so there is no baseline to

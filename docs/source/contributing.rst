@@ -748,6 +748,13 @@ Lines that are not statements are in neither half of that fraction: a comment, a
 ``include`` list in ``dev-tools/coverage.rc`` does not name. The figure answers "is the new code exercised",
 not "how much did you type".
 
+A file **no job imported at all** does count, and it takes a step to make it. coverage.py reports the files it
+saw, so a module nothing exercises is absent from the merged data rather than zero in it -- which would be a
+hole in precisely the shape of the change worth catching, since a brand-new untested module would contribute
+no statements at all and the requirement would find nothing to hold. The merge therefore walks the packages in
+scope and records every file it did not find, at nought percent, before writing any report. This is also why
+the project rate here is lower than the one Codecov used to show: it was never that high.
+
 To see the same numbers locally, run whichever suites your change touches and then merge what they wrote:
 
 .. code-block:: bash
