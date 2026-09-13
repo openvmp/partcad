@@ -79,6 +79,12 @@ def find_comment(repo, number, marker, token):
         page += 1
 
 
+def failed(what, error):
+    """Report an HTTP error as a job annotation, and be the exit status for it."""
+    print(f"::error title=PR comment::{what}: {error.code} {error.reason}: {error.read().decode('utf-8', 'replace')}")
+    return 1
+
+
 def main(argv=None):
     """Post or edit the comment, and treat only a read-only token as survivable."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -104,8 +110,18 @@ def main(argv=None):
         print(f"::error title=PR comment::the body in {args.body_file} does not carry the marker")
         return 1
 
+    # The lookup is outside the survivable case below, deliberately. Reading
+    # issue comments is not what a fork's token is refused -- it can read the
+    # repository perfectly well -- so a 403 here is something else entirely: a
+    # rate limit, most likely, which GitHub also answers 403. Inside that
+    # `except` it would be reported as "this is a fork, never mind", and the
+    # comment would go missing on ordinary pull requests with nothing said.
     try:
         existing = find_comment(args.repo, args.pr, args.marker, token)
+    except urllib.error.HTTPError as error:
+        return failed("could not read the existing comments", error)
+
+    try:
         if existing is None:
             url = f"{API}/repos/{args.repo}/issues/{args.pr}/comments"
             posted = request("POST", url, token, {"body": body})
@@ -115,14 +131,15 @@ def main(argv=None):
             posted = request("PATCH", url, token, {"body": body})
             print(f"Updated {posted['html_url']}")
     except urllib.error.HTTPError as error:
-        # 403 and only 403. GitHub answers 403 -- "Resource not accessible by
-        # integration" -- when an authenticated token is refused the write,
-        # which is the fork case; 401 means the credential itself is bad. They
-        # were handled together at first, and that is a hole rather than a
-        # simplification: a token that has stopped working is a real breakage
-        # this script exists to do something about, and reporting it as "this is
-        # a fork, never mind" would hide it on every pull request, forks and
-        # branches alike, for as long as nobody wondered where the comment went.
+        # 403 and only 403, and only on the write. GitHub answers 403 --
+        # "Resource not accessible by integration" -- when an authenticated
+        # token is refused the write, which is the fork case; 401 means the
+        # credential itself is bad. They were handled together at first, and
+        # that is a hole rather than a simplification: a token that has stopped
+        # working is a real breakage this script exists to do something about,
+        # and reporting it as "this is a fork, never mind" would hide it on
+        # every pull request, forks and branches alike, for as long as nobody
+        # wondered where the comment went.
         if error.code == 403:
             # Said once, plainly, so that a maintainer reading a fork's run
             # knows where the report went rather than thinking this broke.
@@ -132,8 +149,7 @@ def main(argv=None):
                 "The same report is in this job's summary."
             )
             return 0
-        print(f"::error title=PR comment::{error.code} {error.reason}: {error.read().decode('utf-8', 'replace')}")
-        return 1
+        return failed("the comment could not be written", error)
     return 0
 
 

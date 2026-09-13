@@ -444,11 +444,19 @@ def comment_module():
     return load(COMMENT_SCRIPT, "partcad_pr_comment")
 
 
-def refusing(module, code):
-    """A `request` that always answers with one HTTP status."""
+def refusing(module, code, on=("POST", "PATCH")):
+    """A `request` that answers one HTTP status, but only for the given methods.
 
-    def refuse(*_args, **_kwargs):
-        raise urllib.error.HTTPError("https://example.invalid", code, "refused", {}, io.BytesIO(b"{}"))
+    The lookup has to succeed for the write to be the thing under test. An
+    earlier version of this raised on every call, so the first refusal landed on
+    the GET -- which meant the parametrisation below was asserting that a
+    *lookup* failure is survivable, the very behaviour it was meant to forbid.
+    """
+
+    def refuse(method, *_args, **_kwargs):
+        if method in on:
+            raise urllib.error.HTTPError("https://example.invalid", code, "refused", {}, io.BytesIO(b"{}"))
+        return []  # the lookup, finding no existing comment
 
     module.request = refuse
 
@@ -474,6 +482,22 @@ def test_only_a_refused_write_is_survivable(comment_module, tmp_path, monkeypatc
     refusing(comment_module, code)
     argv = ["--body-file", str(body), "--marker", "<!-- partcad-coverage-report -->", "--repo", "o/r", "--pr", "1"]
     assert comment_module.main(argv) == expected
+
+
+def test_a_refused_lookup_is_not_the_fork_case(comment_module, tmp_path, monkeypatch):
+    """403 on the read is something else, and must not wear the fork's exemption.
+
+    A fork's token is refused the *write*; it reads the repository perfectly
+    well. So a 403 on the lookup is a rate limit or worse, and surviving it
+    would lose the comment on an ordinary pull request with nothing said.
+    """
+    body = tmp_path / "comment.md"
+    body.write_text("<!-- partcad-coverage-report -->\nhello\n")
+    monkeypatch.setenv("GITHUB_TOKEN", "x")
+    monkeypatch.setattr(comment_module, "request", None)
+    refusing(comment_module, 403, on=("GET",))
+    argv = ["--body-file", str(body), "--marker", "<!-- partcad-coverage-report -->", "--repo", "o/r", "--pr", "1"]
+    assert comment_module.main(argv) == 1
 
 
 def test_a_body_without_the_marker_is_refused(comment_module, tmp_path, monkeypatch):
