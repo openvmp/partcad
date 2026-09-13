@@ -149,6 +149,10 @@ class Slot:
         left_end = self._point(-reach - radius, 0.0)
 
         builder = BRepBuilderAPI_MakeWire()
+        # The two lines only where there is a straight part to draw. At exactly
+        # zero they would run between identical points, which OCCT refuses
+        # ("BRepBuilderAPI_LineThroughIdenticPoints") rather than ignoring, so
+        # the degenerate case has to skip them rather than build them short.
         if reach > 0.0:
             builder.Add(BRepBuilderAPI_MakeEdge(top_left, top_right).Edge())
         builder.Add(BRepBuilderAPI_MakeEdge(GC_MakeArcOfCircle(top_right, right_end, bottom_right).Value()).Edge())
