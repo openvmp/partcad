@@ -358,3 +358,67 @@ def test_the_builtin_package_declares_readers_and_not_dependencies():
         config = yaml.safe_load(f)
 
     assert Configuration._obsolete_import_entries(config["import"]) == []
+
+
+def test_loading_a_dependency_does_not_rewrite_what_the_package_declared(tmp_path):
+    """A README must not depend on whether a dependency happened to be loaded.
+
+    'import_project()' is told where to load a package by the 'name' of the
+    configuration it is handed, and that used to be written into the parent's
+    own 'dependencies' entry. 'Project.get_readme()' titles a sub-package's
+    section from that same 'name', so the rendered README named a dependency by
+    its alias before it was loaded and by its full package path afterwards --
+    two different files from one tree, decided by whether the dependency could
+    be fetched. That is what broke 'Examples (PartCAD)' on #637: the checked-in
+    README was rendered offline, where a git dependency never loads.
+    """
+    child = tmp_path / "child"
+    child.mkdir()
+    (child / "partcad.yaml").write_text("name: //declared\n", encoding="utf-8")
+    (tmp_path / "partcad.yaml").write_text(
+        "name: //root\ndependencies:\n  kid:\n    type: local\n    path: ./child\n",
+        encoding="utf-8",
+    )
+
+    ctx = pc.Context(str(tmp_path))
+    declared = ctx.get_project("//root").config_obj["dependencies"]["kid"]
+    assert "name" not in declared, declared
+
+    # Load it, which is what used to rewrite the entry above.
+    assert ctx.get_project("//root/kid") is not None
+
+    assert "name" not in declared, declared
+    assert declared["path"] == "./child"
+
+
+def test_a_git_sub_package_is_titled_by_the_alias(tmp_path):
+    """The branch that rendered differently, pinned on the file it writes.
+
+    Only the 'git' branch of the sub-package section reads 'name' -- the 'local'
+    one always uses the alias -- so this is where a rewritten 'dependencies'
+    entry showed up, as a heading that read '//pub/examples/.../sim-mujoco'
+    instead of 'sim-mujoco'. A dependency that declares no 'name:' is titled by
+    the alias, which is the name the package gave the thing it imported.
+
+    What keeps the entry from being rewritten in the first place is the test
+    above; this one says what the rewriting looked like to a reader.
+    """
+    (tmp_path / "partcad.yaml").write_text(
+        "name: //root\n"
+        "dependencies:\n"
+        "  sim-mujoco:\n"
+        "    type: git\n"
+        "    url: https://github.com/partcad/partcad-sim-mujoco.git\n",
+        encoding="utf-8",
+    )
+    project = pc.Context(str(tmp_path)).get_project("//root")
+    out = tmp_path / "out"
+    out.mkdir()
+
+    # Named '..._async' but synchronous; it is the one that writes the file.
+    project.render_readme_async({}, str(out))
+    headings = [
+        line for line in (out / "README.md").read_text(encoding="utf-8").splitlines() if line.startswith("### ")
+    ]
+
+    assert headings == ["### [sim-mujoco](https://github.com/partcad/partcad-sim-mujoco.git)"], headings

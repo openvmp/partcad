@@ -136,6 +136,31 @@ def param_getters(attr_name: str):
 
 # Context
 @telemetry.instrument(attr_getters=param_getters)
+def _located(dependency_config: dict, path: str) -> dict:
+    """The dependency's configuration with the location it is being loaded at.
+
+    A *copy*, and that is the whole point. 'import_project()' is told which
+    package path to load by the 'name' of the configuration it is handed, and
+    writing that into the parent's own 'dependencies' entry used to be how it
+    got there -- which left the parent holding a configuration that no longer
+    said what its 'partcad.yaml' says.
+
+    Nothing reads the location back out of there, but 'Project.get_readme()'
+    reads 'name' to title a sub-package's section, so a generated README named a
+    dependency by its alias or by its full package path depending on whether
+    that dependency had happened to be *loaded* by the time the README was
+    rendered. Rendering offline, where a git dependency never loads, produced a
+    different file from rendering in CI, where it does -- and the examples'
+    READMEs are checked in precisely so that a change in what PartCAD renders is
+    a diff somebody has to look at.
+    """
+    located = dict(dependency_config)
+    if "name" in dependency_config:
+        located["orig_name"] = dependency_config["name"]
+    located["name"] = path
+    return located
+
+
 class Context:
     """Stores and caches all imported objects.
 
@@ -671,10 +696,7 @@ class Context:
                     if prj_conf.get("onlyInRoot", False):
                         next_project_path = "//" + prj_name
                     pc_logging.debug(f"Loading the dependency: {next_project_path}...")
-                    if "name" in prj_conf:
-                        prj_conf["orig_name"] = prj_conf["name"]
-                    prj_conf["name"] = next_project_path
-                    next_project = self.import_project(project, prj_conf)
+                    next_project = self.import_project(project, _located(prj_conf, next_project_path))
                     if next_project is not None:
                         result = self._get_project_recursive(next_project, import_list)
                         return result
@@ -758,11 +780,11 @@ class Context:
                     continue
                 pc_logging.debug("Importing: %s..." % next_project_path)
 
-                if "name" in prj_conf:
-                    prj_conf["orig_name"] = prj_conf["name"]
-                prj_conf["name"] = next_project_path
-
-                tasks.append(asyncio.create_task(threadpool_manager.run(self.import_project, project, prj_conf)))
+                tasks.append(
+                    asyncio.create_task(
+                        threadpool_manager.run(self.import_project, project, _located(prj_conf, next_project_path))
+                    )
+                )
 
         # Second, iterate over all subfolder and check for packages. A
         # plugin-backed package has no directory on disk, so there is nothing to
