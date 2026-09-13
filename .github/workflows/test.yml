@@ -1574,11 +1574,25 @@ jobs:
       - test-examples-partcad
       - test-examples-all
       - test-pub-repo
-    # The same three scopes the jobs above are gated on: a documentation-only
-    # change measures nothing, and a "this run produced no coverage data"
-    # comment on such a pull request is noise rather than information.
+    # "!cancelled()" rather than "always()", and the difference is not academic:
+    # "always()" runs the job when the whole *run* was cancelled, which is what a
+    # second push to a pull request does to the first push's run. This job then
+    # starts with every suite cancelled, finds no coverage data, and edits the
+    # pull request comment to say "this run produced no coverage data" -- wiping
+    # a real report off the pull request because somebody pushed twice. It did
+    # exactly that on this branch's first two runs. A cancelled run has nothing
+    # to say and should not be the one talking.
+    #
+    # It still runs when a suite *failed*, which is the case worth reporting: the
+    # producers upload what they measured before failing (see their "always()"
+    # upload steps) and a red pull request is precisely where the author wants to
+    # know what the new code does not cover.
+    #
+    # The rest is the same three scopes the jobs above are gated on: a
+    # documentation-only change measures nothing, and a report on such a pull
+    # request is noise rather than information.
     if: >-
-      ${{ always() && needs.set-matrix.result == 'success'
+      ${{ !cancelled() && needs.set-matrix.result == 'success'
       && (needs.set-matrix.outputs.pytest == 'true'
       || needs.set-matrix.outputs.behave == 'true'
       || needs.set-matrix.outputs.examples == 'true') }}
@@ -1688,7 +1702,11 @@ jobs:
       # same report is in this job's summary either way. The requirement below
       # still gates there, which is the half that has to work everywhere.
       - name: Update the pull request
-        if: ${{ github.event_name == 'pull_request' }}
+        # "hashFiles" is the second half of the guard above: "render" writes no
+        # comment body when the merge found no data, so a run that has nothing to
+        # report leaves the last report that did standing rather than replacing
+        # it with "nothing to report". The gate below still runs either way.
+        if: ${{ github.event_name == 'pull_request' && hashFiles('coverage-comment.md') != '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}

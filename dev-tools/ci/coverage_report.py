@@ -452,9 +452,17 @@ def render(args):
         body += ["", f"<sub>Produced by [this CI run]({args.run_url}).</sub>"]
 
     text = "\n".join(body) + "\n"
-    if args.out:
+    # The job summary gets written whatever happened; the comment body only when
+    # there is something in it worth replacing the last one with. A run that
+    # measured nothing -- every suite cancelled, most often, because somebody
+    # pushed again while this one was in flight -- would otherwise edit a real
+    # coverage report on the pull request into "this run produced no coverage
+    # data", which is worse than saying nothing at all.
+    if args.out and summary["data_files"]:
         Path(args.out).write_text(text, encoding="utf-8")
         print(f"Wrote {args.out}")
+    elif args.out:
+        print(f"No coverage data, so {args.out} is not written and the comment is left as it is")
     step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if step_summary:
         with open(step_summary, "a", encoding="utf-8") as handle:

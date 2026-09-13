@@ -567,7 +567,12 @@ def test_the_coverage_job_runs_after_every_suite_and_survives_their_failure():
         "test-examples-all",
         "test-pub-repo",
     }
-    assert "always()" in job["if"]
+    # "!cancelled()", not "always()": see the note on the job. "always()" runs it
+    # on a *cancelled* run too -- which is what a second push does to the first
+    # push's run -- where it finds no data and would edit a real report on the
+    # pull request into "nothing to report".
+    assert "!cancelled()" in job["if"]
+    assert "always()" not in job["if"]
     assert job["permissions"]["pull-requests"] == "write"
     # The full history, or patch coverage has nothing to measure against.
     checkout = next(step for step in job["steps"] if str(step.get("uses", "")).startswith("actions/checkout"))
@@ -587,6 +592,30 @@ def test_the_comment_and_the_gate_state_the_same_requirement():
     assert len(using) == 2
     for step in using:
         assert '--min-patch "${COVERAGE_MIN_PATCH}"' in step["run"]
+
+
+def test_a_run_with_no_data_leaves_the_last_report_standing(report_module, tmp_path, monkeypatch):
+    """Nothing to say is not the same as "there is nothing", and must not overwrite.
+
+    Observed on this branch's own first two runs: each was cancelled by the next
+    push, the job ran anyway, found no artifacts, and rewrote the pull request
+    comment as "this run produced no coverage data". The job no longer runs on a
+    cancelled run at all; this is the second half of that guard, for every other
+    way a run can end up with nothing -- so `render` writes no comment body, and
+    the workflow step that posts it is gated on that file existing.
+    """
+    summary_path = tmp_path / "summary.json"
+    summary_path.write_text(json.dumps({"data_files": 0}))
+    out = tmp_path / "comment.md"
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    report_module.render(
+        types.SimpleNamespace(summary=str(summary_path), out=str(out), html_url="", run_url="", **vars(options()))
+    )
+    assert not out.exists()
+
+    steps = workflow("test.yml")["jobs"]["coverage"]["steps"]
+    posting = next(step for step in steps if step.get("name") == "Update the pull request")
+    assert "hashFiles('coverage-comment.md')" in posting["if"]
 
 
 def test_the_gate_is_the_last_step_so_the_comment_is_posted_first():
