@@ -870,9 +870,23 @@ async def _test_async(ctx, pc, packages, filter_prefix, sketch, interface, assem
 
     for package in packages:
         obj = object_name
+        target = package
         if obj:
-            package, obj = pc.utils.resolve_resource_path(ctx.get_current_project_path(), obj)
-        prj = ctx.get_project(package)
+            # Resolve the object against the package being tested, not against
+            # the current one. 'get_current_project_path()' as the base drops
+            # '--package' for every object name without a '//package:' prefix of
+            # its own, and on a recursive run it resolves every iteration to that
+            # same current package -- so the one object was tested once per
+            # package in the subtree instead of once in each of them. A name that
+            # does carry a prefix still names its own package, exactly as a
+            # recursive render resolves one (see '_render_packages_async').
+            target, obj = pc.utils.resolve_resource_path(package, obj)
+        prj = ctx.get_project(target)
+        if prj is None:
+            # Reachable through a qualified object name: '--package' is checked
+            # by the caller, but '//elsewhere:name' names a package of its own.
+            pc.logging.error("Package %s is not found" % target)
+            continue
         if not obj:
             tasks.append(prj.test_log_wrapper_async(ctx, tests=tests_to_run))
         elif interface:
@@ -1137,8 +1151,15 @@ def inspect_object(session, params):
             pc.logging.error("No object specified. Provide a part, assembly, sketch, interface, or scene to inspect.")
             return None
 
-        package, object_name = pc.utils.resolve_resource_path(ctx.get_current_project_path(), object_name)
-        path = "%s:%s" % (package, object_name)
+        # Resolve the object against the package '--package' selected, not
+        # against the current one: 'get_current_project_path()' as the base drops
+        # the flag for every object name without a '//package:' prefix of its
+        # own. 'package' still holds the selected package here -- it was resolved
+        # and checked above. A name that does carry a prefix still wins over the
+        # flag, which is why the owning package is read back off 'package' below
+        # rather than assumed to be the selected one.
+        package, object_name = pc.utils.resolve_resource_path(package, object_name)
+        path = _qualified(package, object_name)
         if params.get("assembly"):
             obj = ctx.get_assembly(path, params=param_dict)
         elif params.get("scene"):
@@ -1154,7 +1175,9 @@ def inspect_object(session, params):
             pc.logging.error("Object %s is not found" % path)
             return None
         if params.get("verbal"):
-            summary = obj.get_summary(package_obj)
+            # The object's own package. 'obj' having been found means it is
+            # loaded, so this never comes back None.
+            summary = obj.get_summary(ctx.get_project(package))
             pc.logging.info("Summary: %s" % summary)
             return {"summary": summary}
         obj.show(ctx)

@@ -138,9 +138,16 @@ class FakeShape:
 class FakeObject:
     """A part, sketch, assembly, interface or software as the report operations see it."""
 
-    def __init__(self, name, desc=None, project_name=None, project=None, config=None, info=None, path=None):
+    def __init__(
+        self, name, desc=None, project_name=None, project=None, config=None, info=None, path=None, summary=None
+    ):
         self.name = name
         self.desc = desc
+        # 'Shape.finalized' -- the test operation refuses an object that is not.
+        self.finalized = True
+        self.shown = False
+        self._summary = summary
+        self.summarized_for = None
         self.config = config if config is not None else ({"desc": desc} if desc else {})
         self._info = dict(info or {})
         # `Part`, `Sketch` and `Assembly` all declare `path` with a `None`
@@ -166,6 +173,16 @@ class FakeObject:
     def info(self):
         return dict(self._info)
 
+    def get_summary(self, project=None):
+        # 'Shape.get_summary(project=None)'. The package it was asked about is
+        # recorded rather than used, which is what lets a test hold the inspect
+        # operation to summarising the object's *own* package.
+        self.summarized_for = project
+        return self._summary
+
+    def show(self, ctx=None):
+        self.shown = True
+
 
 class FakeProject:
     def __init__(self, name="//", path="pkgdir", desc=None, url=None, config_obj=None, broken=False):
@@ -185,6 +202,10 @@ class FakeProject:
             self.url = url
             self.config_obj.setdefault("url", url)
         self.parts = {}
+        # Which part names were asked of *this* package, and whether the whole
+        # package was tested: how a test tells which package a request landed on.
+        self.parts_requested = []
+        self.tested_whole_package = False
         self.sketches = {}
         self.assemblies = {}
         self.scenes = {}
@@ -232,6 +253,15 @@ class FakeProject:
     def add(self, kind, obj):
         getattr(self, kind)[obj.name] = obj
         return self
+
+    async def get_part_async(self, name):
+        # Awaited rather than called by '_test_async': a part a URDF or STEP
+        # assembly produces has to have that assembly built first.
+        self.parts_requested.append(name)
+        return self.parts.get(name)
+
+    async def test_log_wrapper_async(self, ctx, tests=None):
+        self.tested_whole_package = True
 
     def object_count(self, kind=None):
         # 'Context.get_packages(has_stuff=True)' asks one kind at a time; the
@@ -1045,6 +1075,94 @@ def test_info_object_reports_a_missing_package_of_a_named_object():
     session, _ = make_session()
 
     operations.info_object(session, {"package": "//nope", "object": "widget"})
+
+    assert session.partcad.logging.messages("error") == ["Package //nope is not found"]
+
+
+# ---- inspect ---------------------------------------------------------------
+
+
+def test_inspect_object_looks_the_object_up_in_the_requested_package():
+    # '--package' selected the package; a bare object name is that package's,
+    # not the current one's.
+    session, _ = make_session()
+    session.partcad_ctx.projects["//sub"] = FakeProject(name="//sub")
+    widget = FakeObject("widget", summary="a widget from //sub")
+    session.partcad_ctx.shapes[("part", "//sub:widget")] = widget
+
+    result = operations.inspect_object(session, {"package": "//sub", "object": "widget", "verbal": True})
+
+    assert session.partcad.logging.messages("error") == []
+    assert result == {"summary": "a widget from //sub"}
+
+
+def test_inspect_object_summarizes_the_package_the_object_belongs_to():
+    # A qualified object name names its own package, whatever '--package' said,
+    # so that -- and not the selected package -- is what the summary is about.
+    session, _ = make_session()
+    session.partcad_ctx.projects["//sub"] = FakeProject(name="//sub")
+    widget = FakeObject("widget", summary="a widget from the root")
+    session.partcad_ctx.shapes[("part", "//:widget")] = widget
+
+    operations.inspect_object(session, {"package": "//sub", "object": "//:widget", "verbal": True})
+
+    assert widget.summarized_for is session.partcad_ctx.projects["//"]
+
+
+def test_inspect_object_reports_a_missing_object_of_the_requested_package():
+    session, _ = make_session()
+    session.partcad_ctx.projects["//sub"] = FakeProject(name="//sub")
+
+    operations.inspect_object(session, {"package": "//sub", "object": "widget"})
+
+    assert session.partcad.logging.messages("error") == ["Object //sub:widget is not found"]
+
+
+# ---- test ------------------------------------------------------------------
+
+
+def install_fake_tests(monkeypatch):
+    """The check list '_test_async' imports. Empty: what is under test here is
+    which package each request lands on, not what the checks then do."""
+    install_fake_partcad_modules(monkeypatch, {"partcad.test.all": {"tests": lambda threads_max: []}})
+
+
+def test_test_run_looks_the_object_up_in_the_requested_package(monkeypatch):
+    # '--package' selected the package; a bare object name is that package's.
+    install_fake_tests(monkeypatch)
+    session, _ = make_session()
+    sub = FakeProject(name="//sub").add("parts", FakeObject("widget"))
+    session.partcad_ctx.projects["//sub"] = sub
+
+    operations.test_run(session, {"package": "//sub", "object": "widget"})
+
+    assert sub.parts_requested == ["widget"]
+    assert session.partcad.logging.messages("error") == []
+
+
+def test_test_run_recursive_tests_the_object_in_each_package(monkeypatch):
+    # One object name over a subtree is that object in each of its packages --
+    # resolving against the current package instead tested one of them N times.
+    install_fake_tests(monkeypatch)
+    session, _ = make_session()
+    root = session.partcad_ctx.projects["//"]
+    root.add("parts", FakeObject("widget"))
+    sub = FakeProject(name="//sub").add("parts", FakeObject("widget"))
+    session.partcad_ctx.projects["//sub"] = sub
+
+    operations.test_run(session, {"recursive": True, "object": "widget"})
+
+    assert root.parts_requested == ["widget"]
+    assert sub.parts_requested == ["widget"]
+
+
+def test_test_run_reports_a_package_a_qualified_object_name_cannot_reach(monkeypatch):
+    # '--package' is checked by the caller, but '//nope:widget' names a package
+    # of its own -- which used to be dereferenced as None.
+    install_fake_tests(monkeypatch)
+    session, _ = make_session()
+
+    operations.test_run(session, {"object": "//nope:widget"})
 
     assert session.partcad.logging.messages("error") == ["Package //nope is not found"]
 
