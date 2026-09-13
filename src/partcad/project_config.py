@@ -184,7 +184,17 @@ class Configuration:
                 )
             )
             self.broken = self.broken or is_root
-            del self.config_obj["import"]
+            # Only the entries that gave themselves away. The check is per
+            # entry, so the section is too: a package part-way through the
+            # rename has a legacy dependency and a working reader side by side,
+            # and dropping the whole mapping would take the reader with it --
+            # leaving every object that uses it failing as an unknown type,
+            # which says nothing about the section that caused it.
+            import_section = self.config_obj["import"]
+            for entry_name in obsolete:
+                del import_section[entry_name]
+            if not import_section:
+                del self.config_obj["import"]
 
         # option: "partcad"
         # description: the version of PartCAD required to handle this package

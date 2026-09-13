@@ -142,7 +142,11 @@ def cli(click_ctx, tool: str, object_type: str, use_docker: bool, docker_image: 
     # be paying for a service, a daemon and a persisted context to be told
     # nothing. That is the contract this command keeps: it is handed a path, the
     # file is already on disk, and opening it needs neither.
-    if os.path.isfile(os.path.join(determine_root_path(), "partcad.yaml")):
+    # From the workspace `-p` selected, not from the current directory: the
+    # daemon call below is made against `click_ctx.obj.path`, so asking a
+    # different directory whether there is a package would answer about a
+    # workspace nothing here is talking to.
+    if os.path.isfile(os.path.join(determine_root_path(click_ctx.obj.path), "partcad.yaml")):
         try:
             declared = run(click_ctx.obj, "open.tools", {}, needs_context=True)
             external.use_tools((declared or {}).get("tools"))

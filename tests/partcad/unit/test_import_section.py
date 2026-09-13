@@ -264,6 +264,49 @@ def test_a_legacy_dependency_in_somebody_elses_package_is_a_warning(package):
     assert ctx.get_part("//root/legacy:cube") is not None
 
 
+def test_a_reader_beside_a_legacy_dependency_survives_it(package):
+    """A package part-way through the rename keeps the half it got right.
+
+    The check is per entry, so the deletion is too. A mapping holding both a
+    legacy dependency and a working reader used to lose the reader along with
+    the dependency, and every object using it then failed as an unknown type --
+    a message pointing nowhere near the section that caused it.
+    """
+    (package / "reader.py").write_text(TRIVIAL_READER, encoding="utf-8")
+    (package / "thing.demo").write_text("nothing here is parsed\n", encoding="utf-8")
+    (package / "partcad.yaml").write_text(
+        textwrap.dedent("""
+            name: //p
+            import:
+              robots:
+                type: git
+                url: https://example.invalid/r.git
+              demo:
+                path: reader.py
+                extension: demo
+                kinds: [assembly]
+                noun: doodad
+                greeting: hello
+                mesh: %(mesh)s
+            assemblies:
+              thing:
+                type: demo
+                path: thing.demo
+            """) % {"mesh": CUBE.replace("\\", "/")},
+        encoding="utf-8",
+    )
+
+    ctx = pc.Context(str(package))
+    project = ctx.get_project("//")
+
+    # The dependency-shaped entry is gone...
+    assert "robots" not in project.config_obj["import"]
+    assert not project.config_obj.get("dependencies")
+    # ...and the reader beside it is not.
+    assert "demo" in project.config_obj["import"]
+    assert output.import_declaration(ctx, project, "demo").parameters["greeting"] == "hello"
+
+
 def test_a_half_written_dependency_is_recognised_too(package):
     """'url:' alone is a dependency: 'type:' may simply not be typed yet."""
     (package / "partcad.yaml").write_text(
