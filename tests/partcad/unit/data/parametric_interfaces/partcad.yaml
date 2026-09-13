@@ -18,6 +18,16 @@ sketches:
         type: float
         default: 3.0
 
+  m-slot:
+    desc: The boundary of an M%size% opening slotted %width%mm
+    type: basic
+    slot:
+      length: "%width%"
+      width: "%size%"
+    parameters:
+      size: 3.0
+      width: 10.0
+
 interfaces:
   m:
     desc: Abstract %size%mm circular interface
@@ -74,6 +84,21 @@ interfaces:
         min: 0
         max: "%length - 2%"
         default: 0
+
+  m-thru-slotted:
+    # A slotted opening *is* an opening: it inherits one, mates as one and keeps
+    # its port. What tells them apart is the outline the port is drawn with -
+    # restated on the instance - and the freedom of movement, which is what
+    # slotting a hole is for.
+    desc: "%size%mm through hole, slotted %width%mm"
+    parameters:
+      size: 3.0
+      width: 10.0
+      moveX: [0, "%width - size%", 0]
+    inherits:
+      "m-thru;size=%size%,depth=1":
+        "slotted-%width%":
+          sketch: "m-slot;size=%size%,width=%width%"
 
   m-square-pattern:
     desc: Four %size%mm holes on the corners of a %pitch%mm square

@@ -486,8 +486,26 @@
       },
       "additionalProperties": false
     },
+    "interface-movement-body-custom": {
+      "description": "One freedom-of-movement parameter under a name PartCAD does not know the axis of. The same as 'interface-movement-body' except that 'dir' is not optional: moveX/moveY/moveZ and turnX/turnY/turnZ carry their axis in the name, and anything else has to state it. It is also why a custom name has no short form - '[min, max, default]' has nowhere to put a direction.",
+      "type": "object",
+      "properties": {
+        "min": { "$ref": "#/definitions/number-or-expression" },
+        "max": { "$ref": "#/definitions/number-or-expression" },
+        "default": { "$ref": "#/definitions/number-or-expression" },
+        "type": { "type": "string", "enum": ["move", "turn"], "default": "move" },
+        "dir": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/number-or-expression" },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "required": ["dir"],
+      "additionalProperties": false
+    },
     "interface-movement-value": {
-      "description": "One freedom-of-movement parameter: the range it may take, written as '{min, max, default}', as the short '[min, max, default]', or as the one value it is pinned to. A custom name (anything but moveX/moveY/moveZ/turnX/turnY/turnZ and their hyphenated spellings) also states the 'dir' it moves along or turns about.",
+      "description": "One freedom-of-movement parameter under one of the six names PartCAD knows the axis of - moveX/moveY/moveZ, turnX/turnY/turnZ, and their hyphenated spellings. The range it may take, written as '{min, max, default}', as the short '[min, max, default]', or as the one value it is pinned to. A custom name is 'interface-movement-body-custom' instead, which has to state its 'dir'.",
       "oneOf": [
         { "type": "null" },
         { "$ref": "#/definitions/number-or-expression" },
@@ -509,10 +527,18 @@
           "patternProperties": {
             "^(move[XYZ]|turn[XYZ]|move-[xyz]|turn-[xyz])$": { "$ref": "#/definitions/interface-movement-value" },
             "^(?!(move[XYZ]|turn[XYZ]|move-[xyz]|turn-[xyz])$)[a-zA-Z0-9_/./-]+$": {
-              "anyOf": [
-                { "$ref": "#/definitions/interface-movement-value" },
-                { "$ref": "#/definitions/shape-parameter-value" }
-              ]
+              "$comment": "Which kind this is, decided the same way 'partcad.interface_config.is_movement_parameter' decides it: a declaration stating 'min', 'max', 'dir' or 'type: move'/'type: turn' is freedom of movement, and anything else is a construction value. Written as 'if'/'then' rather than as an 'anyOf' of the two so that a declaration meant as one kind is reported against that kind - an 'anyOf' answers a missing 'dir' with whatever the *other* branch disliked.",
+              "if": {
+                "type": "object",
+                "anyOf": [
+                  { "required": ["min"] },
+                  { "required": ["max"] },
+                  { "required": ["dir"] },
+                  { "required": ["type"], "properties": { "type": { "enum": ["move", "turn"] } } }
+                ]
+              },
+              "then": { "$ref": "#/definitions/interface-movement-body-custom" },
+              "else": { "$ref": "#/definitions/shape-parameter-value" }
             }
           },
           "additionalProperties": false
@@ -1265,6 +1291,10 @@
                         "^[a-zA-Z0-9_/.%-]*$": {
                           "type": "object",
                           "properties": {
+                            "sketch": {
+                              "description": "The boundary the ports this instance brings in are drawn with, instead of the one the inherited interface draws them with. The same opening drawn differently - a slotted hole is a through hole that mates as one and keeps its port, and what tells them apart is the outline. Written as a reference like any other, so parameter values go in the name: 'm-slotted;size=4,length=30'.",
+                              "$ref": "#/definitions/object-reference"
+                            },
                             "location": { "$ref": "#/definitions/OCCTLocation" },
                             "params": { "type": "object" }
                           },

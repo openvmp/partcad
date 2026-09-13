@@ -257,16 +257,35 @@ at all).
   the type it is declared as and formats it back the way `expr.format_value` writes one — which is also how
   an expression that produced it spelled it.
 
+  **An inherited instance may restate its boundary** (`sketch:` beside the instance, read by
+  `InterfaceInherits` and applied in `Interface.instantiate`). The same opening drawn differently: a slotted
+  hole *is* a through hole — it inherits one, so it mates as one and keeps its port where the plain hole would
+  have been — and what tells them apart is the outline and the freedom of movement. Without it a slotted hole
+  is what it used to be in `//pub/std/metric/m`: an orphan with no parents, no compatibility and no mate.
+
   **`alias:` is what keeps a published name working.** It is spelled as inheriting exactly one interface,
   once, unnamed, at the origin — which is the shape of inheritance that leaves the ports named as the
   target names them and marks the interface a drop-in for it — plus `_adopt_alias_target()` for the handful
   of things an interface states rather than derives. `//pub/std/metric/m` is the reason it exists: eleven
   thousand enumerated names became aliases of nine parametric interfaces, with identical ports.
 
-  That last one needed `compatible_with` fixed to close over the ancestors. It used to be accumulated while
-  inheriting, but inheriting only *creates* the parent — instantiating it is what fills in what it is in
-  turn compatible with, and that had not happened yet — so the chain stopped at the first parent and an
-  `m4-thru-3` never reached `m4-opening`. It is a lazy property now.
+  Two things had to be fixed for any of it to mean anything, and both change what an *existing* package
+  does — visibly, and for the better:
+
+  * **An interface's own freedom of movement now wins over the inherited one.** The inherited declaration
+    used to overwrite it, so a child could say nothing about the freedom it was given — which is what a
+    slotted hole is entirely made of (it narrows `moveX` to the length of the slot). `//pub/std/metric/m`
+    has always declared `moveZ: {max: length - 2}` on every `mN-screw-L`, and it had never taken effect:
+    425 of its interfaces gain the movement they were written to have. Fifty of them gain a range that runs
+    *backwards*, because `length - 2` is -1 for the 1mm screws its own lists name — `_check_movement_range`
+    reports those and reads them as no movement, which is what they silently were before. Do not remove
+    that check on the grounds that the package should be fixed instead: a bound may be an expression now,
+    so the next package can write one that inverts too.
+  * **`compatible_with` closes over the ancestors.** It used to be accumulated while inheriting, but
+    inheriting only *creates* the parent — instantiating it is what fills in what it is in turn compatible
+    with, and that had not happened yet — so the chain stopped at the first parent and an `m4-thru-3` never
+    reached `m4-opening`. It is a lazy property now, and fifty of that package's interfaces reach one level
+    further up than they used to. Nothing loses an entry.
 
   `expr.py` is the `%...%` syntax, generalized from the one `Interface.instantiate` used for inherited
   interface names. It is not Jinja2 and cannot be: `partcad.yaml` is rendered as a Jinja2 template before it
@@ -275,6 +294,30 @@ at all).
   because `%` is an ordinary character in a URL and in prose, and only for an object that declares
   parameters at all — a package written before this must not start reporting errors about a percent sign it
   has always had.
+
+  **What an expression may do is a whitelist over the syntax tree, and it is wider than arithmetic.** The
+  form it replaced was an unrestricted `eval`, and one published package uses it as one:
+  `//pub/std/metric/cqwarehouse` names its screw interface `%size:value[1:value.index('-')]%`, reading
+  "M4-0.7" as 4. So `_ALLOWED_NODES` admits indexing and attribute access, and `SAFE_ATTRIBUTES` is what
+  makes the second of those safe — emptying `__builtins__` stops nothing on its own, since
+  `().__class__.__base__.__subclasses__()` walks from any literal to every class in the interpreter, and the
+  defence is that no name on that list leads anywhere. `format` is off it deliberately: `"{0.__class__}"
+  .format(x)` traverses attributes by name at run time, which is the whole of what the list prevents. Adding
+  a name to it is a decision about what a package may run at *load* time, not a convenience.
+
+- **What a `partcad.yaml` is rendered with** (`./src/partcad/config_template.py`): the file is a Jinja2 template
+  rendered to YAML before it is parsed, and this is the context. Beside the package name and the constants a CAD
+  file reaches for, it carries **which PartCAD is doing the rendering** — the version whole, its three numbers,
+  and `partcad_version_at_least(...)`. That is what lets one package serve two PartCADs: a package wanting a
+  feature this release has and the last one did not writes both forms and picks, rather than raising its
+  `partcad:` requirement and going dark for everyone who has not updated (`//pub/std/metric/m` is exactly this).
+
+  Two things about it are deliberate. The comparison is **component-wise** — `0.8.9` is older than `0.8.77`, and
+  every comparison of the strings says the opposite. And it is a **Python callable, not a Jinja2 macro**, which
+  is what it looks like it should be: a macro always renders to text, so a false one comes back as the string
+  `"False"`, which is not empty and so is true to `{% if %}`. A package that must also load on a PartCAD
+  predating all of this guards with `partcad_version_major is defined and ...`; Jinja2's `and` short-circuits,
+  so the call is never made where the name is absent.
 
 - **Sandbox environment** (`./src/partcad/python_env.py`): importing `partcad` sweeps every `PYTHON*` variable
   out of `os.environ` and puts back only `PARTCAD_PYTHON_ENV`. Everything PartCAD spawns — the wrappers, `pip`,

@@ -101,9 +101,13 @@ class Slot:
     them. A slot of equal length and width is a circle, which is the degenerate
     case rather than an error - the two lines are simply not there.
 
-    'angle' turns it about its own centre, in degrees, measured from +X. The
-    other shapes here have no angle because a square turned 90 degrees is the
-    same square; a slot is the first one whose direction is part of what it is.
+    'x' and 'y' place the centre of the **first** rounded end, not the middle of
+    the slot, and 'angle' turns it about that point. That is where a slot comes
+    from: it is a hole that may also sit somewhere else, so it starts where the
+    hole would have been and runs 'length - width' from there. A port that used
+    to be a plain circle keeps its coordinates when the opening it marks is
+    slotted, and the freedom of movement that goes with it runs from zero
+    rather than from half a slot back.
     """
 
     def __init__(self, config):
@@ -117,7 +121,7 @@ class Slot:
             self.width = config.get("width", 0.0)
 
     def _point(self, px, py):
-        """One point of the outline, turned by 'angle' and moved onto the centre."""
+        """One point of the outline, turned by 'angle' and placed on the first end."""
         from OCP.gp import gp_Pnt
 
         radians = math.radians(self.angle)
@@ -137,16 +141,17 @@ class Slot:
             )
 
         radius = self.width / 2.0
-        # Half the distance between the centres of the two rounded ends. Zero
-        # when the slot is as long as it is wide, which is a circle.
-        reach = (self.length - self.width) / 2.0
+        # The distance between the centres of the two rounded ends, measured
+        # from the first - which is the origin. Zero when the slot is as long as
+        # it is wide, which is a circle.
+        reach = self.length - self.width
 
-        top_left = self._point(-reach, radius)
+        top_left = self._point(0.0, radius)
         top_right = self._point(reach, radius)
         bottom_right = self._point(reach, -radius)
-        bottom_left = self._point(-reach, -radius)
+        bottom_left = self._point(0.0, -radius)
         right_end = self._point(reach + radius, 0.0)
-        left_end = self._point(-reach - radius, 0.0)
+        left_end = self._point(-radius, 0.0)
 
         builder = BRepBuilderAPI_MakeWire()
         # The two lines only where there is a straight part to draw. At exactly

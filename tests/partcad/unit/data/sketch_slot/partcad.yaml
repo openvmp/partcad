@@ -4,12 +4,12 @@ desc: |
 
 sketches:
   slot:
-    desc: 30mm long, 4mm wide, on the origin and along X
+    desc: 30mm long, 4mm wide, running along +X from the origin
     type: basic
     slot: { length: 30.0, width: 4.0 }
 
   slot-placed:
-    desc: The same slot, turned upright and moved off the origin
+    desc: The same slot, turned upright and started somewhere else
     type: basic
     slot: { length: 30.0, width: 4.0, angle: 90.0, x: 5.0, y: 1.0 }
 
@@ -29,8 +29,8 @@ sketches:
     rectangle: { side-x: 60.0, side-y: 20.0 }
     inner:
       slots:
-        - { length: 20.0, width: 4.0, x: -15.0 }
-        - { length: 20.0, width: 4.0, x: 15.0, angle: 30.0 }
+        - { length: 20.0, width: 4.0, x: -23.0 }
+        - { length: 20.0, width: 4.0, x: 7.0 }
 
   slotted:
     desc: A parametric slot, the way an interface's port asks for one

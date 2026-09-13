@@ -115,6 +115,73 @@ instance. This is intentional -- referencing two copies of the same package at
 once is almost always a mistake, and the alternative would be an implicit,
 easily-missed dependency on the upstream package.
 
+.. _templates:
+
+=========
+Templates
+=========
+
+``partcad.yaml`` is a Jinja2 template rendered to YAML before it is parsed, so a
+package can generate declarations rather than write every one out. These names
+are available while it is being rendered:
+
+.. list-table::
+  :header-rows: 1
+  :widths: 30 70
+
+  * - Name
+    - What it is
+  * - ``package_name``
+    - The package path this package is being loaded at.
+  * - ``partcad_version``
+    - The version of PartCAD doing the rendering, whole: ``"0.8.77"``.
+  * - ``partcad_version_major``, ``partcad_version_minor``, ``partcad_version_build``
+    - The same version as its three numbers.
+  * - ``partcad_version_at_least(...)``
+    - Whether that version is the one given or newer. Takes a string,
+      ``partcad_version_at_least("0.8.77")``, or the numbers themselves,
+      ``partcad_version_at_least(0, 8, 77)``.
+  * - ``PI``/``M_PI``, ``SQRT_2``, ``SQRT_3``, ``SQRT_5``
+    - The constants a CAD file keeps reaching for.
+  * - ``INCH``/``INCHES``, ``FOOT``/``FEET``
+    - Millimetres per imperial unit: 25.4 and 304.8.
+
+Serving two PartCADs at once
+----------------------------
+
+A package that wants a feature this release has and the last one did not has a
+choice: raise its ``partcad:`` requirement, which takes the package away from
+everyone who has not updated, or write both forms and pick between them.
+
+.. code-block:: jinja
+
+  {% if partcad_version_at_least("0.8.77") %}
+  # ... declared the way this PartCAD can read ...
+  {% else %}
+  # ... declared the way every PartCAD can ...
+  {% endif %}
+
+A PartCAD older than these names defines none of them, and a template that names
+one there fails to render at all. So a package that has to work on those asks
+first -- Jinja2's ``and`` short-circuits, so the call is never made where the
+name is absent:
+
+.. code-block:: jinja
+
+  {% set new = partcad_version_major is defined and partcad_version_at_least("0.8.77") %}
+
+The comparison is made one number at a time, which is the whole point of having
+it: ``0.8.9`` is *older* than ``0.8.77``, and every comparison of the strings
+says the opposite.
+
+.. note::
+
+  ``partcad_version_at_least`` is a function rather than a Jinja2 macro, which
+  is what it looks like it should be. A macro always renders to *text*, so a
+  false one comes back as the string ``"False"`` -- which is not empty, and so
+  is true to ``{% if %}``. A comparison that reads as its own opposite is not a
+  thing to leave lying in a template.
+
 ==========
 Validation
 ==========
@@ -646,9 +713,9 @@ The basic sketches are defined using the following syntax:
       slot: <(optional)>
         length: <overall length, measured over the rounded ends>
         width: <width, which is the diameter of those ends>
-        x: <(optional) x offset>
-        y: <(optional) y offset>
-        angle: <(optional) degrees to turn it about its own centre, 0 = along X>
+        x: <(optional) x of the centre of the first rounded end>
+        y: <(optional) y of the centre of the first rounded end>
+        angle: <(optional) degrees to turn it about that point, 0 = along X>
       inner: <(optional) the shapes cut out of the one above>
         circle: <(optional) radius>
            ...
@@ -670,14 +737,22 @@ Inside ``inner`` each shape may be given once by its own name, and several at a 
 A **slot** is a rectangle with semicircular ends -- two arcs and two lines --
 which is what a slotted hole is. ``length`` is measured over those ends, the way
 a drawing dimensions it, so a slot as long as it is wide is a circle rather than
-an error. ``angle`` turns it about its own centre; it is the only one of these
-shapes whose direction is part of what it is.
+an error.
+
+Unlike the other shapes, a slot is placed by the centre of its **first** rounded
+end rather than by its middle, and ``angle`` turns it about that point. That is
+where a slot comes from: it is a hole that may also sit somewhere else, so it
+starts where the plain hole would have been and runs ``length - width`` from
+there. A port keeps its coordinates when the opening it marks is slotted, and
+the freedom of movement that goes with it runs from zero rather than from half a
+slot back. It is also the only one of these shapes whose direction is part of
+what it is.
 
 .. code-block:: yaml
 
   sketches:
     m4-slotted-30:
-      desc: The boundary of an M4 hole slotted 30mm along X
+      desc: The boundary of an M4 hole that may sit anywhere in the next 26mm
       type: basic
       slot: { length: 30.0, width: 4.0 }
 
@@ -745,6 +820,10 @@ Interfaces are declared in ``partcad.yaml`` using the following syntax:
         <other interface name>: # instance name is implied to be empty ("")
         <yet another interface>:
           <instance name>: <OCCT Location object> # e.g. [[x_off,y_off,z_off], [x_rot,y_rot,z_rot], rot_angle]
+        <and another>:
+          <instance name>:
+            location: <OCCT Location object>
+            sketch: <(optional) the boundary this instance's ports are drawn with>
       ports:  # (optional) the list of ports in addition to the inherited ones
         <port name>: <OCCT Location object> # e.g. [[x_off,y_off,z_off], [x_rot,y_rot,z_rot], rot_angle]
         <other port name>: # [[x_off,y_off,z_off], [x_rot,y_rot,z_rot], rot_angle] is implied
@@ -1040,6 +1119,22 @@ first or the third of those -- a custom name is *required* to state its ``dir``
 A part's or an assembly's ``parameters:`` is not split: for a shape that section
 has only ever meant the values it is built from.
 
+An interface's own freedom of movement takes precedence over the one it
+inherits, so an interface narrows -- or widens -- what its parent allowed by
+naming the same parameter again. ``m-screw`` above says how far *this* screw may
+be driven in; ``m``, which it inherits, says only that a screw may move along
+its axis at all.
+
+.. note::
+
+  Before this, the inherited declaration won and a child's was discarded, so an
+  interface could not say anything about the freedom it was given. Packages that
+  already declare one therefore start behaving as they read:
+  ``//pub/std/metric/m`` has always said a screw may be driven in ``length - 2``,
+  and now it is. A range that runs *backwards* -- which that same expression
+  produces for the 1mm screws in its own list -- is reported and read as no
+  movement, rather than handed to a solver as an interval with nothing in it.
+
 Expressions
 ^^^^^^^^^^^
 
@@ -1071,24 +1166,26 @@ expression gets it formatted in, which is what builds a name or a description.
 Inside the delimiters is an ordinary arithmetic expression over the object's
 parameters, with the usual functions available (``sqrt``, ``sin``, ``cos``,
 ``floor``, ``min``, ``max``, ``round``, ``pi``, ``INCH`` ...). Arithmetic,
-comparisons and a conditional are all of it: a declaration is read whenever a
-package is loaded -- long before anything is built and any CAD script runs -- so
-an expression may not call anything else, reach into an object, or define one.
-An expression that cannot be evaluated is reported by name and left standing as
-the text it was written as, so a misspelling costs that one value rather than
-the package.
+comparisons, a conditional, indexing and the plain methods of a string or a
+number (``index``, ``split``, ``replace``, ``startswith`` ...) are all of it: a
+declaration is read whenever a package is loaded -- long before anything is
+built and any CAD script runs -- so an expression may not call anything else,
+reach into an object, or define one. An expression that cannot be evaluated is
+reported by name and left standing as the text it was written as, so a
+misspelling costs that one value rather than the package.
 
 .. note::
 
   ``%...%`` rather than Jinja2's ``{{ ... }}``, and it is not an alternative to
   it. ``partcad.yaml`` is rendered as a Jinja2 template *before* it is parsed
-  (see ``includePaths`` under :ref:`packages`), which is one step too early for
+  (see :ref:`templates`), which is one step too early for
   a value that depends on which instance of an object is being asked for: at
   that point there are no instances yet. The two do not collide -- Jinja2 never
   sees ``%...%``, and ``%...%`` is resolved long after Jinja2 has finished.
   The spelling is not new either: the names in an ``inherits:`` section have
-  been written ``%moveX%`` and ``%moveX:value*2%`` since interfaces existed, and
-  both keep working.
+  been written ``%moveX:value*2%`` since interfaces existed, and that form still
+  means what it meant. Writing just ``%moveX%``, with no colon, is the part that
+  is new -- the old resolver required the colon and failed without it.
 
 Parametrized sketches on ports
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1132,6 +1229,32 @@ Nothing else in a shape's declaration is touched: ``desc`` is prose and
 ``fileUrl`` is a URL that may be percent-encoded, and neither is an expression.
 
 .. _interface_alias:
+
+The same opening, drawn differently
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+An inherited instance may restate the boundary its ports are drawn with. A
+slotted hole *is* a through hole -- it inherits one, mates as one, and keeps its
+port where the plain hole would have been -- and what tells them apart is the
+outline and the freedom of movement:
+
+.. code-block:: yaml
+
+  interfaces:
+    m-thru-slotted:
+      desc: "%size%mm through hole, slotted %width%mm"
+      parameters:
+        size: 3.0
+        width: 10.0
+        moveX: [0, "%width - size%", 0]   # what slotting the hole is *for*
+      inherits:
+        "m-thru;size=%size%":
+          "slotted-%width%":
+            sketch: "m-slotted;size=%size%,width=%width%"
+
+``sketch:`` is a reference like any other, so the values go in the name. It
+replaces the boundary of every port that instance brings in; an instance that
+says nothing about it keeps the boundary the inherited interface draws with.
 
 Interface aliases
 -----------------

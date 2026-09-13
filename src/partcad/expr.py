@@ -12,24 +12,29 @@ individual object do not exist yet. An expression that has to wait for those
 values therefore cannot be spelled in Jinja2's syntax at all - it would be
 evaluated, and fail, one step too early.
 
-``%...%`` is what is left. It is not new here: the names in an interface's
-``inherits:`` section have been resolved this way since interfaces were
-introduced (``%moveX%``, ``%moveX:value*2%``). This module is that mechanism
-generalized - the same delimiters, the same evaluation, applied to any string in
-a declaration and over the object's own parameters rather than one named one -
-and it keeps the two historical spellings working.
+``%...%`` is what is left. The delimiters are not new here: the names in an
+interface's ``inherits:`` section have been resolved this way since interfaces
+were introduced, in the one form ``%name:expression%``. This module is that
+mechanism generalized - the same delimiters, applied to any string in a
+declaration and over all of the object's parameters rather than one named one -
+and the historical form still means what it meant.
 
 Three forms, tried in this order:
 
 * ``%name%`` - the value of the parameter called ``name``, with its own type.
   A location entry written ``"%depth%"`` stays the number it was declared as.
+  New: the historical resolver required the colon below and raised without it.
 * ``%name:expression%`` - the historical form, where ``name`` is a parameter and
   ``value`` is bound to its value inside ``expression``.
 * ``%expression%`` - arithmetic over the object's parameters, e.g. ``%size / 2%``
-  or ``%-width / 2 + offset%``. Arithmetic, comparisons and a conditional, and
-  nothing else: a declaration is read whenever a package is loaded, long before
-  anything is built, so what one may do is checked rather than assumed
-  ('_ALLOWED_NODES').
+  or ``%-width / 2 + offset%``.
+
+What an expression may do is checked rather than assumed ('_ALLOWED_NODES',
+'SAFE_ATTRIBUTES'), because a declaration is read whenever a package is loaded,
+long before anything is built and any CAD script runs. Arithmetic, comparisons,
+a conditional, indexing, and the plain methods of a string or a number: enough
+for ``value[1:value.index('-')]``, which is what the historical form is used
+for, and not enough to reach an object's insides.
 
 A string that is *exactly* one expression evaluates to the value itself, so a
 number stays a number. A string that merely contains one (``"m;size=%size%"``,
@@ -138,10 +143,83 @@ _ALLOWED_NODES = (
     ast.Load,
     ast.Tuple,
     ast.List,
+    ast.Subscript,
+    ast.Slice,
+    ast.Attribute,
     ast.boolop,
     ast.operator,
     ast.unaryop,
     ast.cmpop,
+)
+
+# Which attributes an expression may reach for. Not a convenience: it is what
+# makes 'ast.Attribute' safe to allow at all. Emptying '__builtins__' stops
+# nothing on its own, because '().__class__.__base__.__subclasses__()' walks
+# from any literal to every class in the interpreter - so the defence is that
+# no name on this list leads anywhere, every one of them answering with a
+# string, a number or a list built out of the value it was asked about.
+#
+# It exists because the historical '%name:expression%' form is a real thing
+# real packages wrote: '//pub/std/metric/cqwarehouse' names its screw interface
+# '%size:value[1:value.index('-')]%', reading "M4-0.7" as 4. That used to be an
+# unrestricted 'eval', so every name here is one this already allowed.
+#
+# 'format' and 'format_map' are left out deliberately, not overlooked:
+# '"{0.__class__}".format(x)' traverses attributes by name at run time, which
+# is the whole of what this list is here to prevent. So are 'encode' and
+# 'translate', which answer with something other than text.
+SAFE_ATTRIBUTES = frozenset(
+    [
+        # str
+        "capitalize",
+        "casefold",
+        "center",
+        "count",
+        "endswith",
+        "find",
+        "index",
+        "isalnum",
+        "isalpha",
+        "isascii",
+        "isdecimal",
+        "isdigit",
+        "islower",
+        "isnumeric",
+        "isspace",
+        "istitle",
+        "isupper",
+        "join",
+        "ljust",
+        "lower",
+        "lstrip",
+        "partition",
+        "removeprefix",
+        "removesuffix",
+        "replace",
+        "rfind",
+        "rindex",
+        "rjust",
+        "rpartition",
+        "rsplit",
+        "rstrip",
+        "split",
+        "splitlines",
+        "startswith",
+        "strip",
+        "swapcase",
+        "title",
+        "upper",
+        "zfill",
+        # int and float
+        "as_integer_ratio",
+        "bit_length",
+        "conjugate",
+        "denominator",
+        "imag",
+        "is_integer",
+        "numerator",
+        "real",
+    ]
 )
 
 
@@ -152,8 +230,14 @@ def _check(tree: ast.AST, expression: str) -> None:
                 expression,
                 SyntaxError("%s is not allowed in an expression" % type(node).__name__),
             )
-        if isinstance(node, ast.Call) and not isinstance(node.func, ast.Name):
-            raise ExpressionError(expression, SyntaxError("only the built-in functions may be called"))
+        if isinstance(node, ast.Attribute) and node.attr not in SAFE_ATTRIBUTES:
+            raise ExpressionError(
+                expression, SyntaxError("'%s' is not one of the attributes an expression may read" % node.attr)
+            )
+        if isinstance(node, ast.Call) and not isinstance(node.func, (ast.Name, ast.Attribute)):
+            raise ExpressionError(
+                expression, SyntaxError("only the built-in functions and the methods of a value may be called")
+            )
         if isinstance(node, ast.Call) and (node.keywords or any(isinstance(a, ast.Starred) for a in node.args)):
             raise ExpressionError(expression, SyntaxError("an expression calls with plain arguments only"))
 

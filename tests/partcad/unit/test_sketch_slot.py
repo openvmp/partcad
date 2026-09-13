@@ -8,8 +8,9 @@
 
 A slot is a rectangle with semicircular ends - two arcs and two lines - and it
 is what a slotted hole is. The shape is checked by measuring it rather than by
-asserting that something was produced: an outline that closes the wrong way, or
-puts the arcs at the wrong radius, still builds a face.
+asserting that something was produced: an outline that closes the wrong way,
+puts the arcs at the wrong radius, or anchors the slot in the wrong place, still
+builds a face.
 """
 
 import asyncio
@@ -70,21 +71,38 @@ def _slot_area(length, width):
 
 
 def test_a_slot_is_the_shape_a_slotted_hole_is(project):
-    area, size, centre = _measured(project, "slot")
+    area, size, _ = _measured(project, "slot")
     assert area == pytest.approx(_slot_area(30.0, 4.0))
     assert size == pytest.approx((30.0, 4.0))
-    assert centre == pytest.approx((0.0, 0.0))
+
+
+def test_a_slot_starts_where_the_hole_would_have_been(project):
+    """Its origin is the centre of the *first* rounded end, not the middle.
+
+    A slot is a hole that may also sit somewhere else, so it begins where the
+    plain hole was and runs from there: the port keeps its coordinates when the
+    opening it marks is slotted.
+    """
+    _, _, centre = _measured(project, "slot")
+    # The first end is centred on the origin, so the outline runs from -2 to 28.
+    assert centre == pytest.approx((13.0, 0.0))
 
 
 def test_a_slot_may_be_turned_and_placed(project):
     area, size, centre = _measured(project, "slot-placed")
     assert area == pytest.approx(_slot_area(30.0, 4.0))
     assert size == pytest.approx((4.0, 30.0))
-    assert centre == pytest.approx((5.0, 1.0))
+    # Turned a quarter turn about its first end, which is at (5, 1): the slot
+    # runs up from there, so the box is centred 13mm above it.
+    assert centre == pytest.approx((5.0, 14.0))
 
 
 def test_a_slot_with_no_straight_part_is_a_circle(project):
-    """The degenerate case is the circle it should be, not an error and not a gap."""
+    """The degenerate case is the circle it should be, not an error and not a gap.
+
+    And it is centred on the origin, because with no straight part the first
+    rounded end is the whole of it.
+    """
     slot = _measured(project, "slot-as-long-as-it-is-wide")
     circle = _measured(project, "circle")
     assert slot[0] == pytest.approx(circle[0])

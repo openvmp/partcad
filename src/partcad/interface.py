@@ -418,10 +418,35 @@ class Interface:
                 param_config = InterfaceParameter.config_normalize(param_config)
                 param_config["name"] = param_name
                 param_config = InterfaceParameter.config_finalize(param_config)
+                self._check_movement_range(param_name, param_config)
                 self.params[param_name] = InterfaceParameter(param_config)
 
         self.project.ctx.stats_interfaces += 1
         self.lock = threading.RLock()
+
+    def _check_movement_range(self, param_name, param_config) -> None:
+        """A range that runs backwards is a mistake in the declaration, not a freedom.
+
+        It is reachable because a bound may be computed: the published
+        '//pub/std/metric/m' says a screw may be driven in 'length - 2', which
+        for the 1mm screws in its own list is -1. A solver handed 0..-1 has no
+        value to choose, so the range is reported and read as "no movement"
+        - which is what the interface had before a child's own 'parameters:'
+        took precedence over the inherited one.
+        """
+        try:
+            low, high = float(param_config["min"]), float(param_config["max"])
+        except (TypeError, ValueError):
+            return
+        if high >= low:
+            return
+        pc_logging.warning(
+            "%s: '%s' may move from %s to %s, which is backwards: read as no movement"
+            % (self.full_name, param_name, param_config["min"], param_config["max"])
+        )
+        param_config["max"] = param_config["min"]
+        if float(param_config.get("default", low)) > low:
+            param_config["default"] = param_config["min"]
 
     # The sections of a declaration that '%...%' expressions are resolved in.
     #
@@ -764,12 +789,31 @@ class Interface:
                         #         inherited_port_name,
                         #     )
                         # )
+                        # The boundary this instance draws with, where it
+                        # restates it ('sketch:' beside the instance), and the
+                        # inherited one otherwise. A slotted hole is a through
+                        # hole with a slot for an outline; see
+                        # 'InterfaceInherits'.
+                        restated = inherit.sketches.get(instance_name)
+                        if restated is None:
+                            port_sketch, port_sketch_params = port.sketch, port.sketch_params
+                        else:
+                            restated_port = InterfacePort(
+                                inherited_port_name,
+                                self.project,
+                                config={"sketch": restated},
+                            )
+                            port_sketch, port_sketch_params = (
+                                restated_port.sketch,
+                                restated_port.sketch_params,
+                            )
+
                         self.ports[inherited_port_name] = InterfacePort(
                             inherited_port_name,
                             self.project,
-                            sketch=port.sketch,
+                            sketch=port_sketch,
                             location=port_location,
-                            sketch_params=port.sketch_params,
+                            sketch_params=port_sketch_params,
                         )
 
                     # TODO(clairbee): prepend the instance name to the param name

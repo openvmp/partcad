@@ -103,6 +103,35 @@ def test_expression_historical_spelling_still_resolves():
     assert expr.substitute("%size:value * 2%", {"size": 3.0}) == 6.0
 
 
+def test_expression_resolves_what_the_published_packages_actually_write():
+    """The one historical expression in the wild, from '//pub/std/metric/cqwarehouse'.
+
+    It names the interface of an M4 screw by slicing the thread designation:
+    "M4-0.7" is an 'm4-screw'. Indexing and a string's own methods are therefore
+    not an extension for its own sake - they are what the form was already used
+    for, back when it was an unrestricted 'eval'.
+    """
+    values = {"size": "M4-0.7"}
+    assert expr.substitute("m%size:value[1:value.index('-')]%-screw", values) == "m4-screw"
+    assert expr.substitute("%size:value.split('-')[0]%", values) == "M4"
+    assert expr.substitute("%size:int(value[1:value.index('-')])%", values) == 4
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "%size:value.__class__.__mro__%",  # the reason the list is a list
+        "%'{0.__class__}'.format(size)%",  # 'format' traverses attributes at run time
+        "%size:value.encode('utf8')%",  # and these answer with something else
+        "%size:value.translate({})%",
+    ],
+)
+def test_an_attribute_off_the_list_is_refused(expression):
+    """Allowing attribute access is only safe because of which attributes."""
+    with pytest.raises(expr.ExpressionError):
+        expr.substitute(expression, {"size": "M4-0.7"})
+
+
 def test_expression_is_not_jinja2():
     """Jinja2's delimiters are left alone: 'partcad.yaml' was rendered already."""
     assert expr.substitute("{{ size }}", {"size": 3.0}) == "{{ size }}"
@@ -278,6 +307,22 @@ def test_an_interface_narrows_the_freedom_it_inherits(ctx):
     assert screw.params["turnZ"].max == 360
 
 
+def test_a_freedom_that_runs_backwards_is_reported_and_read_as_none(ctx):
+    """A computed bound can invert: 'length - 2' for a 1mm screw is -1.
+
+    The published '//pub/std/metric/m' does exactly that, and a solver handed
+    0..-1 has no value to choose from.
+    """
+    reported = []
+    with mock.patch.object(pc.logging, "warning", lambda *args: reported.append(args)):
+        screw = ctx.get_interface(":m-screw;size=4,length=1")
+        screw.test()
+    assert screw.params["moveZ"].min == 0
+    assert screw.params["moveZ"].max == 0
+    assert screw.params["moveZ"].default == 0
+    assert any("backwards" in str(args) for args in reported)
+
+
 def test_anything_else_of_an_interface_may_be_an_expression(ctx):
     assert ctx.get_interface(":m;size=5").get_thread_step() == 1.0
 
@@ -289,6 +334,38 @@ def test_mates_are_registered_between_the_parametrized_instances(ctx):
     # And the other way round, which is what makes the screw find the hole.
     screw = ctx.get_interface(":m-screw;size=4")
     assert thru.full_name in ctx.mates.get(screw.full_name, {})
+
+
+# --- an inherited port drawn with a different boundary ------------------------
+
+
+def test_an_inherited_instance_may_restate_its_boundary(ctx):
+    """The same opening drawn differently: a slotted hole is a through hole.
+
+    It inherits one, so it mates as one and keeps its port where the plain hole
+    would have been; what tells them apart is the outline and the freedom of
+    movement.
+    """
+    slotted = ctx.get_interface(":m-thru-slotted;size=4,width=30")
+    slotted.test()
+
+    ((name, port),) = slotted.get_ports().items()
+    assert name == "slotted-30-thru-opening-m"
+    assert port.sketch.name == "m-slot;size=4,width=30"
+
+    # It is a through hole, all the way up.
+    assert "//:m-thru;depth=1,size=4" in slotted.compatible_with
+    assert "//:m-opening;size=4" in slotted.compatible_with
+
+    # And the slot is what it may move along.
+    assert (slotted.params["moveX"].min, slotted.params["moveX"].max) == (0, 26.0)
+
+
+def test_an_inherited_port_keeps_its_boundary_where_nothing_restates_it(ctx):
+    thru = ctx.get_interface(":m-thru;size=4,depth=1")
+    thru.test()
+    (port,) = thru.get_ports().values()
+    assert port.sketch.name == "m;size=4"
 
 
 # --- an interface that is another one under a different name -----------------
