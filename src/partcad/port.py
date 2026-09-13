@@ -7,8 +7,7 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-from . import config as pc_config
-from . import telemetry
+from . import interface_config, telemetry
 from .interface import Interface
 
 
@@ -32,19 +31,26 @@ class WithPorts(Interface):
     # writing in terms of the shape's own dimensions.
     EXPRESSION_SECTIONS = ("ports", "implements")
 
-    def expression_values(self, config: dict = None) -> dict:
-        """The names a '%...%' expression in a part's or an assembly's declaration may use.
+    def declared_construction_params(self, config: dict) -> dict:
+        """A shape's 'parameters:', all of it.
 
-        A shape declares its construction parameters in 'parameters:' - it is
-        what 'cube;width=20' sets and what a CAD script is handed - so that is
-        the namespace here, where an interface's is its 'variables:'. The
-        result is that a part's own 'ports:' and its 'implements:' can be
-        written in terms of the part's dimensions: a port at '%width% / 2' is
-        on the edge of the part whatever width it was asked for.
+        The section is split in two on an *interface*, where it has always also
+        meant the freedom of movement a connection keeps. On a shape it never
+        did: 'parameters:' is what 'cube;width=20' sets and what a CAD script is
+        handed, and that is the whole of it. So a part whose parameter happens
+        to be called 'moveX' keeps it as the value it is.
         """
-        if config is None:
-            config = self.config
-        return pc_config.parameter_values(config.get("parameters"))
+        return config.get(interface_config.PARAMETERS) or {}
+
+    def declared_movement_params(self, config: dict) -> dict:
+        """None: a shape states the freedom of movement in the interfaces it implements.
+
+        What it gets is whatever those interfaces declare, merged in as they are
+        inherited (see 'Interface.instantiate'). A shape's own 'parameters:' used
+        to be read as freedom of movement as well, which turned every dimension a
+        part was built from into an offset that composed into nothing.
+        """
+        return {}
 
     def get_interfaces(self):
         with self.lock:

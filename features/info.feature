@@ -178,7 +178,7 @@ Feature: `pc info` command
         m:
           desc: Abstract %size%mm circular interface
           abstract: True
-          variables:
+          parameters:
             size:
               type: float
               default: 3.0
@@ -190,11 +190,13 @@ Feature: `pc info` command
                 size: "%size%"
         m-thru:
           desc: "%depth%mm thick through hole of %size%mm diameter"
-          variables:
+          parameters:
             size: 3.0
             depth: 3.0
           inherits:
             "m;size=%size%": thru
+        m3-thru-3:
+          alias: "m-thru;size=3,depth=3"
       """
     When I run command:
       """
@@ -216,6 +218,13 @@ Feature: `pc info` command
       """
     Then the command should exit with a status code of "0"
     And STDOUT should contain "3mm thick through hole of 5mm diameter"
+    When I run command:
+      """
+      pc info -i m3-thru-3
+      """
+    Then the command should exit with a status code of "0"
+    And STDOUT should contain "3mm thick through hole of 3mm diameter"
+    And STDOUT should contain "'alias': 'm-thru;size=3,depth=3'"
 # And STDOUT should contain "cube" in the parts list
 # And STDOUT should contain "cylinder" in the parts list
 # And STDOUT should contain valid location coordinates

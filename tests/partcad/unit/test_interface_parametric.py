@@ -9,7 +9,9 @@
 The subject is one package, 'data/parametric_interfaces', which declares the
 metric fastener family once instead of once per size: what used to take a
 Jinja2 loop over every size, depth and width a package might ever be asked for
-is a handful of declarations with 'variables:' on them.
+is a handful of declarations with values in their 'parameters:' - the same
+section a part declares its parameters in, and the same section an interface
+has always declared its freedom of movement in.
 """
 
 from unittest import mock
@@ -20,6 +22,26 @@ import partcad as pc
 from partcad import expr
 
 PACKAGE = "tests/partcad/unit/data/parametric_interfaces/partcad.yaml"
+
+
+class _FakeWithPorts:
+    def __init__(self, interfaces):
+        self._interfaces = interfaces
+
+    def get_interfaces(self):
+        return self._interfaces
+
+
+class _FakeShape:
+    """The bare minimum of a part that 'find_mating_interfaces' looks at."""
+
+    def __init__(self, interfaces):
+        self.name = "fake"
+        self.with_ports = _FakeWithPorts(interfaces)
+
+
+def _fake_shape(interfaces):
+    return _FakeShape(interfaces)
 
 
 @pytest.fixture
@@ -111,7 +133,7 @@ def test_interface_is_built_with_the_values_the_reference_names(ctx):
     thru = ctx.get_interface(":m-thru;size=4,depth=2")
     assert thru is not None
     assert thru.desc == "2mm thick through hole of 4mm diameter"
-    assert thru.info()["variables"] == {"size": 4.0, "depth": 2.0}
+    assert thru.info()["values"] == {"size": 4.0, "depth": 2.0}
 
 
 def test_interface_defaults_apply_when_nothing_is_named(ctx):
@@ -150,8 +172,62 @@ def test_a_parameter_the_interface_does_not_declare_is_reported(ctx):
     assert ctx.get_interface(":m-thru;nope=1") is None
 
 
-def test_an_interface_with_no_variables_cannot_be_parametrized(ctx):
+def test_an_interface_with_no_values_cannot_be_parametrized(ctx):
     assert ctx.get_interface(":plain;size=4") is None
+
+
+def test_one_section_holds_both_kinds_of_parameter(ctx):
+    """'parameters:' is a part's and an interface's at once, told apart by content."""
+    m = ctx.get_interface(":m;size=4")
+    m.test()
+    # The values it is built from, read as a part's parameters are...
+    assert m.info()["values"] == {"size": 4.0}
+    # ... beside the freedom of movement the section has always declared.
+    assert sorted(m.params) == ["moveZ", "turnZ"]
+    assert m.params["turnZ"].type == "turn"
+    assert m.params["turnZ"].max == 360
+
+
+def test_every_way_a_part_declares_a_parameter_works_on_an_interface(ctx):
+    """'the exact same way as for parts' - types, enum, desc and the short form."""
+    demo = ctx.get_interface(":vocabulary")
+    demo.test()
+    assert demo.info()["values"] == {
+        "size": 3,
+        "pitch": 0.5,
+        "finish": "plain",
+        "threaded": True,
+        "count": 4,
+    }
+    assert demo.desc == "plain M3 x 0.5, 4 off, threaded=true"
+    # An expression over them places the port...
+    assert demo.get_ports()["p"].location.as_packed()[0] == [0.0, 0.0, 1.5]
+    # ... and the freedom of movement declared beside them is untouched.
+    assert (demo.params["moveZ"].min, demo.params["moveZ"].max) == (0, 10)
+
+    other = ctx.get_interface(":vocabulary;size=8,pitch=1.25,finish=zinc,threaded=false,count=2")
+    other.test()
+    assert other.info()["values"] == {
+        "size": 8,
+        "pitch": 1.25,
+        "finish": "zinc",
+        "threaded": False,
+        "count": 2,
+    }
+    assert other.desc == "zinc M8 x 1.25, 2 off, threaded=false"
+    assert other.get_ports()["p"].location.as_packed()[0] == [0.0, 0.0, 10.0]
+
+
+def test_an_integer_parameter_refuses_a_fraction(ctx):
+    """The same rule a part's integer parameter follows."""
+    assert ctx.get_interface(":vocabulary;size=3.5") is None
+
+
+def test_a_shape_declares_no_freedom_of_movement_of_its_own(ctx):
+    """A part's 'parameters:' is all values; what it may do comes from what it implements."""
+    plate = ctx.get_part(":plate")
+    assert plate.with_ports.declared_movement_params(plate.config) == {}
+    assert "thickness" in plate.with_ports.expression_values()
 
 
 # --- what the values reach ---------------------------------------------------
@@ -213,6 +289,67 @@ def test_mates_are_registered_between_the_parametrized_instances(ctx):
     # And the other way round, which is what makes the screw find the hole.
     screw = ctx.get_interface(":m-screw;size=4")
     assert thru.full_name in ctx.mates.get(screw.full_name, {})
+
+
+# --- an interface that is another one under a different name -----------------
+
+
+def test_an_alias_has_the_target_s_ports_under_the_same_names(ctx):
+    """What a package published before its family became parametric keeps working."""
+    alias = ctx.get_interface(":m3-thru-3")
+    target = ctx.get_interface(":m-thru;size=3,depth=3")
+    alias.test()
+    target.test()
+    assert sorted(alias.get_ports()) == sorted(target.get_ports()) == ["thru-opening-m"]
+    assert alias.desc == target.desc
+
+
+def test_an_alias_may_state_a_description_of_its_own(ctx):
+    alias = ctx.get_interface(":m4-screw-6")
+    assert alias.desc == "6mm long M4 screw, under the name this package has always used"
+
+
+def test_an_alias_may_be_written_as_a_bare_string(ctx):
+    """The short form a sketch and a part already have."""
+    alias = ctx.get_interface(":m5-thru-2")
+    alias.test()
+    assert alias.alias == "m-thru;size=5,depth=2"
+    assert alias.desc == "2mm thick through hole of 5mm diameter"
+    assert sorted(alias.get_ports()) == ["thru-opening-m"]
+
+
+def test_parametrizing_an_alias_is_reported_rather_than_crashing(ctx):
+    """An alias has no parameters of its own - the values are in what it names."""
+    assert ctx.get_interface(":m5-thru-2;size=9") is None
+
+
+def test_an_alias_is_a_drop_in_for_what_it_names(ctx):
+    alias = ctx.get_interface(":m3-thru-3")
+    alias.test()
+    assert alias.compatible_with == {
+        "//:m-thru;depth=3,size=3",
+        "//:m-opening;size=3",
+        "//:m;size=3",
+    }
+
+
+def test_compatibility_reaches_all_the_way_up(ctx):
+    """Not only the first parent: what that one is a drop-in for counts too."""
+    thru = ctx.get_interface(":m-thru;size=3,depth=3")
+    thru.test()
+    assert "//:m;size=3" in thru.compatible_with
+
+
+def test_an_alias_mates_with_what_its_target_mates_with(ctx):
+    alias = ctx.get_interface(":m3-thru-3")
+    alias.test()
+    ctx.get_interface(":m-screw;size=3").test()
+    source, target = ctx.find_mating_interfaces(
+        _fake_shape({"//:m-screw;size=3": {"": {}}}),
+        _fake_shape({alias.full_name: {"": {}}}),
+    )
+    assert source == {"//:m-screw;size=3"}
+    assert target == {"//:m3-thru-3"}
 
 
 # --- a shape's own ports and the interfaces it implements --------------------

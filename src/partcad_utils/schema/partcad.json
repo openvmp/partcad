@@ -447,6 +447,7 @@
       ]
     },
     "interface-parameter": {
+      "description": "An interface's 'parameters:'. It holds two kinds at once, told apart by what each declares rather than by where it is written: a construction parameter, exactly as a part or a sketch declares one ('size: {type: float, default: 3.0}'), which a reference sets ('m-thru;size=4'); and a freedom-of-movement parameter, which states a range and an axis ('min', 'max', 'dir') and says what a connection made through the interface may still do. The two vocabularies do not overlap: one of the six predefined movement names, a '[min, max, default]' list, or a 'min'/'max'/'dir' or 'type: move'/'type: turn' makes it the second kind; anything else is the first.",
       "oneOf": [
         { "type": "null" },
         {
@@ -454,14 +455,9 @@
           "patternProperties": {
             "^(move[XYZ]|turn[XYZ]|move-[xyz]|turn-[xyz])$": { "$ref": "#/definitions/interface-movement-value" },
             "^(?!(move[XYZ]|turn[XYZ]|move-[xyz]|turn-[xyz])$)[a-zA-Z0-9_/./-]+$": {
-              "allOf": [
+              "anyOf": [
                 { "$ref": "#/definitions/interface-movement-value" },
-                {
-                  "anyOf": [
-                    { "type": ["null", "number", "string", "array"] },
-                    { "type": "object", "required": ["dir"] }
-                  ]
-                }
+                { "$ref": "#/definitions/shape-parameter-value" }
               ]
             }
           },
@@ -488,6 +484,32 @@
       "anyOf": [
         { "type": "string", "pattern": "^[^,;=]*$" },
         { "type": ["number", "boolean", "array"] }
+      ]
+    },
+    "shape-parameter-value": {
+      "description": "One construction parameter of an object: the bare value it defaults to, or a declaration of its type, its default and what it may be. The same shape wherever an object is parametrized - a part, a sketch, an assembly, and the construction half of an interface's 'parameters:'.",
+      "oneOf": [
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "string", "pattern": "^[^,;=]*$" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "enum": ["string", "int", "bool", "float"] },
+            "enum": {
+              "type": "array",
+              "items": {
+                "allOf": [{ "type": "string", "minLength": 1 }, { "$ref": "#/definitions/parameter-default" }]
+              },
+              "uniqueItems": true
+            },
+            "desc": { "type": "string", "maxLength": 1000 },
+            "default": { "$ref": "#/definitions/parameter-default" },
+            "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+            "material": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        }
       ]
     },
     "shape-parameter": {
@@ -801,7 +823,7 @@
                         {
                           "type": "object",
                           "patternProperties": {
-                            "^[a-zA-Z0-9_/./-]+$": { "$ref": "#/definitions/OCCTLocation" }
+                            "^[a-zA-Z0-9_/.%-]+$": { "$ref": "#/definitions/OCCTLocation" }
                           },
                           "additionalProperties": false
                         },
@@ -828,7 +850,7 @@
                 "ports":{
                   "type": "object",
                   "patternProperties": {
-                    "^[a-zA-Z0-9_/./-]+$": { "$ref": "#/definitions/port" }
+                    "^[a-zA-Z0-9_/.%-]+$": { "$ref": "#/definitions/port" }
                   },
                   "additionalProperties": false
                 },
@@ -1156,12 +1178,22 @@
       "type": ["object", "null"],
       "patternProperties": {
         "^[a-zA-Z0-9_/./-]+$": {
+          "oneOf": [
+            {
+              "description": "The short form of an alias, the same one a sketch and a part have: the interface this one is another name for.",
+              "$ref": "#/definitions/object-reference"
+            },
+            {
           "type": "object",
           "properties": {
             "abstract": { "type": "boolean", "default": false },
             "desc": { "type": "string", "maxLength": 1000 },
             "unless": { "$ref": "#/definitions/unless" },
             "path": { "type": "string", "minLength": 1 },
+            "alias": {
+              "description": "This interface is that one, under another name: the same ports under the same names, a drop-in for it, mating with whatever it mates with. What is not declared here is taken from it. How a package that has published a name keeps publishing it after the family behind it becomes parametric - 'm3-thru-3' is 'm-thru;size=3,depth=3' spelled the way it always was.",
+              "$ref": "#/definitions/object-reference"
+            },
             "leadPort": { "type": "string", "minLength": 1 },
             "threadStep": {
               "description": "The axial distance a connection made through this interface advances per full turn, in mm. Inherited by the interfaces that inherit this one, and by the connections that use it.",
@@ -1186,14 +1218,14 @@
                     {
                       "type": "object",
                       "patternProperties": {
-                        "^[a-zA-Z0-9_/./-]+$": { "$ref": "#/definitions/OCCTLocation" }
+                        "^[a-zA-Z0-9_/.%-]*$": { "$ref": "#/definitions/OCCTLocation" }
                       },
                       "additionalProperties": false
                     },
                     {
                       "type": "object",
                       "patternProperties": {
-                        "^[a-zA-Z0-9_/./-]*$": {
+                        "^[a-zA-Z0-9_/.%-]*$": {
                           "type": "object",
                           "properties": {
                             "location": { "$ref": "#/definitions/OCCTLocation" },
@@ -1212,7 +1244,7 @@
             "ports":{
               "type": "object",
               "patternProperties": {
-                "^[a-zA-Z0-9_/./-]+$": { "$ref": "#/definitions/port" }
+                "^[a-zA-Z0-9_/.%-]+$": { "$ref": "#/definitions/port" }
               },
               "additionalProperties": false
             },
@@ -1234,14 +1266,12 @@
               ]
             },
             "parameters": { "$ref": "#/definitions/interface-parameter"},
-            "variables": {
-              "description": "The construction parameters of this interface: the values it is built from, replaced by name in a reference to it ('m-thru;size=4,depth=3') and substituted into this declaration wherever a '%...%' expression names one. Declared exactly as a part's or a sketch's 'parameters:' are. Not to be confused with 'parameters:' above, which on an interface means the freedom of movement a connection made through it still has.",
-              "$ref": "#/definitions/shape-parameter"
-            },
             "motion": { "$ref": "#/definitions/motion" },
             "physics": { "$ref": "#/definitions/physics" }
           },
           "additionalProperties": false
+            }
+          ]
         }
       },
       "additionalProperties": false

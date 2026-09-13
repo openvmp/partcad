@@ -708,6 +708,7 @@ Interfaces are declared in ``partcad.yaml`` using the following syntax:
       abstract: <(optional) whether the interface is abstract>
       desc: <(optional) textual description>
       path: <(optional) the source file path, "{interface name}.{ext}" otherwise>
+      alias: <(optional) the interface this one is another name for>
       threadStep: <(optional) axial distance per full turn of a connection made through this interface, in mm>
       selfScrew: <(optional) whether this interface cuts its own thread instead of matching one>
       multiConnect: <(optional) whether one instance of this interface may take more than one object>
@@ -724,12 +725,15 @@ Interfaces are declared in ``partcad.yaml`` using the following syntax:
           sketch: <(optional) name of the sketch used for visualization>
           params: # (optional) the parameter values to build that sketch with
             <sketch parameter name>: <value or "%expression%">
-      variables: # (optional) the construction parameters of this interface
+      parameters:
+        # The values this interface is built from, declared exactly as a part's
+        # or a sketch's are, and set by a reference: "<interface>;<name>=<value>"
         <parameter name>:
           type: <string|int|float|bool>
           default: ...
         <other parameter name>: <value> # short form, same as for parts and sketches
-      parameters:
+        # ... and, in the same section, what a connection made through this
+        # interface may still do:
         moveX: # (optional) offset along X
           min: <(optional) min value>
           max: <(optional) max value>
@@ -940,15 +944,15 @@ Parametric interfaces
 ---------------------
 
 An interface can be declared once and asked for with values, exactly as a part
-or a sketch is: the values go in ``variables:``, and a reference names them with
-the same ``;<name>=<value>`` suffix ``pc inspect cube;width=20`` uses.
+or a sketch is: the values go in ``parameters:``, and a reference names them
+with the same ``;<name>=<value>`` suffix ``pc inspect cube;width=20`` uses.
 
 .. code-block:: yaml
 
   interfaces:
     m-thru:
       desc: "%depth%mm thick through hole of %size%mm diameter"
-      variables:
+      parameters:
         size: 3.0
         depth: 3.0
       ports:
@@ -969,28 +973,60 @@ one name. That matters beyond tidiness -- an interface's name is what a mating
 is registered under, so two objects for one set of values would be two halves of
 a connection that never find each other.
 
-.. note::
+One section, two kinds of parameter
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-  ``variables:`` is what ``parameters:`` is for a part or a sketch. It has a name
-  of its own because an interface's ``parameters:`` already means something else
-  -- the freedom of movement a connection made through the interface still has
-  (see `Interface parameters`_ above) -- and the two declarations look alike
-  enough that one section holding both would have to guess between them.
+``parameters:`` on an interface has meant `Interface parameters`_ -- the freedom
+of movement a *made* connection keeps -- since interfaces existed. It now holds
+both kinds, because "the same way as for a part" is the point and a second
+section would be a second thing to learn. They are told apart by what each
+declares rather than by where it is written, and the two vocabularies do not
+overlap: a freedom-of-movement parameter states a range and an axis, a
+construction parameter states a value type and a default.
+
+.. code-block:: yaml
+
+  interfaces:
+    m-screw:
+      parameters:
+        size: 3.0                 # a value: a reference sets it
+        length: 6.0               # a value
+        moveZ:                    # freedom of movement: what the connection may still do
+          min: 0
+          max: "%length - 2%"     # ... in terms of the values above
+          default: 0
+
+An entry is a **freedom-of-movement** parameter when any of the following is
+true, and a **construction** parameter otherwise:
+
+- it is one of the six predefined names -- ``moveX``, ``moveY``, ``moveZ``,
+  ``turnX``, ``turnY``, ``turnZ`` (or the hyphenated spellings a ``mates:``
+  section uses);
+- it is written in the short list form ``[min, max, default]``;
+- it states ``min``, ``max`` or ``dir``, or ``type: move`` / ``type: turn``.
+
+Every freedom-of-movement parameter PartCAD has ever accepted is caught by the
+first or the third of those -- a custom name is *required* to state its ``dir``
+-- so a declaration written before this existed keeps the meaning it had.
+
+A part's or an assembly's ``parameters:`` is not split: for a shape that section
+has only ever meant the values it is built from.
 
 Expressions
 ^^^^^^^^^^^
 
 Wherever a declaration says something about the connection -- ``desc``,
-``ports``, ``inherits``, ``implements``, ``mates``, ``parameters``, ``leadPort``,
-``threadStep``, ``selfScrew``, ``multiConnect`` and ``motion`` -- a value may be
-written as an expression over the interface's variables, between percent signs:
+``ports``, ``inherits``, ``implements``, ``mates``, ``alias``, ``parameters``
+(its freedom-of-movement half), ``leadPort``, ``threadStep``, ``selfScrew``,
+``multiConnect`` and ``motion`` -- a value may be written as an expression over
+the interface's own values, between percent signs:
 
 .. code-block:: yaml
 
   interfaces:
     m-square-pattern:
       desc: Four %size%mm holes on the corners of a %pitch%mm square
-      variables:
+      parameters:
         size: 3.0
         pitch: 31.0
         depth: 3.0
@@ -1008,11 +1044,11 @@ Inside the delimiters is an ordinary arithmetic expression over the object's
 parameters, with the usual functions available (``sqrt``, ``sin``, ``cos``,
 ``floor``, ``min``, ``max``, ``round``, ``pi``, ``INCH`` ...). Arithmetic,
 comparisons and a conditional are all of it: a declaration is read whenever a
-package is loaded -- long before anything is built and any CAD script runs --
-so an expression may not call anything else, reach into an object, or define
-one. An expression that cannot be evaluated is reported by name and left
-standing as the text it was written as, so a misspelling costs that one value
-rather than the package.
+package is loaded -- long before anything is built and any CAD script runs -- so
+an expression may not call anything else, reach into an object, or define one.
+An expression that cannot be evaluated is reported by name and left standing as
+the text it was written as, so a misspelling costs that one value rather than
+the package.
 
 .. note::
 
@@ -1022,6 +1058,9 @@ rather than the package.
   a value that depends on which instance of an object is being asked for: at
   that point there are no instances yet. The two do not collide -- Jinja2 never
   sees ``%...%``, and ``%...%`` is resolved long after Jinja2 has finished.
+  The spelling is not new either: the names in an ``inherits:`` section have
+  been written ``%moveX%`` and ``%moveX:value*2%`` since interfaces existed, and
+  both keep working.
 
 Parametrized sketches on ports
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1063,6 +1102,36 @@ thickness implements the through-hole of that thickness:
 
 Nothing else in a shape's declaration is touched: ``desc`` is prose and
 ``fileUrl`` is a URL that may be percent-encoded, and neither is an expression.
+
+.. _interface_alias:
+
+Interface aliases
+-----------------
+
+``alias:`` declares that an interface *is* another one, under a different name.
+A bare string is the short form of the same thing, the way it is for a sketch or
+a part:
+
+.. code-block:: yaml
+
+  interfaces:
+    m3-thru-3:
+      alias: "m-thru;size=3,depth=3"
+    m3-thru-4: "m-thru;size=3,depth=4" # the same, said shorter
+
+The alias has the target's ports, under the target's port names -- not prefixed,
+the way an ``inherits:`` instance name would prefix them -- it is a drop-in for
+the target, so it mates with whatever the target mates with, and what it does
+not declare for itself (its description, ``leadPort``, ``abstract``, ``motion``,
+``physics``, ``threadStep`` ...) it takes from the target.
+
+That is what lets a package make a family parametric without withdrawing the
+names it has published. A package that spelled out ``m3-thru-3``,
+``m3-thru-4``, ``m4-thru-3`` and several thousand more can declare the family
+once and keep every one of those names as a one-line alias: a part that says
+``implements: m3-thru-3`` goes on working, with the same ports under the same
+names, and a part written today can say ``m-thru;size=3,depth=3`` instead. See
+the ``//pub/std/metric/m`` package, which is exactly this.
 
 Interface examples
 ------------------

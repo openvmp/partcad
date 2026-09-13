@@ -238,29 +238,43 @@ at all).
   `Project.get_interface`): an interface is parametrized the way a part or a sketch is —
   `m-thru;size=4,depth=3` names an instance, `Project.get_interface` builds it from the declaration as a
   template, and the shared `parse_parameterized_name`/`format_parameterized_name`/`apply_parameter_values`
-  are what read the suffix, so there is one answer to what `;size=4` means. Two things about it are
+  are what read the suffix, so there is one answer to what `;size=4` means. Three things about it are
   load-bearing:
 
-  **The section is `variables:`, not `parameters:`.** An interface's `parameters:` has meant the freedom of
-  movement a connection keeps since interfaces existed (`InterfaceParameter`), and the two declarations look
-  alike — `{min: 0, max: 10, default: 5}` is a good spelling of either — so one section holding both would
-  have to guess, and guessing wrong is silent. `WithPorts` (a part or an assembly) answers the same question
-  with its own `parameters:`, because for a shape that section *is* the construction parameters; that is the
-  whole of `expression_values()`.
+  **One `parameters:` section holds two kinds, told apart by content.** It has meant the freedom of
+  movement a made connection keeps (`InterfaceParameter`) since interfaces existed, and it now also holds
+  the construction values a reference sets — because "the same way as for a part" is the point of the
+  feature. The split is `interface_config.is_movement_parameter`, and it is safe because the two
+  vocabularies do not overlap: a movement parameter is one of the six predefined names, a `[min, max,
+  default]` list, or states `min`/`max`/`dir` or `type: move`/`turn`; a part's parameter states none of
+  those. Every movement parameter the schema has ever accepted is caught — a custom name is *required* to
+  state its `dir` — so nothing written before this changes meaning. `WithPorts` overrides both accessors:
+  for a shape that section has only ever meant construction values, so none of it is movement.
 
   **The name is canonicalized before anything is looked up under it.** An interface's full name is what a
-  mating is registered under, so `m-thru;size=4` and `m-thru;size=4.0` being two objects would be two halves
-  of a connection that never find each other. `canonical_parameter_values` puts every value through the type
-  it is declared as and formats it back the way `expr.format_value` writes one — which is also how an
-  expression that produced it spelled it.
+  mating is registered under, so `m-thru;size=4` and `m-thru;size=4.0` being two objects would be two
+  halves of a connection that never find each other. `canonical_parameter_values` puts every value through
+  the type it is declared as and formats it back the way `expr.format_value` writes one — which is also how
+  an expression that produced it spelled it.
+
+  **`alias:` is what keeps a published name working.** It is spelled as inheriting exactly one interface,
+  once, unnamed, at the origin — which is the shape of inheritance that leaves the ports named as the
+  target names them and marks the interface a drop-in for it — plus `_adopt_alias_target()` for the handful
+  of things an interface states rather than derives. `//pub/std/metric/m` is the reason it exists: eleven
+  thousand enumerated names became aliases of nine parametric interfaces, with identical ports.
+
+  That last one needed `compatible_with` fixed to close over the ancestors. It used to be accumulated while
+  inheriting, but inheriting only *creates* the parent — instantiating it is what fills in what it is in
+  turn compatible with, and that had not happened yet — so the chain stopped at the first parent and an
+  `m4-thru-3` never reached `m4-opening`. It is a lazy property now.
 
   `expr.py` is the `%...%` syntax, generalized from the one `Interface.instantiate` used for inherited
   interface names. It is not Jinja2 and cannot be: `partcad.yaml` is rendered as a Jinja2 template before it
   is parsed, which is one step before the instance being asked for exists. Expressions are resolved only in
   the sections named in `Interface.EXPRESSION_SECTIONS` (`WithPorts` narrows it to `ports` and `implements`),
-  because `%` is an ordinary character in a URL and in prose, and only for an object that declares parameters
-  at all — a package written before this must not start reporting errors about a percent sign it has always
-  had.
+  because `%` is an ordinary character in a URL and in prose, and only for an object that declares
+  parameters at all — a package written before this must not start reporting errors about a percent sign it
+  has always had.
 
 - **Sandbox environment** (`./src/partcad/python_env.py`): importing `partcad` sweeps every `PYTHON*` variable
   out of `os.environ` and puts back only `PARTCAD_PYTHON_ENV`. Everything PartCAD spawns — the wrappers, `pip`,

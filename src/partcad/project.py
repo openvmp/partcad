@@ -929,7 +929,15 @@ class Project(project_config.Configuration):
             # interface's name is what a mating is registered under, so
             # 'm-thru;size=4' and 'm-thru;size=4.0' being two objects would be
             # two halves of a connection that never find each other.
-            declared = (self.get_interface_config(base_name) or {}).get(interface_config.VARIABLES)
+            # Read before normalization, and so possibly still in a short form:
+            # an interface declared as a bare string is an alias, and an alias
+            # has no parameters of its own to canonicalize against.
+            declaration = self.get_interface_config(base_name)
+            declared = (
+                interface_config.construction_parameters(declaration.get(interface_config.PARAMETERS))
+                if isinstance(declaration, dict)
+                else {}
+            )
             params = pc_config.canonical_parameter_values(declared, params, f"{self.name}:{base_name}")
         result_name = format_parameterized_name(base_name, params)
 
@@ -973,20 +981,25 @@ class Project(project_config.Configuration):
             full_object_name = f"{self.name}:{result_name}"
             config = interface_config.InterfaceConfiguration.normalize(result_name, config, full_object_name)
             config["orig_name"] = base_name
-            declared = config.get(interface_config.VARIABLES)
-            if not declared:
+            # The construction half of 'parameters:' - the values the interface
+            # is built from. The other half of that section is the freedom of
+            # movement a connection keeps, which a reference does not set; see
+            # 'partcad.interface_config'.
+            declared = config.get(interface_config.PARAMETERS) or {}
+            construction = interface_config.construction_parameters(declared)
+            if not construction:
                 pc_logging.error(
-                    "Attempt to parametrize the interface '%s' of '%s', which declares no '%s'",
+                    "Attempt to parametrize the interface '%s' of '%s', which declares no parameters to set",
                     base_name,
                     self.name,
-                    interface_config.VARIABLES,
                 )
                 return None
             try:
-                pc_config.apply_parameter_values(declared, params, result_name)
+                pc_config.apply_parameter_values(construction, params, result_name)
             except Exception as e:
                 self.record_broken_object("interface", result_name, e)
                 return None
+            declared.update(construction)
 
             try:
                 self.init_interface_by_config(config)

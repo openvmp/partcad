@@ -22,10 +22,6 @@ interfaces:
   m:
     desc: Abstract %size%mm circular interface
     abstract: true
-    variables:
-      size:
-        type: float
-        default: 3.0
     # The coarse metric pitch is close enough to a fifth of the diameter for
     # the sizes this package is about, and this is a test package.
     threadStep: "%size * 0.2%"
@@ -36,22 +32,27 @@ interfaces:
         params:
           size: "%size%"
     parameters:
-      # A round opening may be entered at any angle, and the depth is whatever
-      # the interface that inherits this one says it is.
+      # The value this interface is built from, declared exactly as a part
+      # declares one...
+      size:
+        type: float
+        default: 3.0
+      # ... beside what the connection may still do once it is made, which is
+      # what an interface's 'parameters:' has always meant.
       turnZ: [0, 360, 0]
       moveZ: {}
 
   m-opening:
     desc: Abstract %size%mm circular opening
     abstract: true
-    variables:
+    parameters:
       size: 3.0
     inherits:
       "m;size=%size%": opening
 
   m-thru:
     desc: "%depth%mm thick through hole of %size%mm diameter"
-    variables:
+    parameters:
       size: 3.0
       depth: 3.0
     inherits:
@@ -61,15 +62,14 @@ interfaces:
 
   m-screw:
     desc: "%length%mm long M%size% screw"
-    variables:
-      size: 3.0
-      length: 6.0
     inherits:
       "m;size=%size%": screw
     parameters:
-      # How deep the screw may still be driven in. An expression over this
-      # interface's own variables, resolved before the freedom of movement is
-      # read out of it.
+      size: 3.0
+      length: 6.0
+      # How deep the screw may still be driven in: an expression over the two
+      # values above, resolved before the freedom of movement is read out of
+      # the very same section.
       moveZ:
         min: 0
         max: "%length - 2%"
@@ -77,7 +77,7 @@ interfaces:
 
   m-square-pattern:
     desc: Four %size%mm holes on the corners of a %pitch%mm square
-    variables:
+    parameters:
       size: 3.0
       pitch: 31.0
       depth: 3.0
@@ -93,6 +93,44 @@ interfaces:
     ports:
       plain:
         sketch: m
+
+  m3-thru-3:
+    # The enumerated name a package published before the family behind it
+    # became parametric. It is that interface, under the name it always had:
+    # same ports, same names, mating with whatever the target mates with.
+    alias: "m-thru;size=3,depth=3"
+
+  m4-screw-6:
+    desc: 6mm long M4 screw, under the name this package has always used
+    alias: "m-screw;size=4,length=6"
+
+  # The short form, which is how a sketch and a part spell an alias too.
+  m5-thru-2: "m-thru;size=5,depth=2"
+
+  vocabulary:
+    # Every way a part may declare a parameter, declared on an interface, in
+    # the same section as a freedom-of-movement parameter.
+    desc: "%finish% M%size% x %pitch%, %count% off, threaded=%threaded%"
+    parameters:
+      size:
+        type: int
+        desc: The nominal diameter, in millimetres
+        default: 3
+      pitch:
+        type: float
+        default: 0.5
+      finish:
+        type: string
+        enum: [plain, zinc, black]
+        default: plain
+      threaded:
+        type: bool
+        default: true
+      count: 4        # the short form
+      moveZ: [0, 10, 0]
+    ports:
+      p:
+        location: [[0, 0, "%size * pitch%"], [0, 0, 1], 0]
 
 parts:
   plate:

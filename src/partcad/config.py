@@ -12,10 +12,10 @@ def normalize_parameters(parameters: dict) -> dict:
     string, a boolean, a list - and this turns each of those into the long form
     the rest of PartCAD reads: a dictionary with a 'type' and a 'default'.
 
-    Lifted out of 'Configuration.normalize' below because an interface declares
-    its construction parameters in a section of its own ('variables:'; see
-    'InterfaceConfiguration'), and two copies of these rules would be two
-    answers to "what does 'size: 3' mean".
+    Lifted out of 'Configuration.normalize' below because an interface's
+    'parameters:' holds these beside its freedom of movement and expands only
+    that half (see 'partcad.interface_config'), and two copies of these rules
+    would be two answers to "what does 'size: 3' mean".
     """
     if not isinstance(parameters, dict):
         return parameters
@@ -58,9 +58,8 @@ def apply_user_parameter_overrides(config: dict, object_name: str, section: str 
     """Let the user's own configuration override the defaults this object declares.
 
     A name the object does not declare is reported rather than raised on: an
-    interface holds two parameter sections ('parameters' for the freedom of
-    movement a connection keeps, 'variables' for the values it is built from),
-    so an override that belongs to one of them reaches the other as a name that
+    interface's 'parameters:' holds two kinds and only the construction half is
+    overridable, so a name meant for the other half reaches this as a name that
     is simply not there.
     """
     config_parameters = user_config.parameter_config.to_dict()

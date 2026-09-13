@@ -1540,7 +1540,12 @@ def list_objects(session, params):
         output = _LIST_LABELS.get(kind, "PartCAD objects") + ":\n"
         for project_name in packages:
             project = ctx.projects[project_name]
-            for name, obj in getattr(project, kind).items():
+            # A snapshot, not the live dictionary: reading an object can
+            # resolve another one into the package - an interface declared as
+            # an alias takes its description from the interface it names - and
+            # that registers it, which is a dictionary changing size while it
+            # is being walked.
+            for name, obj in sorted(getattr(project, kind).items()):
                 line = "\t"
                 if recursive:
                     line += "%s" % project_name + " " + " " * (35 - len(project_name))
