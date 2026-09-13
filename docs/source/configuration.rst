@@ -722,6 +722,13 @@ Interfaces are declared in ``partcad.yaml`` using the following syntax:
         <another port name>:
           location: <OCCT Location object> # e.g. [[x_off,y_off,z_off], [x_rot,y_rot,z_rot], rot_angle]
           sketch: <(optional) name of the sketch used for visualization>
+          params: # (optional) the parameter values to build that sketch with
+            <sketch parameter name>: <value or "%expression%">
+      variables: # (optional) the construction parameters of this interface
+        <parameter name>:
+          type: <string|int|float|bool>
+          default: ...
+        <other parameter name>: <value> # short form, same as for parts and sketches
       parameters:
         moveX: # (optional) offset along X
           min: <(optional) min value>
@@ -926,6 +933,136 @@ get resolved and applied as inheritance or connection coordinate offsets.
         name: <target part>
         toParams:
           turnZ: 1.57
+
+.. _parametric_interfaces:
+
+Parametric interfaces
+---------------------
+
+An interface can be declared once and asked for with values, exactly as a part
+or a sketch is: the values go in ``variables:``, and a reference names them with
+the same ``;<name>=<value>`` suffix ``pc inspect cube;width=20`` uses.
+
+.. code-block:: yaml
+
+  interfaces:
+    m-thru:
+      desc: "%depth%mm thick through hole of %size%mm diameter"
+      variables:
+        size: 3.0
+        depth: 3.0
+      ports:
+        m:
+          sketch: m
+          params: { size: "%size%" }
+
+.. code-block:: shell
+
+  pc info -i m-thru                  # the defaults: a 3mm hole through 3mm
+  pc info -i "m-thru;size=4,depth=2" # a 4mm hole through 2mm
+  pc info -i m-thru -p size=4        # the same, said on the command line
+
+Every set of values is one interface, whatever order they are written in and
+however the numbers are spelled: ``m-thru;size=4,depth=2``,
+``m-thru;depth=2,size=4`` and ``m-thru;depth=2.0,size=4.00`` are one object with
+one name. That matters beyond tidiness -- an interface's name is what a mating
+is registered under, so two objects for one set of values would be two halves of
+a connection that never find each other.
+
+.. note::
+
+  ``variables:`` is what ``parameters:`` is for a part or a sketch. It has a name
+  of its own because an interface's ``parameters:`` already means something else
+  -- the freedom of movement a connection made through the interface still has
+  (see `Interface parameters`_ above) -- and the two declarations look alike
+  enough that one section holding both would have to guess between them.
+
+Expressions
+^^^^^^^^^^^
+
+Wherever a declaration says something about the connection -- ``desc``,
+``ports``, ``inherits``, ``implements``, ``mates``, ``parameters``, ``leadPort``,
+``threadStep``, ``selfScrew``, ``multiConnect`` and ``motion`` -- a value may be
+written as an expression over the interface's variables, between percent signs:
+
+.. code-block:: yaml
+
+  interfaces:
+    m-square-pattern:
+      desc: Four %size%mm holes on the corners of a %pitch%mm square
+      variables:
+        size: 3.0
+        pitch: 31.0
+        depth: 3.0
+      inherits:
+        "m-thru;size=%size%,depth=%depth%":
+          TL: [["%-pitch / 2%", "%pitch / 2%", 0], [0, 0, 1], 270]
+          TR: [["%pitch / 2%", "%pitch / 2%", 0], [0, 0, 1], 180]
+          BL: [["%-pitch / 2%", "%-pitch / 2%", 0], [0, 0, 1], 0]
+          BR: [["%pitch / 2%", "%-pitch / 2%", 0], [0, 0, 1], 90]
+
+A value that is *nothing but* an expression evaluates to the value itself, which
+is what lets a coordinate be written as one; a value that merely contains an
+expression gets it formatted in, which is what builds a name or a description.
+Inside the delimiters is an ordinary arithmetic expression over the object's
+parameters, with the usual functions available (``sqrt``, ``sin``, ``cos``,
+``floor``, ``min``, ``max``, ``round``, ``pi``, ``INCH`` ...). Arithmetic,
+comparisons and a conditional are all of it: a declaration is read whenever a
+package is loaded -- long before anything is built and any CAD script runs --
+so an expression may not call anything else, reach into an object, or define
+one. An expression that cannot be evaluated is reported by name and left
+standing as the text it was written as, so a misspelling costs that one value
+rather than the package.
+
+.. note::
+
+  ``%...%`` rather than Jinja2's ``{{ ... }}``, and it is not an alternative to
+  it. ``partcad.yaml`` is rendered as a Jinja2 template *before* it is parsed
+  (see ``includePaths`` under :ref:`packages`), which is one step too early for
+  a value that depends on which instance of an object is being asked for: at
+  that point there are no instances yet. The two do not collide -- Jinja2 never
+  sees ``%...%``, and ``%...%`` is resolved long after Jinja2 has finished.
+
+Parametrized sketches on ports
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A port's sketch takes parameter values too, either in ``params:`` beside it or
+spelled into its name (``sketch: "m;size=%size%"``) -- they are the same thing.
+So one sketch draws the boundary of every size the interface family has, instead
+of one pre-generated sketch per size:
+
+.. code-block:: yaml
+
+  sketches:
+    m:
+      type: basic
+      circle: "%size / 2%" # the radius, from the diameter the interface asked for
+      parameters:
+        size: 3.0
+
+A ``basic`` sketch has no script to hand its parameters to, so an expression is
+how it reads them; a ``cadquery`` or ``build123d`` sketch gets them as build
+parameters as usual.
+
+Parametric ports on a part
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The same applies to the ``ports:`` and ``implements:`` sections of a part or an
+assembly, over that shape's own ``parameters:``. A plate that is asked for by
+thickness implements the through-hole of that thickness:
+
+.. code-block:: yaml
+
+  parts:
+    plate:
+      type: cadquery
+      parameters:
+        thickness: 3.0
+      implements:
+        "m-square-pattern;size=3,pitch=31,depth=%thickness%":
+
+Nothing else in a shape's declaration is touched: ``desc`` is prose and
+``fileUrl`` is a URL that may be percent-encoded, and neither is an expression.
 
 Interface examples
 ------------------

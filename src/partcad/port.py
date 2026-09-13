@@ -7,6 +7,7 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+from . import config as pc_config
 from . import telemetry
 from .interface import Interface
 
@@ -23,6 +24,27 @@ class WithPorts(Interface):
     ):
         super().__init__(name, project, config, config_section="implements")
         self.interfaces = None
+
+    # A shape's declaration is not an interface's: 'desc' is prose, 'fileUrl'
+    # is a URL that may be percent-encoded, and neither has parameters
+    # substituted into it. What a shape does declare about connections is where
+    # its ports are and which interfaces it implements, and those two are worth
+    # writing in terms of the shape's own dimensions.
+    EXPRESSION_SECTIONS = ("ports", "implements")
+
+    def expression_values(self, config: dict = None) -> dict:
+        """The names a '%...%' expression in a part's or an assembly's declaration may use.
+
+        A shape declares its construction parameters in 'parameters:' - it is
+        what 'cube;width=20' sets and what a CAD script is handed - so that is
+        the namespace here, where an interface's is its 'variables:'. The
+        result is that a part's own 'ports:' and its 'implements:' can be
+        written in terms of the part's dimensions: a port at '%width% / 2' is
+        on the edge of the part whatever width it was asked for.
+        """
+        if config is None:
+            config = self.config
+        return pc_config.parameter_values(config.get("parameters"))
 
     def get_interfaces(self):
         with self.lock:

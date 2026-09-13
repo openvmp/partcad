@@ -661,7 +661,14 @@ def info_object(session, params):
 
     package = params.get("package")
     object_name = params.get("object")
-    param_list = list(params.get("params") or [])
+    # '-p <name>=<value>' arrives as a list of strings; every accessor below
+    # takes a mapping. Built here rather than passed through, because a list
+    # reaches 'Project.get_object' as something it cannot merge.
+    param_dict = {}
+    for kv in params.get("params") or []:
+        if "=" in kv:
+            key, value = kv.split("=", 1)
+            param_dict[key] = value
 
     if object_name is None:
         package_name = ctx.resolve_package_path(package)
@@ -677,13 +684,13 @@ def info_object(session, params):
     path = "%s:%s" % (package, object_name)
 
     if params.get("assembly"):
-        obj = ctx.get_assembly(path, params=param_list)
+        obj = ctx.get_assembly(path, params=param_dict)
     elif params.get("scene"):
-        obj = ctx.get_scene(path, params=param_list)
+        obj = ctx.get_scene(path, params=param_dict)
     elif params.get("interface"):
-        obj = ctx.get_interface(path)
+        obj = ctx.get_interface(path, params=param_dict)
     elif params.get("sketch"):
-        obj = ctx.get_sketch(path, params=param_list)
+        obj = ctx.get_sketch(path, params=param_dict)
     elif params.get("software"):
         # Resolved through the package rather than through a context accessor:
         # software is not a shape, and none of what 'ctx.get_*' does for one -
@@ -691,7 +698,7 @@ def info_object(session, params):
         project = ctx.get_project(package)
         obj = project.get_software(object_name) if project is not None else None
     else:
-        obj = ctx.get_part(path, params=param_list)
+        obj = ctx.get_part(path, params=param_dict)
 
     if obj is None:
         pc.logging.error("Object %s not found" % path)
@@ -1135,7 +1142,7 @@ def inspect_object(session, params):
         elif params.get("scene"):
             obj = ctx.get_scene(path, params=param_dict)
         elif params.get("interface"):
-            obj = ctx.get_interface(path)
+            obj = ctx.get_interface(path, params=param_dict)
         elif params.get("sketch"):
             obj = ctx.get_sketch(path, params=param_dict)
         else:

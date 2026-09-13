@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import asyncio
 import copy
-import decimal
 import os
 import re
 import threading
@@ -29,12 +28,16 @@ from . import (
 from . import assembly_factory_alias as afa
 from . import (
     assembly_guide,
+)
+from . import config as pc_config
+from . import (
     consts,
 )
 from . import document as pc_document
 from . import (
     factory,
     interface,
+    interface_config,
 )
 from . import logging as pc_logging
 from . import (
@@ -828,11 +831,12 @@ class Project(project_config.Configuration):
         """The material of this package called 'material_name', or None.
 
         Built directly rather than through 'get_object' for the same reason
-        'get_interface' is: there is no factory to dispatch on a 'type', and no
-        parameters to instantiate a separate object for. What remains is the
-        two-step look under the lock that every kind needs - the object may
-        have been created while this thread waited for the lock, and creating a
-        second one would collide in 'register_object'.
+        'get_interface' is: there is no factory to dispatch on a 'type'. Unlike
+        an interface, a material has no parameters either, so there is no
+        instance to derive - what remains is the two-step look under the lock
+        that every kind needs, because the object may have been created while
+        this thread waited for the lock and creating a second one would collide
+        in 'register_object'.
         """
         with self.lock:
             existing = self.materials.get(material_name)
@@ -860,9 +864,38 @@ class Project(project_config.Configuration):
 
     def init_interfaces(self):
         for interface_name in self.object_names("interface"):
-            config = self.get_interface_config(interface_name)
-            config["name"] = interface_name
-            self.init_interface_by_config(config)
+            # Per interface, exactly as 'init_objects' does it and for the same
+            # reason: a declaration PartCAD cannot read costs the user that one
+            # interface rather than every object declared after it.
+            try:
+                self.init_interface_by_config(self.normalized_interface_config(interface_name))
+            except Exception as e:
+                self.record_broken_object("interface", interface_name, e)
+
+    def normalized_interface_config(self, interface_name: str, deep_copy: bool = False):
+        """The declaration of one interface, with its parameter section expanded.
+
+        Normalized in place, on the configuration the package holds, so that the
+        interface itself and every parametrized instance derived from it read
+        one expanded declaration rather than each expanding its own copy.
+        'deep_copy' hands back a copy of it instead, for a parametrized instance
+        - which fills values in, and would otherwise be filling them into the
+        template every other instance derives from.
+
+        The normalizing is under the package lock rather than the interface's
+        own, because the interface locks that guard the objects are keyed by the
+        *instance* name: two threads resolving 'm-thru;size=3' and
+        'm-thru;size=4' hold two different locks and would be rewriting the one
+        declaration they both derive from at the same time. Fetching the
+        declaration stays outside it: for a plugin-backed package that is a
+        request to the plugin, and this lock is not one to hold across I/O.
+        """
+        config = self.get_interface_config(interface_name)
+        with self.lock:
+            config = interface_config.InterfaceConfiguration.normalize(
+                interface_name, config, f"{self.name}:{interface_name}"
+            )
+            return copy.deepcopy(config) if deep_copy else config
 
     def init_interface_by_config(self, config, source_project=None):
         if source_project is None:
@@ -871,36 +904,96 @@ class Project(project_config.Configuration):
         interface_name: str = config["name"]
         self.register_object("interface", interface_name, interface.Interface(interface_name, source_project, config))
 
-    def get_interface(self, interface_name) -> interface.Interface:
+    def get_interface(self, interface_name, func_params=None) -> interface.Interface:
+        """The interface of this package called 'interface_name', or None.
+
+        The name may carry parameter values - 'm-thru;size=4,depth=3' - exactly
+        as a part's or a sketch's does, and 'func_params' adds to whatever the
+        name already says (that is what 'pc info -i -p size=4' passes). Each
+        distinct set of values is a distinct interface object, registered under
+        the canonical spelling of its name, so that two references asking for
+        the same values get the one interface and mate with each other.
+
+        Built here rather than through 'get_object' for the reason
+        'get_material' gives: there is no factory to dispatch on a 'type'. What
+        an interface does share with a shape is the parametrization, and that
+        part is shared code - 'parse_parameterized_name',
+        'format_parameterized_name' and 'apply_parameter_values' - rather than
+        a second implementation of it.
+        """
+        base_name, params = parse_parameterized_name(interface_name)
+        if func_params:
+            params = {**params, **func_params}
+        if params:
+            # Spelled the one way, before anything is looked up under it: an
+            # interface's name is what a mating is registered under, so
+            # 'm-thru;size=4' and 'm-thru;size=4.0' being two objects would be
+            # two halves of a connection that never find each other.
+            declared = (self.get_interface_config(base_name) or {}).get(interface_config.VARIABLES)
+            params = pc_config.canonical_parameter_values(declared, params, f"{self.name}:{base_name}")
+        result_name = format_parameterized_name(base_name, params)
+
         # Released before the interface's own lock is taken, for the reason
         # 'get_object' gives: 'init_interface_by_config' registers, and
         # 'register_object' takes this lock.
         with self.lock:
-            existing = self.interfaces.get(interface_name)
+            existing = self.interfaces.get(result_name)
         if existing is not None:
             return existing
 
-        with Project.InterfaceLock(self, interface_name):
+        with Project.InterfaceLock(self, result_name):
             # The same second look 'get_object' takes, for the same reason: the
             # interface may have been created while this thread waited for the
             # lock, and creating another would collide with it.
-            if self.interfaces.get(interface_name) is not None:
-                return self.interfaces[interface_name]
+            if self.interfaces.get(result_name) is not None:
+                return self.interfaces[result_name]
 
-            # This is just a regular interface name, no params (interface_name == result_name)
-            if interface_name not in self.interface_configs:
+            if base_name not in self.interface_configs:
                 # We don't know anything about such a interface
                 pc_logging.error(
                     "Interface '%s' not found in '%s'",
-                    interface_name,
+                    base_name,
                     self.name,
                 )
                 return None
             # This is not yet created (invalidated?)
-            config = self.get_interface_config(interface_name)
-            config["name"] = interface_name
-            self.init_interface_by_config(config)
-            return self.interfaces[interface_name]
+            if not params:
+                try:
+                    self.init_interface_by_config(self.normalized_interface_config(base_name))
+                except Exception as e:
+                    self.record_broken_object("interface", base_name, e)
+                    return None
+                return self.interfaces.get(result_name)
+
+            # A parametrized instance: the declaration is a template that every
+            # instance derives from, so it is copied rather than filled in -
+            # writing the values into it would make the next reference, and the
+            # unparametrized interface itself, inherit them.
+            config = self.normalized_interface_config(base_name, deep_copy=True)
+            full_object_name = f"{self.name}:{result_name}"
+            config = interface_config.InterfaceConfiguration.normalize(result_name, config, full_object_name)
+            config["orig_name"] = base_name
+            declared = config.get(interface_config.VARIABLES)
+            if not declared:
+                pc_logging.error(
+                    "Attempt to parametrize the interface '%s' of '%s', which declares no '%s'",
+                    base_name,
+                    self.name,
+                    interface_config.VARIABLES,
+                )
+                return None
+            try:
+                pc_config.apply_parameter_values(declared, params, result_name)
+            except Exception as e:
+                self.record_broken_object("interface", result_name, e)
+                return None
+
+            try:
+                self.init_interface_by_config(config)
+            except Exception as e:
+                self.record_broken_object("interface", result_name, e)
+                return None
+            return self.interfaces.get(result_name)
 
     def get_sketch_config(self, sketch_name):
         return self.object_config("sketch", sketch_name)
@@ -1723,38 +1816,9 @@ class Project(project_config.Configuration):
             config["orig_name"] = base_object_name
 
             # Fill in the parameter values
-            param_name: str
             if "parameters" in config and config["parameters"] is not None:
                 # Filling "parameters"
-                for param_name, param_value in params.items():
-                    if config["parameters"][param_name]["type"] == "string":
-                        config["parameters"][param_name]["default"] = str(param_value)
-                    elif config["parameters"][param_name]["type"] == "int":
-                        # A whole number written as one ('4.0', which is what a
-                        # YAML value of 4.0 spells) is what was meant; anything
-                        # with a fraction is not an integer and is refused
-                        # rather than silently truncated. Through 'Decimal'
-                        # rather than 'float' so that neither the test nor the
-                        # value loses precision on a large integer.
-                        value = decimal.Decimal(str(param_value))
-                        if value != value.to_integral_value():
-                            raise ValueError(
-                                "The parameter '%s' of '%s' is an integer, and '%s' is not one"
-                                % (param_name, result_name, param_value)
-                            )
-                        config["parameters"][param_name]["default"] = int(value)
-                    elif config["parameters"][param_name]["type"] == "float":
-                        config["parameters"][param_name]["default"] = float(param_value)
-                    elif config["parameters"][param_name]["type"] == "bool":
-                        if isinstance(param_value, str):
-                            if param_value.lower() == "true":
-                                config["parameters"][param_name]["default"] = True
-                            else:
-                                config["parameters"][param_name]["default"] = False
-                        else:
-                            config["parameters"][param_name]["default"] = bool(param_value)
-                    elif config["parameters"][param_name]["type"] == "array":
-                        config["parameters"][param_name]["default"] = param_value
+                pc_config.apply_parameter_values(config["parameters"], params, result_name)
             else:
                 # Filling "with"
                 if "with" not in config:

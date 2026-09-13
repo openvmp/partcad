@@ -8,9 +8,10 @@
 #
 
 import asyncio
-import re
 import threading
 
+from . import config as pc_config
+from . import expr, interface_config
 from . import logging as pc_logging
 from . import telemetry
 from .geom import Location
@@ -72,6 +73,10 @@ class InterfacePort:
     source_sketch_name: str
     source_sketch_spec: str
     sketch: Sketch = None
+    # The parameter values this port asks its sketch for, if any. Kept so that
+    # 'pc info' reports what the port was built from rather than only the name
+    # it resolved to.
+    sketch_params: dict
 
     def __init__(
         self,
@@ -80,8 +85,10 @@ class InterfacePort:
         config: dict = {},
         sketch: Sketch = None,
         location: Location = None,
+        sketch_params: dict = None,
     ):
         self.name = name
+        self.sketch_params = dict(sketch_params) if sketch_params else {}
 
         if location is not None:
             self.location = location
@@ -92,6 +99,21 @@ class InterfacePort:
             self.sketch = sketch
             self.source_project_name = self.sketch.project_name
         elif "sketch" in config:
+            # The values to build the sketch with. Declared beside the sketch
+            # ('params:') or spelled into its name ('m;size=3'); either way
+            # they end up as the parameters of the instance the port gets,
+            # which is what makes one sketch serve a whole family of ports
+            # instead of one pre-generated sketch per size.
+            declared_params = config.get("params") or {}
+            # Formatted the way an expression writes a value, so that the
+            # instance a port asks for is the instance somebody asking for it by
+            # hand gets: a size of 4.0 is the sketch 'm;size=4', not a second
+            # 'm;size=4.0' beside it.
+            self.sketch_params = {
+                **self.sketch_params,
+                **{param_name: expr.format_value(value) for param_name, value in declared_params.items()},
+            }
+
             if "project" in config:
                 self.source_project_name = config["project"]
                 if self.source_project_name == "this" or self.source_project_name == "":
@@ -110,11 +132,11 @@ class InterfacePort:
                     project.relocate(self.source_sketch_name),
                 )
                 self.source_sketch_spec = self.source_project_name + ":" + self.source_sketch_name
-                self.sketch = project.ctx.get_sketch(self.source_sketch_spec)
+                self.sketch = project.ctx.get_sketch(self.source_sketch_spec, self.sketch_params or None)
             else:
                 self.source_project_name = project.name
                 self.source_sketch_spec = self.source_project_name + ":" + self.source_sketch_name
-                self.sketch = project.get_sketch(self.source_sketch_name)
+                self.sketch = project.get_sketch(self.source_sketch_name, self.sketch_params or None)
 
     def __repr__(self):
         return f"<Port: {self.name}, location:{str(self.location)}>"
@@ -265,6 +287,13 @@ class Interface:
 
     params: dict[str, InterfaceParameter]
 
+    # The construction parameters of this interface and the values it was built
+    # with: what 'variables:' declares and what a reference such as
+    # 'm-thru;size=4,depth=3' asks for. Empty for an interface that declares
+    # none, which is every interface written before this existed.
+    variables: dict
+    variable_values: dict
+
     count: int
 
     def __init__(
@@ -276,6 +305,15 @@ class Interface:
     ):
         # TODO(clairbee): remove this circular dependency
         self.project = project
+
+        # The values this interface is built from, and the expressions that
+        # read them, resolved before anything below looks at the declaration.
+        # Everything after this point - the ports, their sketches, the
+        # interfaces inherited, what this one mates with - reads a declaration
+        # in which '%size%' is already the number it stands for.
+        self.variables = dict(config.get(interface_config.VARIABLES) or {})
+        self.variable_values = pc_config.parameter_values(self.variables)
+        config = self._resolve_expressions(config, name, project)
 
         self.config = config
         self.config_section = config_section
@@ -357,6 +395,69 @@ class Interface:
 
         self.project.ctx.stats_interfaces += 1
         self.lock = threading.RLock()
+
+    # The sections of a declaration that '%...%' expressions are resolved in.
+    #
+    # A list rather than "everything but 'variables'", because '%' is an
+    # ordinary character everywhere else: a percent-encoded URL and a
+    # description that mentions a percentage both contain pairs of them, and
+    # neither is an expression. What is here is what describes the connection -
+    # where its ports are, what it is built out of, what it mates with - which
+    # is what a parameter of an interface has anything to say about.
+    #
+    # 'physics' is deliberately not here. It is a table of simulation constants
+    # rather than a description of the connection's shape, and every one of its
+    # two dozen numbers would have to accept an expression in the schema for
+    # 'pc lint' to agree with what is accepted here.
+    EXPRESSION_SECTIONS = (
+        "desc",
+        "ports",
+        "inherits",
+        "implements",
+        "mates",
+        "parameters",
+        "leadPort",
+        "threadStep",
+        "selfScrew",
+        "multiConnect",
+        "motion",
+    )
+
+    def expression_values(self, config: dict = None) -> dict:
+        """The names a '%...%' expression in this declaration may use.
+
+        The interface's own construction parameters. A part or an assembly
+        declares the same thing in 'parameters:' - it is a shape, and that is
+        where a shape's parameters live - so 'WithPorts' answers with those
+        instead; see 'WithPorts.expression_values'.
+
+        'config' is passed while the object is still being built, before
+        'self.config' exists: resolving the declaration is the first thing
+        '__init__' does, because everything it reads afterwards has to be the
+        resolved text.
+        """
+        return self.variable_values
+
+    def _resolve_expressions(self, config: dict, name: str, project):
+        """Substitute this interface's parameter values into its declaration.
+
+        Only for an interface that declares parameters at all. An interface
+        that does not is handed back untouched, expressions and all: a package
+        written before any of this existed must not start reporting errors
+        about a percent sign it has always had.
+        """
+        if not isinstance(config, dict):
+            return config
+        values = self.expression_values(config)
+        if not values:
+            return config
+
+        where = "%s:%s" % (getattr(project, "name", "?"), name)
+        resolved = dict(config)
+        for key in self.EXPRESSION_SECTIONS:
+            if key in config:
+                resolved[key] = expr.resolve(config[key], values, where)
+        return resolved
 
     def matches(self, keyword: str) -> bool:
         if not keyword:
@@ -460,6 +561,11 @@ class Interface:
         self.inherits = {}
         self.get_ports()  # Make sure self.ports is initialized
 
+        # What this interface declares for itself, before anything is inherited
+        # into it. Read now rather than tested against the configuration later,
+        # because the parents are merged into the very dictionary being tested.
+        own_param_names = set(self.params.keys())
+
         # Initialize inheritance ("inherits" or "implements")
         inherits_config = self.config.get(self.config_section, None)
         if inherits_config is not None:
@@ -475,27 +581,20 @@ class Interface:
                 only is None or isinstance(only, str) or len(only) == 1
             )
 
-            for interface_name, interface_config in inherits_config.items():
-                # Resolve the parameter values in the interface name
-                def interface_template_resolve(m):
-                    tmpl = m.group(1)
-                    param_name = tmpl[0 : tmpl.index(":")]
-                    value = self.params[param_name].default
-                    if ":" in tmpl:
-                        expr = tmpl[tmpl.index(":") + 1 :]
-                        globals = {"__builtins__": {}}
-                        locals = {"value": value}
-                        value = eval(expr, globals, locals)
+            # The names of the interfaces inherited may be expressions over this
+            # interface's parameters. The freedom-of-movement parameters count
+            # here as well as the construction ones: '%moveX%' and
+            # '%moveX:value*2%' have named one since interfaces were introduced,
+            # and those two spellings are what 'partcad.expr' keeps working.
+            names = {
+                **{param_name: param.default for param_name, param in self.params.items()},
+                **self.expression_values(),
+            }
 
-                    return value
+            for interface_name, inherited_config in inherits_config.items():
+                interface_name = expr.resolve(interface_name, names, self.full_name)
 
-                interface_name = re.sub(
-                    "%([^%*]+)%",
-                    interface_template_resolve,
-                    interface_name,
-                )
-
-                inherit = InterfaceInherits(interface_name, self.project, interface_config)
+                inherit = InterfaceInherits(interface_name, self.project, inherited_config)
                 if inherit.interface is None:
                     pc_logging.error("Failed to inherit interface: %s" % interface_name)
                     continue
@@ -543,6 +642,7 @@ class Interface:
                             self.project,
                             sketch=port.sketch,
                             location=port_location,
+                            sketch_params=port.sketch_params,
                         )
 
                     # TODO(clairbee): prepend the instance name to the param name
@@ -555,6 +655,16 @@ class Interface:
                         param_name,
                         param,
                     ) in inherit.interface.params.items():
+                        # What this interface says about a parameter wins over
+                        # what it inherits about it. An M4 screw 12mm long
+                        # narrows the 'moveZ' it gets from the abstract 'm4' to
+                        # how far *this* screw can still be driven in, and
+                        # taking the parent's back would put the narrowing back
+                        # to nothing - which is what used to happen, silently,
+                        # to every interface that refined an inherited
+                        # parameter.
+                        if param_name in own_param_names:
+                            continue
                         self.params[param_name] = param
                     # pc_logging.debug("Result parameters: %s" % str(self.params))
 
@@ -615,6 +725,10 @@ class Interface:
             "parameters": list(self.params.values()),
             "inherits": self.get_parents(),
         }
+        if self.variables:
+            # What this instance was built from, not what could be asked for:
+            # 'pc info -i m-thru;size=4' has to show the 4 it resolved.
+            info["variables"] = dict(self.expression_values())
         if self.abstract:
             info["abstract"] = True
         if self.lead_port is not None:

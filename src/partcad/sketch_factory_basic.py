@@ -7,6 +7,8 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+from . import config as pc_config
+from . import expr
 from . import logging as pc_logging
 from . import sandbox_versions, shape_envelope, telemetry, wrapper
 from .sketch_factory import SketchFactory
@@ -30,13 +32,36 @@ class SketchFactoryBasic(SketchFactory):
         # outlines and inner cut-outs). They are forwarded verbatim to the
         # wrapper, which turns them into an OCCT face, and folded into the cache
         # hash here.
+        #
+        # "Verbatim" after the expressions in them have been resolved: a basic
+        # sketch has no script to hand its parameters to, so a '%...%' over them
+        # is the only way it can be parametric at all - and it is what lets one
+        # 'm' sketch serve every port of a parametrized interface instead of one
+        # pre-generated sketch per size. The resolved values are what goes into
+        # the hash, which is what makes two sizes two cache entries.
+        values = pc_config.parameter_values(config.get("parameters"))
         self.basic_config = {}
         for key in ("circle", "square", "rectangle", "inner"):
             if key in config:
-                self.basic_config[key] = config[key]
+                value = config[key]
+                if values:
+                    value = expr.resolve(value, values, "%s:%s" % (target_project.name, config["name"]))
+                self.basic_config[key] = value
 
         self._create(config)
         self.sketch.hash.add_dict(self.basic_config)
+
+    def info(self, sketch):
+        """The outline this sketch is built from, beside the usual shape info.
+
+        Reported because it is not what the declaration says any more once the
+        outline is written as an expression: 'circle: "%size / 2%"' of the
+        instance 'm;size=4' is a circle of radius 2, and that is the number
+        worth seeing.
+        """
+        info: dict = super().info(sketch)
+        info["outline"] = dict(self.basic_config)
+        return info
 
     async def instantiate(self, sketch):
         with pc_logging.Action("Basic", sketch.project_name, sketch.name):

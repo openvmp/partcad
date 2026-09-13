@@ -234,6 +234,34 @@ at all).
   `with_ports:`/`with_interfaces:` — which is `render_overlay.effective()`, and is how
   `examples/feature_interface` keeps four such drawings checked in.
 
+- **Parametric interfaces and ports** (`./src/partcad/expr.py`, `interface_config.py`, `interface.py`,
+  `Project.get_interface`): an interface is parametrized the way a part or a sketch is —
+  `m-thru;size=4,depth=3` names an instance, `Project.get_interface` builds it from the declaration as a
+  template, and the shared `parse_parameterized_name`/`format_parameterized_name`/`apply_parameter_values`
+  are what read the suffix, so there is one answer to what `;size=4` means. Two things about it are
+  load-bearing:
+
+  **The section is `variables:`, not `parameters:`.** An interface's `parameters:` has meant the freedom of
+  movement a connection keeps since interfaces existed (`InterfaceParameter`), and the two declarations look
+  alike — `{min: 0, max: 10, default: 5}` is a good spelling of either — so one section holding both would
+  have to guess, and guessing wrong is silent. `WithPorts` (a part or an assembly) answers the same question
+  with its own `parameters:`, because for a shape that section *is* the construction parameters; that is the
+  whole of `expression_values()`.
+
+  **The name is canonicalized before anything is looked up under it.** An interface's full name is what a
+  mating is registered under, so `m-thru;size=4` and `m-thru;size=4.0` being two objects would be two halves
+  of a connection that never find each other. `canonical_parameter_values` puts every value through the type
+  it is declared as and formats it back the way `expr.format_value` writes one — which is also how an
+  expression that produced it spelled it.
+
+  `expr.py` is the `%...%` syntax, generalized from the one `Interface.instantiate` used for inherited
+  interface names. It is not Jinja2 and cannot be: `partcad.yaml` is rendered as a Jinja2 template before it
+  is parsed, which is one step before the instance being asked for exists. Expressions are resolved only in
+  the sections named in `Interface.EXPRESSION_SECTIONS` (`WithPorts` narrows it to `ports` and `implements`),
+  because `%` is an ordinary character in a URL and in prose, and only for an object that declares parameters
+  at all — a package written before this must not start reporting errors about a percent sign it has always
+  had.
+
 - **Sandbox environment** (`./src/partcad/python_env.py`): importing `partcad` sweeps every `PYTHON*` variable
   out of `os.environ` and puts back only `PARTCAD_PYTHON_ENV`. Everything PartCAD spawns — the wrappers, `pip`,
   `-m venv`, conda — inherits that, which is why a sandbox interpreter runs with plain `-sOOu` rather than the

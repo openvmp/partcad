@@ -10,6 +10,7 @@
 from . import logging as pc_logging
 from . import telemetry
 from .geom import Location
+from .utils import format_parameterized_name, parse_parameterized_name
 
 
 @telemetry.instrument()
@@ -36,6 +37,14 @@ class InterfaceInherits:
         else:
             self.source_project_name = project.name
             self.source_interface_name = name
+
+        # A parametrized reference is canonicalized here rather than wherever it
+        # was written: 'm-thru;depth=3,size=4' and 'm-thru;size=4,depth=3' name
+        # one interface, and two spellings of it would be two keys in
+        # 'Interface.inherits' and two entries in a part's 'implements' - the
+        # same connection reported twice, and neither matching the other side.
+        base_name, reference_params = parse_parameterized_name(self.source_interface_name)
+        self.source_interface_name = format_parameterized_name(base_name, reference_params)
 
         self.name = self.source_project_name + ":" + self.source_interface_name
         pc_logging.debug("Fetching the interface %s" % self.name)

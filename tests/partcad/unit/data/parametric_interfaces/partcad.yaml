@@ -1,0 +1,112 @@
+desc: |
+  A package to exercise parametric interfaces and ports.
+
+  It is the metric fastener family written once instead of once per size: an
+  'm-thru;size=4,depth=3' is derived from the very same declaration an
+  'm-thru;size=3,depth=2' is, and the ports, the sketches and the matings of
+  each come out with the values it was asked for.
+
+sketches:
+  m:
+    desc: The boundary of an M%size% opening
+    type: basic
+    # A 'basic' sketch has no script to hand its parameters to, so the
+    # expression is how it reads them.
+    circle: "%size / 2%"
+    parameters:
+      size:
+        type: float
+        default: 3.0
+
+interfaces:
+  m:
+    desc: Abstract %size%mm circular interface
+    abstract: true
+    variables:
+      size:
+        type: float
+        default: 3.0
+    # The coarse metric pitch is close enough to a fifth of the diameter for
+    # the sizes this package is about, and this is a test package.
+    threadStep: "%size * 0.2%"
+    ports:
+      m:
+        location: [[0, 0, 0], [0, 0, 1], 0]
+        sketch: m
+        params:
+          size: "%size%"
+    parameters:
+      # A round opening may be entered at any angle, and the depth is whatever
+      # the interface that inherits this one says it is.
+      turnZ: [0, 360, 0]
+      moveZ: {}
+
+  m-opening:
+    desc: Abstract %size%mm circular opening
+    abstract: true
+    variables:
+      size: 3.0
+    inherits:
+      "m;size=%size%": opening
+
+  m-thru:
+    desc: "%depth%mm thick through hole of %size%mm diameter"
+    variables:
+      size: 3.0
+      depth: 3.0
+    inherits:
+      "m-opening;size=%size%": thru
+    mates:
+      - "m-screw;size=%size%"
+
+  m-screw:
+    desc: "%length%mm long M%size% screw"
+    variables:
+      size: 3.0
+      length: 6.0
+    inherits:
+      "m;size=%size%": screw
+    parameters:
+      # How deep the screw may still be driven in. An expression over this
+      # interface's own variables, resolved before the freedom of movement is
+      # read out of it.
+      moveZ:
+        min: 0
+        max: "%length - 2%"
+        default: 0
+
+  m-square-pattern:
+    desc: Four %size%mm holes on the corners of a %pitch%mm square
+    variables:
+      size: 3.0
+      pitch: 31.0
+      depth: 3.0
+    inherits:
+      "m-thru;size=%size%,depth=%depth%":
+        TL: [["%-pitch / 2%", "%pitch / 2%", 0], [0, 0, 1], 270]
+        TR: [["%pitch / 2%", "%pitch / 2%", 0], [0, 0, 1], 180]
+        BL: [["%-pitch / 2%", "%-pitch / 2%", 0], [0, 0, 1], 0]
+        BR: [["%pitch / 2%", "%-pitch / 2%", 0], [0, 0, 1], 90]
+
+  plain:
+    desc: An interface with no parameters at all, to keep the old path honest
+    ports:
+      plain:
+        sketch: m
+
+parts:
+  plate:
+    type: cadquery
+    desc: A plate with a NEMA-17 bolt pattern through it
+    implements:
+      "m-square-pattern;size=3,pitch=31,depth=%thickness%":
+    parameters:
+      thickness:
+        type: float
+        default: 3.0
+
+  screw:
+    type: cadquery
+    desc: An M3 screw
+    implements:
+      "m-screw;size=3,length=6": [[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], 180.0]
