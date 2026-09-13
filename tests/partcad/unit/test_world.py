@@ -31,9 +31,9 @@ sys.path.append(os.path.join(os.path.dirname(pc.__file__), "builtin", "export"))
 sys.path.append(os.path.join(os.path.dirname(pc.__file__), "builtin", "import"))
 
 import gazebo_common  # noqa: E402
+import import_world  # noqa: E402
 import primitive_shapes  # noqa: E402
 import urdf_common  # noqa: E402
-import import_world  # noqa: E402
 
 EXAMPLES = "examples"
 WORLD_EXAMPLE = os.path.join(EXAMPLES, "produce_scene_assy", "warehouse.world")
@@ -160,13 +160,14 @@ def test_the_geometry_not_placed_is_kept_as_parts_of_its_own(no_occt):
 
 
 def test_ignore_collision_builds_from_the_visual_geometry_instead(no_occt):
-    result = import_world.process(None, 
+    result = import_world.process(
+        None,
         {
             "source_file": WORLD_EXAMPLE,
             "output_folder": "unused",
             "search_paths": [],
             "ignoreCollision": True,
-        }
+        },
     )
 
     pallet = result["root"]["links"][0]["links"][0]
@@ -227,12 +228,13 @@ def test_an_include_that_resolves_is_read(tmp_path):
         <uri>model://pallet</uri><name>left</name><pose>1 0 0 0 0 0</pose>
         </include></world></sdf>""")
 
-    result = import_world.process(None, 
+    result = import_world.process(
+        None,
         {
             "source_file": str(world),
             "output_folder": str(tmp_path),
             "search_paths": [str(tmp_path / "models")],
-        }
+        },
     )
     node = result["root"]["links"][0]
     assert node["model"] == "left"
@@ -254,8 +256,8 @@ def test_an_included_file_with_more_than_one_model_says_which_one_it_placed(tmp_
     world.write_text("""<sdf version="1.9"><world name="w">
         <include><uri>model://pair</uri></include></world></sdf>""")
 
-    result = import_world.process(None, 
-        {"source_file": str(world), "output_folder": str(tmp_path), "search_paths": [str(tmp_path / "models")]}
+    result = import_world.process(
+        None, {"source_file": str(world), "output_folder": str(tmp_path), "search_paths": [str(tmp_path / "models")]}
     )
 
     assert result["dropped"]["include"] == 1
@@ -278,8 +280,8 @@ def test_a_model_nested_in_an_included_one_is_read_rather_than_counted_as_droppe
     world.write_text("""<sdf version="1.9"><world name="w">
         <include><uri>model://stack</uri></include></world></sdf>""")
 
-    result = import_world.process(None, 
-        {"source_file": str(world), "output_folder": str(tmp_path), "search_paths": [str(tmp_path / "models")]}
+    result = import_world.process(
+        None, {"source_file": str(world), "output_folder": str(tmp_path), "search_paths": [str(tmp_path / "models")]}
     )
 
     # 'summary()' keeps only the non-zero counters, so nothing dropped is no key.
@@ -670,8 +672,8 @@ def test_a_world_written_here_reads_back_as_the_same_arrangement(export_world, t
     path = tmp_path / "bench.world"
     export_world.process(str(path), {"wrapped": root, "properties": properties})
 
-    result = import_world.process(None, 
-        {"source_file": str(path), "output_folder": str(tmp_path / "gen"), "search_paths": []}
+    result = import_world.process(
+        None, {"source_file": str(path), "output_folder": str(tmp_path / "gen"), "search_paths": []}
     )
 
     models = result["root"]["links"]

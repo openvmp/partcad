@@ -163,6 +163,7 @@ def produces_own_parts(kind: str, type_name) -> bool:
         return True
     return type_name not in factory.all.get(kind, {})
 
+
 # How often a caller waiting on somebody else's derived-part build looks again.
 # It waits for a CAD build, so the granularity costs nothing next to what it is
 # waiting for; what matters is that the wait yields to the loop instead of

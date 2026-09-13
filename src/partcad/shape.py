@@ -19,12 +19,12 @@ from typing import TYPE_CHECKING, Optional
 
 from . import cae as pc_cae
 from . import logging as pc_logging
+from . import material as pc_material
 from . import output, render_overlay
 from . import runtime as pc_runtime
 from . import sandbox_versions, wrapper
 from .cache_hash import CacheHash
 from .cache_shape import properties_key
-from . import material as pc_material
 from .shape_config import ShapeConfiguration
 from .utils import total_size
 

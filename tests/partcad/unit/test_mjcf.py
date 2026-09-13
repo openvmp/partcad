@@ -32,10 +32,10 @@ sys.path.append(os.path.join(os.path.dirname(pc.__file__), "wrappers"))
 sys.path.append(os.path.join(os.path.dirname(pc.__file__), "builtin", "export"))
 sys.path.append(os.path.join(os.path.dirname(pc.__file__), "builtin", "import"))
 
+import import_mjcf  # noqa: E402
 import mujoco_common  # noqa: E402
 import primitive_shapes  # noqa: E402
 import urdf_common  # noqa: E402
-import import_mjcf  # noqa: E402
 
 EXAMPLES = "examples"
 STL_EXAMPLE = os.path.abspath(os.path.join(EXAMPLES, "produce_part_stl", "cube.stl"))

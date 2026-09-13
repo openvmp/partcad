@@ -191,6 +191,7 @@ def test_every_built_in_package_validates_against_partcads_own_schema():
     and this is what says so.
     """
     import jsonschema
+
     from partcad.lint.all import get_partcad_schema
 
     schema = get_partcad_schema()

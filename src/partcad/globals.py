@@ -54,11 +54,6 @@ from .plugin_factory_repository_basic import PluginFactoryRepositoryBasic
 from .plugin_factory_repository_enrich import PluginFactoryRepositoryEnrich
 from .scene import Scene
 from .scene_factory import SceneFactoryAlias, SceneFactoryAssy, SceneFactoryEnrich
-from .sketch_factory_basic import SketchFactoryBasic
-from .sketch_factory_cadquery import SketchFactoryCadquery
-from .sketch_factory_build123d import SketchFactoryBuild123d
-from .sketch_factory_dxf import SketchFactoryDxf
-from .sketch_factory_svg import SketchFactorySvg
 from .sketch_factory_alias import SketchFactoryAlias
 from .sketch_factory_basic import SketchFactoryBasic
 from .sketch_factory_build123d import SketchFactoryBuild123d
