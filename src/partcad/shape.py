@@ -1729,7 +1729,7 @@ class Shape(ShapeConfiguration):
                 boundary = await self._analysis_boundary_async(ctx, config)
                 script = await self._materialize_output_script(ctx, impl)
 
-                request = await self._output_request(obj, impl, kwargs)
+                request = await self._output_request(ctx, obj, impl, kwargs)
                 request.update(config.to_data())
                 # The ports each condition landed on, in the shape's own
                 # coordinate system. 'fix' and 'load' above say what the user

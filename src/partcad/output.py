@@ -678,11 +678,20 @@ async def materialize_script(ctx, impl) -> str:
             # that somebody forgot a 'path'. Name both knobs and say which is
             # which: the user configuration holds the default, and
             # '--implementation' overrides one run.
+            if impl.section == CAE:
+                raise Exception(
+                    "No implementation of '%s' is declared. Name one in a 'cae:' section, "
+                    "override it for one run with 'pc cae %s --implementation <package>:<type>', "
+                    "or set the default in the 'cae%sImplementation' user configuration option"
+                    % (impl.format_name, impl.format_name, impl.format_name.capitalize())
+                )
+            # Every other section with no built-in. A simulation plugin has no
+            # '--implementation' flag and no user-configuration default to name,
+            # so saying it has both sends the reader looking for switches that
+            # do not exist.
             raise Exception(
-                "No implementation of '%s' is declared. Name one in a '%s:' section, "
-                "override it for one run with 'pc cae %s --implementation <package>:<type>', "
-                "or set the default in the 'cae%sImplementation' user configuration option"
-                % (impl.format_name, impl.section, impl.format_name, impl.format_name.capitalize())
+                "No implementation of '%s' is declared: name one with a 'path' in a '%s:' section, "
+                "or import a package that provides it" % (impl.format_name, impl.section)
             )
         raise Exception(
             "No implementation of '%s' is declared: neither %s nor this package provides a 'path'"

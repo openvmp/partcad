@@ -447,10 +447,15 @@ async def _run_plugin_async(ctx, impl, directory: str, scene_file: str, declarat
         os.path.abspath(impl.project.config_dir),
     ]
     exitcode, response_serialized, errors = await runtime.run_async(command, shape_envelope.serialize(request))
-    if exitcode != 0 and not errors:
-        errors = "the simulation failed with exit code %s" % exitcode
-    if errors:
-        raise Exception(errors)
+    # Only on a non-zero exit. 'RuntimePython' clears stderr for a run it
+    # considers successful, but it decides that on the raw 'returncode' -
+    # *before* normalizing the two Windows fault codes it deliberately forgives
+    # (see 'run_async_onced_locked'). So a forgiven crash arrives here as
+    # exitcode 0 with stderr still set, and raising on stderr alone would fail a
+    # run the runtime just decided to let through. A wrapper that really failed
+    # says so in its result, which the 'success' check below reads.
+    if exitcode != 0:
+        raise Exception(errors or "the simulation failed with exit code %s" % exitcode)
 
     if not response_serialized.strip():
         raise Exception("the simulation produced no result")

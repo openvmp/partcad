@@ -84,8 +84,15 @@ converted: file in, file out, `needs_context=False`, nothing left on
 the daemon to go stale, and no new method in the registry. The window still opens here. Which types are meshes,
 and which are scene descriptions,
 is `partcad_client.object_types` -- an inlined copy of PartCAD's tables, so the client stays cheap to import,
-with `tests/partcad/unit/test_client_object_types.py` failing when the copy drifts. This is the only daemon
-call an in-process command makes, and `IN_PROCESS_DAEMON_CALLS` in
+with `tests/partcad/unit/test_client_object_types.py` failing when the copy drifts.
+
+`pc open` makes one other daemon call, `open.tools`, and for the same kind of reason: **which** applications
+exist is a fact about the packages a workspace imports, and only the daemon has the package graph. PartCAD's
+own five are read straight off disk out of the wheel, so the call is made only where a `partcad.yaml` is
+actually found — a `pc open` outside a workspace starts no daemon and creates no context. The daemon says
+which applications there are; it never opens one, and there is still no method that opens a file.
+
+Those two are the only daemon calls an in-process command makes, and `IN_PROCESS_DAEMON_CALLS` in
 `tests/partcad_cli/unit/test_command_boundary.py` is where it is written down -- one method at a time, so
 widening it is a decision somebody makes on purpose.
 

@@ -1,5 +1,5 @@
-Simulation, URDF and SDFormat
-#############################
+Simulation, URDF, SDFormat and MJCF
+###################################
 
 PartCAD can read a `URDF <https://wiki.ros.org/urdf>`_ file as an assembly
 (``type: urdf``), write one back out (``pc export -t urdf``), and convert an

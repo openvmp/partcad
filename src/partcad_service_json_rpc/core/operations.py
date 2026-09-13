@@ -1103,8 +1103,24 @@ def simulate_run(session, params):
             )
         )
 
+    # Asking for something in particular and matching nothing is a failure;
+    # walking a tree that happens to declare no simulation is not. The two look
+    # identical here - an empty result list - and only the request tells them
+    # apart, so it is the request that is consulted. Without this, 'pc sim -a'
+    # on a name that does not exist reports success and exits 0.
+    asked_for = [params.get("object"), params.get("assembly"), params.get("filter")]
+    named_one = any(value for value in asked_for)
+
+    unmatched = False
     if not results:
-        pc.logging.info("Nothing declares a 'simulate:' section here")
+        if named_one:
+            unmatched = True
+            pc.logging.error(
+                "Nothing here declares a 'simulate:' section matching %s"
+                % ", ".join("'%s'" % value for value in asked_for if value)
+            )
+        else:
+            pc.logging.info("Nothing declares a 'simulate:' section here")
     for result in results:
         pc.logging.info(_simulation_line(result))
     failed = [result for result in results if result.failed]
@@ -1115,7 +1131,7 @@ def simulate_run(session, params):
         "failed": len(failed),
         # What the CLI exits non-zero on, said once here rather than derived
         # from the list by every caller.
-        "ok": not failed,
+        "ok": not failed and not unmatched,
     }
 
 

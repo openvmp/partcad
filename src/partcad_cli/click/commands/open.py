@@ -53,6 +53,8 @@ import os
 
 import rich_click as click
 
+from partcad_utils.workspace import determine_root_path
+
 from ..service import run
 
 
@@ -131,17 +133,24 @@ def cli(click_ctx, tool: str, object_type: str, use_docker: bool, docker_image: 
 
     # Which applications exist is the one thing here that needs the package
     # graph, so it is the one thing asked of the daemon besides the conversion
-    # below. Best effort: PartCAD's own applications ship in this same wheel and
-    # are read off disk, so a daemon that is not running costs only the tools a
-    # *package* declares -- and a machine with no workspace has none.
-    try:
-        declared = run(click_ctx.obj, "open.tools", {}, needs_context=True)
-        external.use_tools((declared or {}).get("tools"))
-    except Exception as e:  # pylint: disable=broad-except
-        # Not a failure to open anything: the built-in table is still there, and
-        # the name the user asked for is most likely in it.
-        if not as_json:
-            click.echo("Could not ask the daemon which applications packages declare: %s" % e, err=True)
+    # below. PartCAD's own applications ship in this same wheel and are read
+    # off disk, so only the ones a *package* declares are asked for.
+    #
+    # And only where there is a package to have declared one. Asking creates a
+    # context on the daemon -- starting one if none is running -- and a
+    # `pc open` outside any workspace has no packages to ask about, so it would
+    # be paying for a service, a daemon and a persisted context to be told
+    # nothing. That is the contract this command keeps: it is handed a path, the
+    # file is already on disk, and opening it needs neither.
+    if os.path.isfile(os.path.join(determine_root_path(), "partcad.yaml")):
+        try:
+            declared = run(click_ctx.obj, "open.tools", {}, needs_context=True)
+            external.use_tools((declared or {}).get("tools"))
+        except Exception as e:  # pylint: disable=broad-except
+            # Not a failure to open anything: the built-in table is still there,
+            # and the name the user asked for is most likely in it.
+            if not as_json:
+                click.echo("Could not ask the daemon which applications packages declare: %s" % e, err=True)
 
     try:
         result = external.open_file(

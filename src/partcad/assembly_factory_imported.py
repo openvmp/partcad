@@ -212,9 +212,11 @@ class AssemblyFactoryImported(AssemblyFactoryFile):
             os.path.abspath(self.impl.project.config_dir),
         ]
         exitcode, response_serialized, errors = await runtime.run_async(command, shape_envelope.serialize(request))
-        if exitcode != 0 and not errors:
-            errors = "reading the %s failed with exit code %s" % (self.noun, exitcode)
-        if errors:
+        # Only on a non-zero exit; see the note in 'partcad.simulation'. The
+        # runtime clears stderr for a run it forgave, but decides that before
+        # normalizing the Windows fault codes, so stderr alone is not a failure.
+        if exitcode != 0:
+            errors = errors or "reading the %s failed with exit code %s" % (self.noun, exitcode)
             pc_logging.error(errors)
             raise Exception(errors)
 
