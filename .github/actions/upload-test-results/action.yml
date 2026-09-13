@@ -28,6 +28,11 @@ inputs:
       parallel-mode parts (".coverage.<host>.<pid>.<n>") and no combined
       ".coverage" at all. Both are data files the merge can read, so the pattern
       is what gets uploaded and the merge unions whatever arrives.
+
+      That holds for the jobs running "coverage run" themselves. The "Pytest"
+      job measures through pytest-cov, which writes nothing when its session
+      fails -- so there the glob matches nothing and the step says so, which is
+      the honest outcome rather than a broken one.
     required: false
     default: ""
 

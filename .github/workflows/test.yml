@@ -962,6 +962,14 @@ jobs:
       # Skipping the upload instead loses a whole job's coverage from the report
       # -- and, because the requirement's floor is the project's own rate, moves
       # the bar rather than just the number.
+      #
+      # With one exception, measured rather than assumed: the "Pytest" job. It
+      # measures through pytest-cov, which writes nothing at all when its session
+      # fails -- not a partial ".coverage", not the parallel parts it keeps
+      # during the run. So there this condition preserves nothing and costs
+      # nothing; what it actually saves is the jobs driving "coverage run"
+      # directly (Behave, both example sweeps, "Repo //pub"), because coverage.py
+      # writes its data whatever the program under it did.
       - name: Upload test results and coverage data
         if: always()
         uses: ./.github/actions/upload-test-results
@@ -1112,6 +1120,14 @@ jobs:
       # Skipping the upload instead loses a whole job's coverage from the report
       # -- and, because the requirement's floor is the project's own rate, moves
       # the bar rather than just the number.
+      #
+      # With one exception, measured rather than assumed: the "Pytest" job. It
+      # measures through pytest-cov, which writes nothing at all when its session
+      # fails -- not a partial ".coverage", not the parallel parts it keeps
+      # during the run. So there this condition preserves nothing and costs
+      # nothing; what it actually saves is the jobs driving "coverage run"
+      # directly (Behave, both example sweeps, "Repo //pub"), because coverage.py
+      # writes its data whatever the program under it did.
       - name: Upload test results and coverage data
         if: always()
         uses: ./.github/actions/upload-test-results
@@ -1302,6 +1318,14 @@ jobs:
       # Skipping the upload instead loses a whole job's coverage from the report
       # -- and, because the requirement's floor is the project's own rate, moves
       # the bar rather than just the number.
+      #
+      # With one exception, measured rather than assumed: the "Pytest" job. It
+      # measures through pytest-cov, which writes nothing at all when its session
+      # fails -- not a partial ".coverage", not the parallel parts it keeps
+      # during the run. So there this condition preserves nothing and costs
+      # nothing; what it actually saves is the jobs driving "coverage run"
+      # directly (Behave, both example sweeps, "Repo //pub"), because coverage.py
+      # writes its data whatever the program under it did.
       - name: Upload test results and coverage data
         if: always()
         uses: ./.github/actions/upload-test-results

@@ -398,7 +398,9 @@ and nothing else; that prefix is the whole contract. Two details there are load-
 incidental: the value is a **glob** (`.coverage*`) and the step runs on `always()`, because a suite that died
 mid-run never reached its own `coverage combine` and what is on disk then is the parallel-mode parts — so a
 bare filename on a `success()` step silently drops a whole job from the merge, and with it moves the
-requirement's floor. The merge also **records every in-scope file no job imported, at nought percent**, before
+requirement's floor. That holds for the jobs driving `coverage run` themselves; the `Pytest` job measures
+through pytest-cov, which writes **nothing** when its session fails, so a failed `Pytest` contributes no
+coverage and no arrangement of the upload step changes that. The merge also **records every in-scope file no job imported, at nought percent**, before
 writing any report: coverage.py reports the files it saw, so without that a brand-new module with no test at
 all is absent from the data rather than zero in it, and the gate finds nothing to hold it to.
 

@@ -188,7 +188,12 @@ def test_the_packages_the_report_groups_by_are_the_packages_that_exist(report_mo
     missing from the list is not an error, it is a row that quietly stops
     appearing -- its files land in `(elsewhere)` and nobody reads that row.
     """
-    on_disk = {f"src/{path.name}" for path in (REPO_ROOT / "src").iterdir() if path.is_dir()}
+    # A *package*, not a directory. An editable install puts `src/partcad.egg-info`
+    # beside the six, and `__pycache__` appears the moment anything imports them
+    # -- neither is code coverage has an opinion about. Written as `is_dir()` at
+    # first, which passed on a clean checkout and failed on every CI runner,
+    # because CI is where something has run `pip install -e .`.
+    on_disk = {f"src/{path.name}" for path in (REPO_ROOT / "src").iterdir() if (path / "__init__.py").is_file()}
     listed = {package for package in report_module.PACKAGES if package.startswith("src/")}
     assert listed == on_disk
     assert "cad/freecad" in report_module.PACKAGES
