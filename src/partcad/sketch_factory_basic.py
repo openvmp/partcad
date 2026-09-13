@@ -28,7 +28,7 @@ class SketchFactoryBasic(SketchFactory):
             config,
         )
 
-        # The shape parameters that define this sketch (circle/square/rectangle
+        # The shape parameters that define this sketch (circle/square/rectangle/slot
         # outlines and inner cut-outs). They are forwarded verbatim to the
         # wrapper, which turns them into an OCCT face, and folded into the cache
         # hash here.
@@ -41,7 +41,7 @@ class SketchFactoryBasic(SketchFactory):
         # the hash, which is what makes two sizes two cache entries.
         values = pc_config.parameter_values(config.get("parameters"))
         self.basic_config = {}
-        for key in ("circle", "square", "rectangle", "inner"):
+        for key in ("circle", "square", "rectangle", "slot", "inner"):
             if key in config:
                 value = config[key]
                 if values:

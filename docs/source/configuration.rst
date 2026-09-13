@@ -643,15 +643,43 @@ The basic sketches are defined using the following syntax:
         side-y: <y edge size>
         x: <(optional) x offset>
         y: <(optional) y offset>
-      inner: <(optional) inner shape>
+      slot: <(optional)>
+        length: <overall length, measured over the rounded ends>
+        width: <width, which is the diameter of those ends>
+        x: <(optional) x offset>
+        y: <(optional) y offset>
+        angle: <(optional) degrees to turn it about its own centre, 0 = along X>
+      inner: <(optional) the shapes cut out of the one above>
         circle: <(optional) radius>
            ...
         square: <(optional) edge size>
            ...
         rectangle: <(optional)>
            ...
+        slot: <(optional)>
+           ...
+        circles: <(optional) several of them at once>
+          - ...
+        squares: ...
+        rectangles: ...
+        slots: ...
 
-There must be only one field ``circle``, ``square`` or ``rectangle`` at the top level of the sketch or in the ``inner`` field.
+There must be only one field ``circle``, ``square``, ``rectangle`` or ``slot`` at the top level of the sketch.
+Inside ``inner`` each shape may be given once by its own name, and several at a time in the plural list beside it.
+
+A **slot** is a rectangle with semicircular ends -- two arcs and two lines --
+which is what a slotted hole is. ``length`` is measured over those ends, the way
+a drawing dimensions it, so a slot as long as it is wide is a circle rather than
+an error. ``angle`` turns it about its own centre; it is the only one of these
+shapes whose direction is part of what it is.
+
+.. code-block:: yaml
+
+  sketches:
+    m4-slotted-30:
+      desc: The boundary of an M4 hole slotted 30mm along X
+      type: basic
+      slot: { length: 30.0, width: 4.0 }
 
 DXF
 ---

@@ -90,6 +90,7 @@ ENRICH_IGNORED_PROPERTIES = frozenset(
         "circle",
         "rectangle",
         "square",
+        "slot",
         "inner",
         "include",
         "exclude",
