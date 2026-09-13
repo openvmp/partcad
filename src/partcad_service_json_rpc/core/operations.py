@@ -673,8 +673,17 @@ def info_object(session, params):
             pc.logging.info("INFO: %s: %s" % (k, pformat(v)))
         return None
 
-    package, object_name = pc.utils.resolve_resource_path(ctx.get_current_project_path(), object_name)
-    path = "%s:%s" % (package, object_name)
+    # Resolve the object against the package '--package' names, not against the
+    # current one: 'get_current_project_path()' as the base drops the flag for
+    # every object name that does not carry a '//package:' prefix of its own,
+    # which is the ordinary way to spell one. A name that does carry a prefix
+    # still wins over the flag -- that is what '_resolve_object' documents, and
+    # what the no-object branch above already does with the same flag.
+    resolved = _resolve_object(ctx, pc, params)
+    if resolved is None:
+        return None
+    package, object_name = resolved
+    path = _qualified(package, object_name)
 
     if params.get("assembly"):
         obj = ctx.get_assembly(path, params=param_list)

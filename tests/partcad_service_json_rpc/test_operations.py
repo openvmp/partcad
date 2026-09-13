@@ -1000,6 +1000,55 @@ def test_info_object_reports_a_missing_object():
     assert session.partcad.logging.messages("error") == ["Object //:missing not found"]
 
 
+def test_info_object_looks_the_object_up_in_the_requested_package():
+    # '--package' selected the package; a bare object name is that package's,
+    # not the current one's.
+    session, _ = make_session()
+    session.partcad_ctx.projects["//sub"] = FakeProject(name="//sub")
+    session.partcad_ctx.shapes[("part", "//sub:widget")] = FakeObject(
+        "widget",
+        config={"kind": "part"},
+        info={"Path": "//sub"},
+    )
+
+    operations.info_object(session, {"package": "//sub", "object": "widget"})
+
+    assert session.partcad.logging.messages("error") == []
+    assert session.partcad.logging.messages("info") == [
+        "CONFIGURATION: {'kind': 'part'}",
+        "INFO: Path: '//sub'",
+    ]
+
+
+def test_info_object_lets_a_qualified_object_name_win_over_the_requested_package():
+    # An object given as '//other:name' is that package's object, whatever
+    # '--package' said -- the same rule every other object operation follows.
+    session, _ = make_session()
+    session.partcad_ctx.projects["//sub"] = FakeProject(name="//sub")
+    session.partcad_ctx.shapes[("part", "//:widget")] = FakeObject(
+        "widget",
+        config={"kind": "part"},
+        info={"Path": "//"},
+    )
+
+    operations.info_object(session, {"package": "//sub", "object": "//:widget"})
+
+    assert session.partcad.logging.messages("info") == [
+        "CONFIGURATION: {'kind': 'part'}",
+        "INFO: Path: '//'",
+    ]
+
+
+def test_info_object_reports_a_missing_package_of_a_named_object():
+    # The package is what is wrong here, so that is what is reported -- rather
+    # than an "object not found" naming a package the request never selected.
+    session, _ = make_session()
+
+    operations.info_object(session, {"package": "//nope", "object": "widget"})
+
+    assert session.partcad.logging.messages("error") == ["Package //nope is not found"]
+
+
 # ---- package loading -------------------------------------------------------
 #
 # The operations that answer "which package is loaded, and what is in it". They
