@@ -718,6 +718,52 @@ nobody is watching any more, so it needs a reason there and the same reason
 where a reader of that package will meet it. See ``examples/feature_render_custom``,
 whose SVG and PDF are the only entries today.
 
+Coverage
+^^^^^^^^
+
+Every suite above measures coverage, and no one of those measurements means much on its own: the ``Pytest``
+job never starts a CAD sandbox, ``Behave`` drives the installed ``pc`` and never imports a unit-test helper,
+and the example sweeps walk success paths only. CI merges them. The ``Coverage`` job runs after every suite,
+combines the raw ``.coverage`` data each one uploaded, and publishes the result three ways:
+
+- the ``coverage-html-report`` artifact on the run -- download it, unpack it and open ``htmlcov/index.html``;
+- **one comment** on the pull request, edited in place on every push, with the project rate, the patch rate and
+  the changed statements nothing exercised;
+- the ``Coverage`` check itself, which is the only thing here that can fail your pull request.
+
+This replaced Codecov, and there is no third-party service in it any more. The merge is
+``coverage combine`` over the data files, which is a **union of line numbers**, not an average of percentages:
+a line ``Behave`` hit on Windows and ``Pytest`` missed on Linux is covered once. What lets it see those as one
+file is the ``[paths]`` section of ``dev-tools/coverage.rc``, which maps the three roots the same file is
+recorded under -- the checkout, ``site-packages``, and either of those with Windows separators -- onto one.
+
+**The requirement is a floor under patch coverage.** "Patch" is the statements your pull request added or
+changed, and the floor is the project's own statement coverage *in the same run*: cover what you write at
+least as well as this repository is already covered. Nothing is stored between runs and nothing is compared
+against history, so there is no baseline to maintain and no way for the bar to drift. A change that touches no
+statement coverage measures -- documentation, workflows, a test -- has no patch to hold to it and passes with
+a notice saying so.
+
+Lines that are not statements are in neither half of that fraction: a comment, a blank line, or a file the
+``include`` list in ``dev-tools/coverage.rc`` does not name. The figure answers "is the new code exercised",
+not "how much did you type".
+
+To see the same numbers locally, run whichever suites your change touches and then merge what they wrote:
+
+.. code-block:: bash
+
+    $ poetry run coverage run --rcfile=dev-tools/coverage.rc --data-file=.coverage.pytest -m pytest tests
+    $ poetry run python dev-tools/ci/coverage_report.py merge --data-dir . --diff-base origin/devel
+    $ poetry run python dev-tools/ci/coverage_report.py render --summary coverage-report/summary.json
+    $ open coverage-report/htmlcov/index.html
+
+Two notes on the comment. It is posted by the run itself, so on a pull request **from a fork** it does not
+appear: GitHub gives such a run a read-only token, on purpose, and no setting here changes that. The report is
+in the ``Coverage`` job's summary instead, and the requirement still gates. And ``CI-Dev`` measures coverage
+too but does not feed this report -- a ``needs:`` does not reach across workflows, so there is no moment at
+which ``CI`` knows that run has finished. Its suites are the same suites run in the dev container; it keeps
+publishing its own ``coverage.xml`` inside its test-results artifact.
+
 Commit & Push Changes
 ---------------------
 

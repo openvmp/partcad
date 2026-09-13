@@ -295,17 +295,13 @@ jobs:
             poetry --no-ansi --no-interaction show --tree
             poetry --no-ansi --no-interaction run python -m pytest -x -p no:error-for-skips -p no:warnings  --ignore-glob="openscad*" --ignore-glob="ide/vscode/bundled" --dist no --verbose --color=no
 
-      - name: Upload test results & coverage reports to github and codecov
+      - name: Upload test results
         if: always()
         uses: ./.github/actions/upload-test-results
         with:
           name: pytest-results
           path: pytest-results/
           retention-days: 7
-          status: ${{ job.status }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-          codecov-files: pytest-results/junit.xml
-          coverage-report: pytest-results/coverage.xml
 
       - name: Generate Allure Report
         if: always()
@@ -452,17 +448,13 @@ jobs:
             poetry --no-ansi --no-interaction run coverage xml --data-file=./.coverage -o behave-results/coverage.xml
             exit $status
 
-      - name: Upload test results & coverage reports to github and codecov
+      - name: Upload test results
         if: always()
         uses: ./.github/actions/upload-test-results
         with:
           name: behave-results
           path: behave-results/
           retention-days: 7
-          status: ${{ job.status }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-          codecov-files: behave-results/junit.xml
-          coverage-report: behave-results/coverage.xml
 
       - name: Generate Allure Report
         if: always()
@@ -649,14 +641,10 @@ jobs:
             poetry --no-ansi --no-interaction run coverage xml --data-file=examples/.coverage -o pc-test-results/coverage.xml || true
             exit $status
 
-      - name: Upload test results & coverage reports to github and codecov
+      - name: Upload test results
         if: always()
         uses: ./.github/actions/upload-test-results
         with:
           name: pc-test-results
           path: pc-test-results/
           retention-days: 7
-          status: ${{ job.status }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-          codecov-files: pc-test-results/junit.xml
-          coverage-report: pc-test-results/coverage.xml

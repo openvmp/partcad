@@ -928,10 +928,9 @@ jobs:
           rm -f "${marker}"
 
           # '--junitxml' overrides the one in 'pyproject.toml', which writes to
-          # 'pytest-results/' -- a directory this job neither uploads nor hands
-          # to Codecov, so the JUnit report was written and then thrown away and
-          # Codecov said "JUnit XML file not found" on every run. Point it at the
-          # directory the upload step below actually reads.
+          # 'pytest-results/' -- a directory this job does not upload, so the
+          # JUnit report was written and then thrown away on every run. Point it
+          # at the directory the upload step below actually reads.
           rc=0
           pytest \
             tests cad/freecad \
@@ -957,16 +956,13 @@ jobs:
           coverage xml --rcfile=./dev-tools/coverage.rc --data-file=.coverage -o ./pytest-test-results/coverage.xml
           mamba deactivate
 
-      - name: Upload test results & coverage reports to github and codecov
+      - name: Upload test results and coverage data
         uses: ./.github/actions/upload-test-results
         with:
           name: pytest-test-results-${{matrix.os}}-${{matrix.python-version}}
           path: pytest-test-results/
           retention-days: 7
-          status: ${{ job.status }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-          codecov-files: pytest-test-results/junit.xml
-          coverage-report: pytest-test-results/coverage.xml
+          coverage-data: .coverage
 
   test-behave:
     name: "Behave"
@@ -1103,16 +1099,13 @@ jobs:
           fi
           mamba deactivate
 
-      - name: Upload test results & coverage reports to github and codecov
+      - name: Upload test results and coverage data
         uses: ./.github/actions/upload-test-results
         with:
           name: behave-test-results-${{matrix.os}}-${{matrix.python-version}}-${{matrix.shard}}
           path: behave-test-results/
           retention-days: 7
-          status: ${{ job.status }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-          codecov-files: behave-test-results/junit.xml
-          coverage-report: behave-test-results/coverage.xml
+          coverage-data: .coverage
 
   test-examples-partcad:
     name: "Examples (PartCAD)"
@@ -1289,16 +1282,13 @@ jobs:
             exit 1
           fi
 
-      - name: Upload test results & coverage reports to github and codecov
+      - name: Upload test results and coverage data
         uses: ./.github/actions/upload-test-results
         with:
           name: examples-partcad-test-results-${{matrix.os}}-${{matrix.python-version}}
           path: examples-partcad-test-results/
           retention-days: 7
-          status: ${{ job.status }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-          codecov-files: examples-partcad-test-results/junit.xml
-          coverage-report: examples-partcad-test-results/coverage.xml
+          coverage-data: examples/.coverage
 
   test-examples-all:
     name: "Examples (All)"
@@ -1388,7 +1378,7 @@ jobs:
           coverage xml --rcfile=../dev-tools/coverage.rc --data-file=.coverage -o ../examples-all-test-results/coverage.xml
           mamba deactivate
 
-      - name: Upload test results & coverage reports to github and codecov
+      - name: Upload test results and coverage data
         # As in "Repo //pub" below: that step gates as of this branch, so the
         # failing run must still upload the report that says what failed.
         if: always()
@@ -1397,10 +1387,7 @@ jobs:
           name: examples-all-test-results-${{matrix.os}}-${{matrix.python-version}}
           path: examples-all-test-results/
           retention-days: 7
-          status: ${{ job.status }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-          codecov-files: examples-all-test-results/junit.xml
-          coverage-report: examples-all-test-results/coverage.xml
+          coverage-data: examples/.coverage
 
   test-pub-repo:
     name: "Repo //pub"
@@ -1515,7 +1502,7 @@ jobs:
             exit "${list_rc}"
           fi
 
-      - name: Upload test results & coverage reports to github and codecov
+      - name: Upload test results and coverage data
         # The step above gates now, so without this the run that goes red is the
         # one run whose JUnit never arrives -- exactly when it is worth having.
         if: always()
@@ -1524,10 +1511,187 @@ jobs:
           name: pub-repo-test-results-${{matrix.os}}-${{matrix.python-version}}
           path: pub-repo-test-results/
           retention-days: 7
-          status: ${{ job.status }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-          codecov-files: pub-repo-test-results/junit.xml
-          coverage-report: pub-repo-test-results/coverage.xml
+          coverage-data: examples/.coverage
+
+  # Every job above measured one slice of the same source, and no one of those
+  # numbers means anything on its own: "Pytest" never starts a CAD sandbox,
+  # "Behave" drives the installed 'pc' and never imports a unit-test helper, and
+  # the example sweeps walk success paths only. This job is the union of them,
+  # which is what Codecov used to compute after each job posted to it and what
+  # 'dev-tools/ci/coverage_report.py' computes here instead.
+  #
+  # What replaced what, so that nobody goes looking for the service:
+  #   * the merge across jobs is 'coverage combine', over the raw '.coverage'
+  #     data files each job now uploads as 'coverage-data-*'. A union of line
+  #     numbers, not a sum of percentages -- a line pytest missed on Linux and
+  #     behave hit on Windows is covered once. '[paths]' in
+  #     'dev-tools/coverage.rc' is what lets it see those as one file.
+  #   * the browsable report is the 'coverage-html-report' artifact.
+  #   * the pull request comment is one comment, edited in place on every push.
+  #   * the status check is this job.
+  #
+  # "always()", because a red run is when the report is worth having: a job that
+  # failed a test still uploaded the data for everything it ran before that, and
+  # a pull request whose tests fail is exactly the one whose author wants to know
+  # which new lines nothing exercised. The verdict on the tests is those jobs'
+  # own; this one only ever fails on the coverage requirement.
+  #
+  # "CI-Dev" measures coverage too and does not feed this. A 'needs:' does not
+  # reach across workflows -- the same fact the KiCad image note below is built
+  # around -- so there is no moment at which this job knows that run is finished.
+  # Its suites are this workflow's suites run in the dev container, so what it
+  # would add to the union is the handful of lines that differ there; it keeps
+  # publishing its own 'coverage.xml' inside its test-results artifact for
+  # anyone who wants to look.
+  coverage:
+    name: "Coverage"
+    needs:
+      - set-matrix
+      - test-pytest
+      - test-behave
+      - test-examples-partcad
+      - test-examples-all
+      - test-pub-repo
+    # The same three scopes the jobs above are gated on: a documentation-only
+    # change measures nothing, and a "this run produced no coverage data"
+    # comment on such a pull request is noise rather than information.
+    if: >-
+      ${{ always() && needs.set-matrix.result == 'success'
+      && (needs.set-matrix.outputs.pytest == 'true'
+      || needs.set-matrix.outputs.behave == 'true'
+      || needs.set-matrix.outputs.examples == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # The requirement, written once for the two steps that need it -- the one
+      # that states it in the comment and the one that applies it. Two literals
+      # is how a comment comes to promise a bar the gate does not hold anybody
+      # to. "project" means the project's own statement rate in this same run;
+      # a number here would be an absolute percentage instead.
+      COVERAGE_MIN_PATCH: project
+    permissions:
+      contents: read
+      # For the one comment this job edits. Note that this grant is not the whole
+      # story: a pull request opened from a **fork** runs with a read-only token
+      # whatever is written here, because a fork's branch is untrusted code. The
+      # comment step reports that as a warning and moves on -- see the note on it.
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Patch coverage is measured against the base commit of the pull
+          # request, and a depth-1 checkout does not contain it. The script says
+          # so and falls back to reporting no patch figure, which would make the
+          # requirement silently stop applying -- so fetch the history instead.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      # A floor and a major bound, rather than the exact pin the linters get,
+      # and the direction matters: this reader has to be at least as new as
+      # every writer. The jobs above install coverage.py through PartCAD's own
+      # "^7.15.2", so a run months from now writes its data with whatever 7.x
+      # was current that day -- and coverage.py reads older data files but not
+      # newer ones. Pinned to the lock, this job would one day fail to read the
+      # data the run it belongs to had just produced.
+      - name: Install coverage.py
+        run: pip install "coverage>=7.15.2,<8"
+
+      # One directory per artifact under "coverage-data/", each holding that
+      # job's ".coverage". The prefix is the whole contract between a test job
+      # and this one: ".github/actions/upload-test-results" uploads under it, and
+      # a job that starts measuring something joins the merged report by doing
+      # the same and changing nothing here.
+      #
+      # "continue-on-error", because "no artifacts matched" is a legitimate
+      # outcome -- every measuring job can have died before its first test -- and
+      # the merge below reports that as a notice rather than turning somebody's
+      # already-red run a second shade of red.
+      - name: Download every job's coverage data
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          path: coverage-data
+          pattern: coverage-data-*
+
+      - name: Merge it into one report
+        env:
+          # The base of the pull request, which is what the patch figure is the
+          # coverage of. Empty on a push, a schedule or the merge queue, where
+          # there is no patch to speak of and only the project rate is reported.
+          # Through the environment rather than into the script's arguments, like
+          # every other such value in this file (zizmor template-injection).
+          DIFF_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          python dev-tools/ci/coverage_report.py merge \
+            --data-dir coverage-data \
+            --report-dir coverage-report \
+            --work-dir coverage-work \
+            --rcfile dev-tools/coverage.rc \
+            --title "PartCAD coverage (${GITHUB_REF_NAME} @ ${GITHUB_SHA})" \
+            --diff-base "${DIFF_BASE}"
+
+      # Before the comment is written, because the comment links to it and the
+      # URL does not exist until the upload has happened. "if: always()" is
+      # deliberately absent: without a report there is nothing to upload, and the
+      # merge step above only fails when something is genuinely wrong.
+      - name: Upload the HTML report
+        id: html
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-html-report
+          path: coverage-report/
+          retention-days: 7
+
+      - name: Write the summary and the comment body
+        env:
+          HTML_URL: ${{ steps.html.outputs.artifact-url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python dev-tools/ci/coverage_report.py render \
+            --summary coverage-report/summary.json \
+            --out coverage-comment.md \
+            --min-patch "${COVERAGE_MIN_PATCH}" \
+            --html-url "${HTML_URL}" \
+            --run-url "${RUN_URL}"
+
+      # One comment, edited in place: the script finds its own previous comment
+      # by an invisible marker rather than posting a fresh one per push.
+      #
+      # A pull request from a fork has a read-only token and the write comes back
+      # 403. That is by design on GitHub's side and cannot be worked around from
+      # inside this run; the script says so as a warning and exits 0, and the
+      # same report is in this job's summary either way. The requirement below
+      # still gates there, which is the half that has to work everywhere.
+      - name: Update the pull request
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          python dev-tools/ci/pr_comment.py \
+            --body-file coverage-comment.md \
+            --marker "<!-- partcad-coverage-report -->" \
+            --pr "${PR_NUMBER}"
+
+      # Last, and the only step here that can fail the job: the comment above is
+      # what tells somebody why it failed, and a gate that goes red before the
+      # explanation is posted is a gate nobody can act on.
+      #
+      # The requirement is a floor under patch coverage -- the statements this
+      # pull request added or changed -- set to the project's own statement
+      # coverage in the same run. Nothing is stored between runs: the bar is
+      # "cover what you write at least as well as this repository is already
+      # covered", which needs no baseline to maintain and cannot go red on the
+      # day it lands. A change that touches no measured statement has no patch
+      # to hold to it and passes with a notice.
+      - name: The coverage requirement
+        run: |
+          python dev-tools/ci/coverage_report.py check \
+            --summary coverage-report/summary.json \
+            --min-patch "${COVERAGE_MIN_PATCH}"
 
   # The tags this run published for its own use, deleted now that nothing in
   # this workflow is going to ask for them again.

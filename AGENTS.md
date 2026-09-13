@@ -384,6 +384,26 @@ pins the order of its `CLASSES` section, under the `reproducible` parameter of t
 default). An implementation another package supplies may not be, and those files are named one by one in that
 job's `UNSTABLE` list — keep it short, and give every entry a reason there and in the package it belongs to.
 
+**Coverage is merged in the repository, not by a service.** Codecov is gone: every suite uploads its raw
+`.coverage` data as a `coverage-data-*` artifact, and the `Coverage` job in `test.yml` runs
+`dev-tools/ci/coverage_report.py` over all of them — `coverage combine`, then the HTML report as the
+`coverage-html-report` artifact, one pull-request comment edited in place (`dev-tools/ci/pr_comment.py`, found
+by an invisible marker), and the gate. The merge is a **union of line numbers**, not an average of
+percentages, which is the only reason the number means anything: these suites overlap heavily and each covers
+what the others cannot. What makes that union possible is the `[paths]` section of `dev-tools/coverage.rc`,
+mapping the three roots one file is recorded under — the checkout, `site-packages`, and either with Windows
+separators — onto one; without it the report is produced, uploaded and commented on with every rate silently
+too low. A job joins the merged report by passing `coverage-data:` to `.github/actions/upload-test-results`
+and nothing else; that prefix is the whole contract.
+
+The requirement is a floor under **patch** coverage — the statements the pull request touched — set to the
+project's own statement rate in the same run. Nothing is stored between runs, so there is no baseline to
+maintain and the bar cannot drift; a change touching no measured statement passes with a notice. Two things
+it deliberately does not do: it does not fail a fork's pull request over the comment it cannot post (GitHub
+gives such a run a read-only token; the job summary carries the same report and the gate still gates), and it
+does not include `CI-Dev`'s coverage, because a `needs:` does not reach across workflows — the same fact the
+KiCad image cleanup is built around.
+
 Lint/format (Python): **`black`, `flake8` and `isort` all gate.** Each is a `pre-commit` hook and a
 `Lint (...)` job in `test.yml`, each pins the version `pyproject.toml` resolves so the hook and the job cannot
 disagree, and the tree satisfies all three. Run them as CI runs them, from the repository root:
