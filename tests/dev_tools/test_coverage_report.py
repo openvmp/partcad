@@ -62,6 +62,7 @@ def load(path, name):
 
 @pytest.fixture(scope="module")
 def report_module():
+    """The script under test, imported once for the whole file."""
     return load(SCRIPT, "partcad_coverage_report")
 
 
@@ -226,6 +227,7 @@ def test_patch_coverage_counts_only_statements_coverage_measured(report_module):
 
 
 def test_a_change_that_touches_no_measured_statement_has_no_patch(report_module):
+    """A README-only change has no denominator, and `None` is not zero."""
     report = {"files": {"src/partcad/thing.py": {"executed_lines": [1], "missing_lines": []}}}
     patch = report_module.patch_summary(report, {"README.md": {1, 2}})
     assert patch["statements"] == 0
@@ -241,6 +243,7 @@ def test_added_lines_reads_the_lines_a_commit_added(report_module, tmp_path):
     """
 
     def git(*arguments):
+        """One git command in the throwaway repository, failing loudly."""
         subprocess.run(["git", *arguments], cwd=tmp_path, check=True, capture_output=True)
 
     git("init", "-q")
@@ -288,6 +291,7 @@ def test_a_diff_git_cannot_take_is_no_patch_rather_than_an_empty_one(report_modu
 
 
 def test_the_floor_is_the_projects_own_statement_rate(report_module):
+    """The requirement itself, in both directions."""
     met, floor, _, _ = report_module.evaluate(summary(project_rate=70.0, patch_rate=80.0), options())
     assert (met, floor) == (True, 70.0)
 
@@ -296,11 +300,13 @@ def test_the_floor_is_the_projects_own_statement_rate(report_module):
 
 
 def test_a_patch_exactly_at_the_floor_passes(report_module):
+    """The boundary is inclusive: matching the project is meeting the bar."""
     met, _, _, _ = report_module.evaluate(summary(project_rate=70.0, patch_rate=70.0), options())
     assert met is True
 
 
 def test_an_absolute_floor_and_a_tolerance_are_both_honoured(report_module):
+    """The two knobs that exist for a policy somebody else wants."""
     met, floor, _, _ = report_module.evaluate(summary(project_rate=99.0, patch_rate=80.0), options(min_patch="75"))
     assert (met, floor) == (True, 75.0)
 
@@ -330,6 +336,7 @@ def test_nothing_to_measure_is_a_notice_and_not_a_pass(report_module, mutate):
 
 
 def test_check_exits_non_zero_only_when_the_floor_is_missed(report_module, tmp_path, capsys):
+    """The exit code is the gate, and the annotation is what names the blocker."""
     path = tmp_path / "summary.json"
     path.write_text(json.dumps(summary(project_rate=70.0, patch_rate=60.0)))
     assert report_module.check(types.SimpleNamespace(summary=str(path), **vars(options()))) == 1
@@ -379,6 +386,7 @@ def test_the_marker_the_workflow_passes_is_the_one_the_script_writes(report_modu
 
 
 def test_compress_reads_like_coverage_pys_own_missing_lines(report_module):
+    """Runs of uncovered lines read as ranges, the way coverage.py prints them."""
     assert report_module.compress([1, 2, 3, 7, 9, 10]) == "1-3, 7, 9-10"
     assert report_module.compress([]) == ""
 
@@ -387,6 +395,9 @@ def test_compress_reads_like_coverage_pys_own_missing_lines(report_module):
 
 
 def workflow(name):
+    """One workflow file, parsed. `on:` comes back as the boolean `True` -- YAML 1.1
+    reads the bare word as one, as it does in `test_ci_version_gate.py`.
+    """
     loaded = yaml.safe_load((WORKFLOWS / name).read_text())
     loaded["on"] = loaded.pop(True, loaded.get("on"))
     return loaded

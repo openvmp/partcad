@@ -80,6 +80,7 @@ def find_comment(repo, number, marker, token):
 
 
 def main(argv=None):
+    """Post or edit the comment, and treat only a read-only token as survivable."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--body-file", required=True, help="file holding the markdown to post")
     parser.add_argument("--marker", required=True, help="invisible string identifying this comment")

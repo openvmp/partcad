@@ -315,11 +315,13 @@ def merge(args):
 
 
 def write_summary(path, summary):
+    """The one file `render` and `check` read, so that neither re-derives a rate."""
     path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"Wrote {path}")
 
 
 def rate(value):
+    """A percentage for a human, or "n/a" where there was nothing to take one of."""
     return "n/a" if value is None else f"{value:.2f}%"
 
 
@@ -403,6 +405,7 @@ def verdict_lines(summary, args):
 
 
 def package_lines(summary):
+    """The per-package breakdown, folded away: it is reference, not the headline."""
     rows = [
         "<details><summary>Per package</summary>",
         "",
@@ -499,6 +502,7 @@ def check(args):
 
 
 def main(argv=None):
+    """The three subcommands, which are the "Coverage" job's three steps."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
 
