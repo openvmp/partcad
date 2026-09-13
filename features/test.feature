@@ -61,6 +61,31 @@ Feature: `pc test` command
     And STDOUT should contain "It is not reproducible"
     And STDOUT should contain "declares no 'fileHash'"
 
+  @success @pc-test
+  Scenario: `pc test -P` looks the object up in the given package
+    # 'cam' only, as above: the declaration alone settles it, so the scenario
+    # costs nothing to build. What it holds is where 'bolt' was looked for.
+    Given a directory named "sub" exists
+    And a file named "sub/partcad.yaml" with content:
+      """
+      manufacturable: true
+
+      parts:
+        bolt:
+          type: step
+          fileFrom: url
+          fileUrl: https://example.com/vendor/bolt.step
+      """
+    And a file named "partcad.yaml" with content:
+      """
+      import:
+        sub:
+          path: sub
+      """
+    When I run "pc test -P //sub -f cam bolt"
+    Then the command should exit with a status code of "1"
+    And STDOUT should contain "declares no 'fileHash'"
+
   @success @pc-test @pc-test-reproducibility
   Scenario: The same part is reproducible once the download is pinned
     Given a file named "partcad.yaml" with content:
