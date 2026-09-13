@@ -194,25 +194,32 @@ def test_the_builtin_readers_ship_beside_their_declaration():
         assert os.path.isfile(os.path.join(root, declaration["path"])), format_name
 
 
-def test_a_dependency_under_import_fails_loudly(package):
+def test_a_dependency_under_import_is_reported_and_not_migrated(package):
     """The section changed hands, so the old meaning has to be told, not guessed.
 
     'import:' was the name of 'dependencies:'. Migrating it in silence is what
     stopped being possible: a reader declaration copied into 'dependencies'
     would be fetched as a package, and the failure would surface nowhere near
     the file that caused it.
+
+    Reported and the package marked broken rather than raised, which is how
+    every other unreadable 'partcad.yaml' is handled. It is still loud - an
+    error names the package and the entry, and the command exits non-zero - but
+    one legacy package reached through an index does not abort every command
+    that walks past it.
     """
     (package / "partcad.yaml").write_text(
         "name: //p\n" "import:\n" "  robots:\n" "    type: git\n" "    url: https://github.com/openvmp/robots.git\n",
         encoding="utf-8",
     )
 
-    with pytest.raises(pc.exception.ObsoleteImportSectionError) as caught:
-        pc.Context(str(package))
+    ctx = pc.Context(str(package))
+    project = ctx.get_project("//")
 
-    # The message has to name the offending entry and say what to do.
-    assert "robots" in str(caught.value)
-    assert "dependencies:" in str(caught.value)
+    assert project.broken
+    # Not migrated: that is the whole point.
+    assert not project.config_obj.get("dependencies")
+    assert "import" not in project.config_obj
 
 
 def test_a_half_written_dependency_is_recognised_too(package):
@@ -222,8 +229,32 @@ def test_a_half_written_dependency_is_recognised_too(package):
         encoding="utf-8",
     )
 
-    with pytest.raises(pc.exception.ObsoleteImportSectionError):
-        pc.Context(str(package))
+    assert pc.Context(str(package)).get_project("//").broken
+
+
+def test_a_legacy_package_does_not_strand_the_loading_marker(package):
+    """What made this cascade: a package that fails to load must not poison the name.
+
+    An exception escaping a project factory used to leave the name marked as
+    being loaded for the life of the context, so every later import of it
+    reported a recursion that was not happening -- naming the innocent package
+    rather than the one that failed.
+    """
+    legacy = package / "legacy"
+    legacy.mkdir()
+    (legacy / "partcad.yaml").write_text(
+        "name: //legacy\nimport:\n  robots:\n    type: git\n    url: https://example.invalid/r.git\n",
+        encoding="utf-8",
+    )
+    (package / "partcad.yaml").write_text(
+        "name: //root\ndependencies:\n  legacy:\n    type: local\n    path: ./legacy\n",
+        encoding="utf-8",
+    )
+    ctx = pc.Context(str(package))
+
+    ctx.get_project("//root/legacy")
+
+    assert not ctx._projects_being_loaded, ctx._projects_being_loaded
 
 
 def test_a_reader_declaration_is_not_mistaken_for_a_dependency(package):

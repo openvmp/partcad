@@ -143,12 +143,20 @@ class Configuration:
         # rest are the other transport-only keys, listed so that a
         # half-finished dependency is still recognised as one.
         #
-        # A package that hits this is told to rename the section, and nothing is
-        # migrated for it: an automatic rewrite is what made this ambiguous in
-        # the first place.
+        # Reported and the package marked broken, rather than raised. Loud
+        # either way -- this is an error, so the command it was reached from
+        # exits non-zero, and it names the package, the entry that gave it away
+        # and what to do -- but a package this reaches is very often somebody
+        # else's, reached through an index, and one legacy package must not
+        # abort every command that walks past it. That is also how every other
+        # unreadable 'partcad.yaml' is handled; see 'ProjectLocal.__init__'.
+        #
+        # The section is dropped rather than migrated, which is the whole point:
+        # an automatic rewrite is what made the two ambiguous, and doing it
+        # again with a better guess would only move the day it goes wrong.
         obsolete = self._obsolete_import_entries(self.config_obj.get("import"))
         if obsolete:
-            raise pc_exception.ObsoleteImportSectionError(
+            pc_logging.error(
                 "%s: 'import:' now declares object types this package can read, not its dependencies. "
                 "The %s %s %s a dependency, not a reader. Rename the section to 'dependencies:'."
                 % (
@@ -158,6 +166,8 @@ class Configuration:
                     "describe" if len(obsolete) > 1 else "describes",
                 )
             )
+            self.broken = True
+            del self.config_obj["import"]
 
         # option: "partcad"
         # description: the version of PartCAD required to handle this package

@@ -248,10 +248,16 @@ at all).
   Two things about it are easy to get wrong. **`import:` was the old name of `dependencies:`**, and
   `project_config.py` used to migrate it in silence — copy the value across and delete the key — which would
   now eat a reader declaration before anything could read it, then try to fetch it as a package. So the
-  migration is gone and the old use is detected and raised on instead: `Configuration._obsolete_import_entries()`
+  migration is gone and the old use is detected and **reported** instead, with the package marked broken the way
+  every other unreadable `partcad.yaml` is: `Configuration._obsolete_import_entries()`
   looks for a dependency's required `type:` (`git`/`tar`/`local`/`external`) or its transport-only keys
   (`url`, `relPath`, `revision`, `subfolder`, `onlyInRoot`, `cacheVersion`, `includePaths`, `plugin`), none of
-  which a reader declaration has. Do not restore the copy: guessing is what made the two ambiguous. And an
+  which a reader declaration has. Do not restore the copy: guessing is what made the two ambiguous. And do not
+  make it raise: a package this reaches is very often somebody else's, reached through an index, and an
+  exception escaping a project factory both aborts every command that walks past it *and* strands the name in
+  `Context._projects_being_loaded`, so every later import of it reports a recursion that is not happening —
+  naming the innocent package rather than the one that failed. That is what broke `Examples ... via bundle`
+  on #637. And an
   object type that no built-in factory is registered for is what
   `factory.instantiate()` routes here, which is also how `project.produces_own_parts()` decides, by exclusion,
   which objects materialize parts of their own: PartCAD cannot list the types in a section whose whole point

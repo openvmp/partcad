@@ -2267,7 +2267,8 @@ The section shares its name with what ``dependencies:`` used to be called, and
 that spelling is now an error rather than a silent migration: a package whose
 ``import:`` entries carry a ``type:`` of ``git``/``tar``/``local``/``external``,
 or any of the transport-only keys (``url``, ``relPath``, ``revision``, ...), is
-told to rename the section instead of having its readers fetched as packages.
+reported and marked broken, and is told to rename the section, instead of having its readers fetched as
+packages. Nothing is migrated for it.
 
 PartCAD ships three of these, in ``//builtin/import``. ``urdf`` stays there
 because a URDF describes a robot rather than any one engine's world, and ROS,
