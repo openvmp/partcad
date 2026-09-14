@@ -887,6 +887,48 @@ CI fans out over operating systems, and a pull request does not pay for all of t
        over-running is the safe direction. If a description has to name the marker without asking for it,
        write it split across two code spans.
 
+Running CI in your own fork
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A pull request from a fork runs with a **read-only token and no repository secrets**. That is GitHub's rule, not a
+setting either side can change, and it holds whether or not you have write access here -- what decides it is that the
+branch lives in your copy. Most of CI does not care: the tests, the linters, the extension and the bundles all run on
+a fork exactly as they run here.
+
+One thing does. A change under ``tools/containers/`` (or a ``#images`` marker) means the run has to *build* PartCAD's
+container images and push them somewhere its own test jobs can pull them from, and a fork's pull request cannot push
+anywhere. Such a run falls back to the release's images, so the change you made to them goes untested -- which used to
+be a ``::warning::`` somewhere inside a green run.
+
+The ``Prerequisites`` job now says so before the run instead, and says where to go:
+
+.. code-block:: text
+
+   | Capability         | State            | Detail                                           |
+   | packages: write    | unavailable here | read-only, because GitHub gives a fork's pull    |
+   |                    |                  | request a read-only token                        |
+
+**Run CI in your fork to get that coverage.** Push the branch to your fork and start *CI* from its **Actions** tab
+with "Run workflow". There the token writes to ``ghcr.io/<you>/partcad-container-*``, the run builds your images, and
+its test jobs pull what it built rather than the release's -- ``PC_CONTAINER_IMAGE_OWNER`` is what redirects them,
+beside the ``PC_CONTAINER_IMAGE_TAG`` that redirects the tag. Link the run on your pull request and a reviewer can see
+it went green.
+
+Two things a fork needs once, and ``Prerequisites`` fails with both if they are missing:
+
+* **Actions enabled.** A fork's **Actions** tab starts with "I understand my workflows, go ahead and enable them".
+* **Read and write workflow permissions**, under **Settings -> Actions -> General**. Nothing else: the
+  ``ghcr.io/<you>/partcad-container-*`` package is created on the first push, and no secret of your own is needed.
+
+Note that a fork's default branch is called ``devel`` too, and a push to it used to run a matrix in which every single
+job was skipped -- the ``Version updated`` rule below is about *this* repository, where a bump follows every merge
+within minutes, and a fork has no bump coming. It no longer applies to a fork.
+
+``SSH_PRIVATE_KEY_RO`` is the other secret this repository holds, and no run needs it today: the one scenario that
+clones over SSH is tagged ``@wip`` and ``behave.ini`` excludes it, so the behave jobs start no agent where there is no
+key. ``Prerequisites`` reports it as *not needed*, and a test fails if a scenario outside ``@wip`` ever starts
+needing one.
+
 A push to ``devel`` is the exception to all three: it runs no matrix at all unless its head commit message starts with
 ``Version updated``, which is the release commit. Every push to ``devel`` is followed by one of those within minutes
 and it carries the same tree, so what a merge costs is one build of that tree rather than two -- and the artifacts it

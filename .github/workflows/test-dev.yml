@@ -48,7 +48,18 @@ jobs:
     # the event name leads because a "schedule" carries no "head_commit" -- see
     # the long note there. Stated here and nowhere else in this file: every other
     # job needs this one, and a job that needs a skipped job is skipped.
-    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/devel' || startsWith(github.event.head_commit.message, 'Version updated') }}
+    #
+    # "github.event.repository.fork" is the last clause and it is what lets a
+    # fork run this at all. The reasoning above is about *this* repository: a
+    # push to "devel" here is followed by a version bump within the hour, so
+    # the matrix runs on that instead. A fork has no bump coming, so without
+    # this clause a contributor who pushes to their fork's "devel" -- which is
+    # what a fork's default branch is called -- gets a run in which every
+    # single job is skipped, and nothing anywhere says why.
+    if: >-
+      ${{ github.event_name != 'push' || github.ref != 'refs/heads/devel'
+      || startsWith(github.event.head_commit.message, 'Version updated')
+      || github.event.repository.fork }}
     outputs:
       devcontainer: ${{ steps.scope.outputs.devcontainer }}
       pytest: ${{ steps.scope.outputs.devcontainer-pytest }}
@@ -61,6 +72,12 @@ jobs:
       image-push: ${{ steps.images.outputs.push }}
       image-release: ${{ steps.images.outputs.release }}
       image-override: ${{ steps.images.outputs.override }}
+      # Asked for images of its own and unable to publish them -- read by
+      # "preflight", as in "test.yml".
+      image-degraded: ${{ steps.images.outputs.degraded }}
+      # Whose copy this run addresses; empty unless it built its own. See the
+      # longer note on the same output in "test.yml".
+      image-owner: ${{ steps.images.outputs.override != '' && github.repository_owner || '' }}
     steps:
       - uses: actions/checkout@v7
       - name: Decide the depth
@@ -78,9 +95,47 @@ jobs:
           wanted: ${{ steps.depth.outputs.images == 'true' || steps.scope.outputs.images == 'true' }}
           release: ${{ env.VERSION }}
 
+  # The same prerequisite check "test.yml" runs, for the same reason and against
+  # the same action: a fork has none of the secrets this file assumes, and the
+  # dev container jobs below all push to or pull from the registry. Gating the
+  # two jobs that hold credentials gates the three test jobs through the graph
+  # that is already there.
+  preflight:
+    name: "Prerequisites"
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      # The same scope "build-containers" declares, and it has to be: this job
+      # asks the registry what the token may do, and a GITHUB_TOKEN is scoped
+      # per job. Left at the workflow default of "contents: read", the probe
+      # would measure a token nothing else uses -- reporting "pull but not
+      # push" on this repository, where the push works fine, and failing every
+      # run that builds an image. It requests the write; whether the repository
+      # grants it is the question being asked.
+      packages: write
+    outputs:
+      # Forwarded so that a job can ask what this run has rather than reaching
+      # for "secrets" itself, which an "if:" cannot read.
+      ghcr-write: ${{ steps.preflight.outputs.ghcr-write }}
+      ssh-key: ${{ steps.preflight.outputs.ssh-key }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: preflight
+        uses: ./.github/actions/preflight
+        with:
+          needs-ghcr: ${{ needs.scope.outputs.image-push == 'true' || needs.scope.outputs.image-degraded == 'true' }}
+          needs-ssh: "false"
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY_RO }}
+          registry: ${{ env.CONTAINER_REGISTRY }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
   devcontainer:
     name: "Build: Dev Container"
-    needs: scope
+    # "preflight" too: this job talks to the registry, and a run that cannot
+    # must hear it from the job whose subject that is. Every test job below
+    # needs this one, so gating it gates them.
+    needs: [scope, preflight]
     if: ${{ needs.scope.outputs.devcontainer == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -185,7 +240,10 @@ jobs:
   # the one commit for which nothing has ever pushed that tag. One build,
   # waited for by both workflows: see ".github/workflows/container-kicad.yml".
   container-kicad:
-    needs: scope
+    # "preflight" too: this job talks to the registry, and a run that cannot
+    # must hear it from the job whose subject that is. Every test job below
+    # needs this one, so gating it gates them.
+    needs: [scope, preflight]
     # The "devcontainer" scope, not the narrower "pytest" one this job was
     # first written with, because all three jobs below wait for it now and two
     # of them run on a change that "devcontainer-pytest" excludes -- a change
@@ -276,6 +334,7 @@ jobs:
           # See "Which images this run uses" on "Scope".
           env: |
             PC_CONTAINER_IMAGE_TAG=${{ needs.scope.outputs.image-override }}
+            PC_CONTAINER_IMAGE_OWNER=${{ needs.scope.outputs.image-owner }}
           # "runCmd" is handed to a shell as one script, so the step's result is
           # the *last* command's unless the script says otherwise. This one used
           # to end with "echo DONE", which meant a failing pytest was reported as
@@ -342,7 +401,10 @@ jobs:
     # asks "pc open" what it would do rather than doing it -- and the wait
     # is free either way, the build running from "scope" while
     # "poetry-install" is still going.
-    needs: [scope, poetry-install, container-kicad]
+    # "preflight" is named although "container-kicad" implies it: this job
+    # reads one of its outputs (the SSH agent step) rather than only
+    # depending on it.
+    needs: [scope, poetry-install, container-kicad, preflight]
     permissions:
       # https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication#permissions-for-the-github_token
       contents: read
@@ -385,7 +447,26 @@ jobs:
         run: Set-Service -Name ssh-agent -StartupType Manual
         shell: pwsh
 
+      # Only where there is a key to load. It used to run unconditionally, and
+      # on a fork -- which has no such secret -- the action is handed an empty
+      # string and fails the whole job with "The ssh-private-key argument is
+      # empty", forty minutes of setup in and about the wrong thing.
+      #
+      # Nothing that runs in CI needs it today: the only scenario that clones
+      # over SSH is "Override git configuration" in "features/install.feature",
+      # which is tagged "@wip", and "behave.ini" sets "tags = ~@wip". The
+      # scenario named "Install packages with ssh" beside it is not one -- it
+      # rewrites "git@github.com:" to "https://github.com/" and clones a public
+      # repository, which is the whole point of it. So this is kept, for the day
+      # that "@wip" comes off, rather than relied upon; ".github/actions/preflight"
+      # reports which of the two the run is in.
       - name: Start SSH Agent
+        # Through "preflight" rather than "secrets.SSH_PRIVATE_KEY_RO != ''":
+        # the "secrets" context is not readable from an "if:", and a step's own
+        # "env:" is not readable from that same step's "if:" either. Asking the
+        # one job whose subject is "what does this run have" is also the answer
+        # that already appears in the summary a contributor is reading.
+        if: ${{ needs.preflight.outputs.ssh-key == 'true' }}
         uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY_RO }}
@@ -432,6 +513,7 @@ jobs:
             # "test_part_example_kicad" starts the KiCad sandbox by this name.
             # See "Which images this run uses" on "Scope".
             PC_CONTAINER_IMAGE_TAG=${{ needs.scope.outputs.image-override }}
+            PC_CONTAINER_IMAGE_OWNER=${{ needs.scope.outputs.image-owner }}
 
           # The suite's status is kept and reported, and the coverage report is
           # written either way. Ending on "coverage xml" reported *its* status,
@@ -624,6 +706,7 @@ jobs:
           # See "Which images this run uses" on "Scope".
           env: |
             PC_CONTAINER_IMAGE_TAG=${{ needs.scope.outputs.image-override }}
+            PC_CONTAINER_IMAGE_OWNER=${{ needs.scope.outputs.image-owner }}
           # Same shape as the two jobs above: every "pc" counts, and the report
           # is still written when one of them fails. This job was the only one of
           # the three that ever went red, and only by accident -- the "pc"

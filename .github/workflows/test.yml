@@ -233,7 +233,11 @@ jobs:
   # version bump runs the matrix on a push to devel" guard lives on
   # "set-matrix" (see the long note there) rather than being restated here.
   container-kicad:
-    needs: set-matrix
+    # "preflight" too: this job pushes to the registry, and a run that
+    # cannot must be told so by the job whose subject that is, rather than
+    # by a 500MB push failing here. Every test job already needs this one,
+    # so gating it gates them.
+    needs: [set-matrix, preflight]
     # The union of what the jobs needing this one are gated on, and it has to
     # be: a job whose dependency is skipped is skipped, so a gate narrower than
     # its dependents' would not delay "Behave" -- it would silently delete it.
@@ -270,7 +274,11 @@ jobs:
     # matrix on a push to devel" guard here. That guard lives on "set-matrix"
     # (see the long note there); a job that needs a skipped job is skipped, so
     # stating it twice would only be two places to keep in step.
-    needs: set-matrix
+    # "preflight" too: this job pushes to the registry, and a run that
+    # cannot must be told so by the job whose subject that is, rather than
+    # by a 500MB push failing here. Every test job already needs this one,
+    # so gating it gates them.
+    needs: [set-matrix, preflight]
     # The union, for the reason given on "container-kicad" above: every test
     # job that can render in the sandbox waits for this one now, and a gate
     # narrower than theirs would skip them rather than delay them.
@@ -552,7 +560,18 @@ jobs:
     # provides: a pull request drops OSES_DEEP_ONLY and OSES_QUEUE_ONLY on the
     # strength of it. A manual dispatch, a merge queue and a pull request are all
     # in the same position and are all covered by leading with the event name.
-    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/devel' || startsWith(github.event.head_commit.message, 'Version updated') }}
+    #
+    # "github.event.repository.fork" is the last clause and it is what lets a
+    # fork run this at all. The reasoning above is about *this* repository: a
+    # push to "devel" here is followed by a version bump within the hour, so
+    # the matrix runs on that instead. A fork has no bump coming, so without
+    # this clause a contributor who pushes to their fork's "devel" -- which is
+    # what a fork's default branch is called -- gets a run in which every
+    # single job is skipped, and nothing anywhere says why.
+    if: >-
+      ${{ github.event_name != 'push' || github.ref != 'refs/heads/devel'
+      || startsWith(github.event.head_commit.message, 'Version updated')
+      || github.event.repository.fork }}
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       matrix-sandbox: ${{ steps.set-matrix.outputs.matrix-sandbox }}
@@ -576,6 +595,20 @@ jobs:
       # empty value leaves every reader on the release, which is the default
       # every installed PartCAD has.
       image-override: ${{ steps.images.outputs.override }}
+      # Asked for images of its own and unable to publish them; read by
+      # "preflight" so that the lost coverage is reported before the run, not
+      # as a warning inside it.
+      image-degraded: ${{ steps.images.outputs.degraded }}
+      # Whose copy of those images this run is about, empty unless it built its
+      # own. A fork cannot publish into "partcad", so its images land under its
+      # own owner -- and a run that went on pulling "ghcr.io/partcad/..." would
+      # build images, push them, and then test the upstream release's instead.
+      # Read by "partcad_utils.container_image.image_name".
+      #
+      # Only the owner: the image's own name still comes from "github.repository"
+      # on the build side, so this holds for a fork that kept the repository name
+      # (which is what forking gives you) and not for one that renamed it.
+      image-owner: ${{ steps.images.outputs.override != '' && github.repository_owner || '' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -659,6 +692,56 @@ jobs:
           # the largest single saving there.
           SHARDS_JSON=$(python3 -c "import json, os; print(json.dumps(list(range(1, int(os.environ['BEHAVE_SHARDS']) + 1))))")
           echo 'matrix-behave={"os": '"${OSES_SLIM}"', "python-version": ${{ env.PYTHONS_SLIM }}, "shard": '"$SHARDS_JSON"'}' >> "${GITHUB_OUTPUT}"
+
+  # What this run is going to reach for, checked before it reaches for it.
+  #
+  # Every credential in this workflow is one "partcad/partcad" has and a fork
+  # does not, and a fork that runs this discovers that as a push refused by a
+  # registry half an hour in, on a job whose error names the registry rather
+  # than the setup. This asks the same questions up front and answers them in
+  # terms of what to go and change. See ".github/actions/preflight".
+  #
+  # It gates the two container jobs and nothing else, which is enough: every
+  # job that runs a test already needs both of those, so a missing credential
+  # skips the whole suite through the graph that is already there. The four
+  # lint jobs stay out of it on purpose -- they read the repository and touch
+  # no registry, and there is no reason a fork with no packages write should
+  # lose the one part of CI it can always run.
+  preflight:
+    name: "Prerequisites"
+    needs: set-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      # The same scope "build-containers" declares, and it has to be: this job
+      # asks the registry what the token may do, and a GITHUB_TOKEN is scoped
+      # per job. Left at the workflow default of "contents: read", the probe
+      # would measure a token nothing else uses -- reporting "pull but not
+      # push" on this repository, where the push works fine, and failing every
+      # run that builds an image. It requests the write; whether the repository
+      # grants it is the question being asked.
+      packages: write
+    outputs:
+      # Forwarded so that a job can ask what this run has rather than reaching
+      # for "secrets" itself, which an "if:" cannot read.
+      ghcr-write: ${{ steps.preflight.outputs.ghcr-write }}
+      ssh-key: ${{ steps.preflight.outputs.ssh-key }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: preflight
+        uses: ./.github/actions/preflight
+        with:
+          # Wanting to publish is the question, not succeeding at it:
+          # "image-push" is already false for the fork that could not, which is
+          # the case this exists to report. See the "degraded" output.
+          needs-ghcr: ${{ needs.set-matrix.outputs.image-push == 'true' || needs.set-matrix.outputs.image-degraded == 'true' }}
+          # No scenario that runs in CI clones over SSH: the one that does is
+          # "@wip" and "behave.ini" excludes it. Flip this to "true" in the same
+          # commit that un-tags it.
+          needs-ssh: "false"
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY_RO }}
+          registry: ${{ env.CONTAINER_REGISTRY }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # cache-preheat:
   #   name: "Update caches"
@@ -880,6 +963,7 @@ jobs:
     # "set-matrix".
     env:
       PC_CONTAINER_IMAGE_TAG: ${{ needs.set-matrix.outputs.image-override }}
+      PC_CONTAINER_IMAGE_OWNER: ${{ needs.set-matrix.outputs.image-owner }}
 
     steps:
       - uses: actions/checkout@v7
@@ -983,6 +1067,10 @@ jobs:
     name: "Behave"
     needs:
       - set-matrix
+      # Named although "build-containers" below already implies it, because this
+      # job reads an output of it rather than only depending on it -- see the
+      # SSH agent step.
+      - preflight
       # Both container builds, per the note at the top of "jobs:": no test
       # starts before every image it might run in exists.
       - build-containers
@@ -1021,6 +1109,7 @@ jobs:
     # The images this run built, where it built any. See "Pytest" above.
     env:
       PC_CONTAINER_IMAGE_TAG: ${{ needs.set-matrix.outputs.image-override }}
+      PC_CONTAINER_IMAGE_OWNER: ${{ needs.set-matrix.outputs.image-owner }}
 
     steps:
       - uses: actions/checkout@v7
@@ -1043,7 +1132,26 @@ jobs:
         run: Set-Service -Name ssh-agent -StartupType Manual
         shell: pwsh
 
+      # Only where there is a key to load. It used to run unconditionally, and
+      # on a fork -- which has no such secret -- the action is handed an empty
+      # string and fails the whole job with "The ssh-private-key argument is
+      # empty", forty minutes of setup in and about the wrong thing.
+      #
+      # Nothing that runs in CI needs it today: the only scenario that clones
+      # over SSH is "Override git configuration" in "features/install.feature",
+      # which is tagged "@wip", and "behave.ini" sets "tags = ~@wip". The
+      # scenario named "Install packages with ssh" beside it is not one -- it
+      # rewrites "git@github.com:" to "https://github.com/" and clones a public
+      # repository, which is the whole point of it. So this is kept, for the day
+      # that "@wip" comes off, rather than relied upon; ".github/actions/preflight"
+      # reports which of the two the run is in.
       - name: Start SSH Agent
+        # Through "preflight" rather than "secrets.SSH_PRIVATE_KEY_RO != ''":
+        # the "secrets" context is not readable from an "if:", and a step's own
+        # "env:" is not readable from that same step's "if:" either. Asking the
+        # one job whose subject is "what does this run have" is also the answer
+        # that already appears in the summary a contributor is reading.
+        if: ${{ needs.preflight.outputs.ssh-key == 'true' }}
         uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY_RO }}
@@ -1165,6 +1273,7 @@ jobs:
     # The images this run built, where it built any. See "Pytest" above.
     env:
       PC_CONTAINER_IMAGE_TAG: ${{ needs.set-matrix.outputs.image-override }}
+      PC_CONTAINER_IMAGE_OWNER: ${{ needs.set-matrix.outputs.image-owner }}
 
     steps:
       - uses: actions/checkout@v7
@@ -1370,6 +1479,7 @@ jobs:
     # The images this run built, where it built any. See "Pytest" above.
     env:
       PC_CONTAINER_IMAGE_TAG: ${{ needs.set-matrix.outputs.image-override }}
+      PC_CONTAINER_IMAGE_OWNER: ${{ needs.set-matrix.outputs.image-owner }}
 
     steps:
       - uses: actions/checkout@v7
@@ -1477,6 +1587,7 @@ jobs:
     # The images this run built, where it built any. See "Pytest" above.
     env:
       PC_CONTAINER_IMAGE_TAG: ${{ needs.set-matrix.outputs.image-override }}
+      PC_CONTAINER_IMAGE_OWNER: ${{ needs.set-matrix.outputs.image-owner }}
 
     steps:
       - uses: actions/checkout@v7

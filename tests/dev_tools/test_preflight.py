@@ -1,0 +1,376 @@
+#
+# PartCAD, 2026
+#
+# Licensed under Apache License, Version 2.0.
+#
+"""What a run is told when it does not have what the jobs after it reach for.
+
+Every credential in this repository's CI is one `partcad/partcad` has and a
+fork does not. Before `.github/actions/preflight` existed, a fork that ran this
+found that out as a push refused by a registry half an hour in, on a job whose
+error named the registry rather than the setup -- and a fork whose pull request
+changed a Dockerfile found it out not at all, because the run degraded to the
+release's images and went green having tested the change it was opened for.
+
+So the questions are asked once, up front, and answered in terms of what to go
+and change. This file pins the one decision that is easy to get backwards:
+*when to stop*. Stopping a run that can be fixed is the point; stopping one that
+cannot be is a contributor's pull request blocked forever on a setting nobody
+can reach. The difference is whether the head is a fork, and the two halves are
+`test_a_fork_is_told_where_to_get_the_coverage_not_failed` and
+`test_a_missing_write_that_can_be_fixed_stops_the_run` below.
+
+The library half of the same subject is `tests/partcad_utils/test_container_image.py`;
+the tag it threads is `tests/dev_tools/test_container_images.py`.
+"""
+
+import base64
+import json
+import os
+import pathlib
+import subprocess
+
+import pytest
+import yaml
+
+# POSIX only, for the reason `test_container_images.py` gives: the action is
+# bash and only ever runs on a Linux runner, and a Windows `bash.exe` is the WSL
+# launcher, which answers a script by telling you to install a distribution.
+pytestmark = pytest.mark.skipif(os.name == "nt", reason="the action is bash, and it only ever runs on Linux runners")
+
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+WORKFLOWS = REPO_ROOT / ".github" / "workflows"
+ACTION = REPO_ROOT / ".github" / "actions" / "preflight" / "action.yml"
+USES = "./.github/actions/preflight"
+
+PATH = "/usr/bin:/bin:/usr/local/bin"
+
+
+def _check_script():
+    action = yaml.safe_load(ACTION.read_text())
+    (step,) = [s for s in action["runs"]["steps"] if s.get("id") == "check"]
+    return step["run"]
+
+
+def _jwt(actions, spacing=False):
+    """A registry token shaped the way ghcr's token endpoint returns one.
+
+    `{"token": "<header>.<claims>.<signature>"}`, the claims carrying the
+    `access[].actions` the registry decided to grant. Nothing verifies the
+    signature -- the action reads what was granted, it does not authenticate
+    the answer, because the answer arrived over TLS from the registry it asked.
+    """
+    claims = {"access": [{"type": "repository", "name": "partcad/partcad-container-python", "actions": actions}]}
+    payload = base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip("=")
+    # Compact, the way a registry actually answers. `spacing` is the other
+    # shape the same response can take, and the reason the action peels the
+    # field a piece at a time -- see the test below.
+    body = {"token": "header.%s.signature" % payload}
+    return json.dumps(body, separators=(",", ":")) if not spacing else json.dumps(body)
+
+
+def _curl_stub(tmp_path, body=None):
+    """A `curl` on PATH that answers with `body`, or fails when it is None.
+
+    The real registry is not reachable from the suite and should not be: what
+    is under test is how the action reads an answer, and the two answers that
+    matter -- push granted and push withheld -- are not ones a test can
+    provoke from ghcr on demand.
+    """
+    bindir = tmp_path / "bin"
+    bindir.mkdir(exist_ok=True)
+    stub = bindir / "curl"
+    if body is None:
+        stub.write_text("#!/bin/sh\nexit 22\n")
+    else:
+        stub.write_text("#!/bin/sh\ncat <<'BODY'\n%s\nBODY\n" % body)
+    stub.chmod(0o755)
+    return "%s:%s" % (bindir, PATH)
+
+
+def preflight(
+    tmp_path,
+    needs_ghcr="false",
+    needs_ssh="false",
+    ssh_key="",
+    token="t0ken",
+    fork="false",
+    granted=("pull", "push"),
+    path=None,
+):
+    """Run the action's one step; return (outputs, returncode, summary, stdout)."""
+    output = tmp_path / "output"
+    output.touch()
+    summary = tmp_path / "summary"
+    summary.touch()
+
+    done = subprocess.run(
+        ["bash", "-c", _check_script()],
+        env={
+            "PATH": path
+            if path is not None
+            else _curl_stub(tmp_path, _jwt(list(granted)) if granted is not None else None),
+            "NEEDS_GHCR": needs_ghcr,
+            "NEEDS_SSH": needs_ssh,
+            "SSH_KEY": ssh_key,
+            "REGISTRY": "ghcr.io",
+            "TOKEN": token,
+            "FROM_A_FORK": fork,
+            "REPO": "partcad/partcad",
+            "OWNER": "partcad",
+            "GITHUB_OUTPUT": str(output),
+            "GITHUB_STEP_SUMMARY": str(summary),
+        },
+        capture_output=True,
+        text=True,
+    )
+    outputs = dict(line.split("=", 1) for line in output.read_text().splitlines() if line)
+    return outputs, done.returncode, summary.read_text(), done.stdout + done.stderr
+
+
+def test_a_run_that_needs_nothing_passes_with_nothing(tmp_path):
+    """The ordinary pull request: it pulls the release's images and clones no
+    private repository, so a fork with no secrets at all runs it in full.
+
+    This is the case that decides whether the gate is worth having. A preflight
+    that demanded credentials of every run would stop every fork instead of the
+    ones that cannot do what they were asked.
+    """
+    outputs, rc, summary, _ = preflight(tmp_path, token="")
+
+    assert rc == 0
+    assert outputs == {"ghcr-write": "false", "ssh-key": "false"}
+    assert "not needed" in summary
+
+
+def test_a_missing_write_that_can_be_fixed_stops_the_run(tmp_path):
+    """A fork running its own CI, with packages write not granted.
+
+    Fixable in two clicks, and the alternative is a run that builds images,
+    fails to push them, and then tests the upstream release's while its summary
+    says it rebuilt them.
+    """
+    outputs, rc, summary, out = preflight(tmp_path, needs_ghcr="true", granted=["pull"])
+
+    assert rc == 1
+    assert outputs["ghcr-write"] == "false"
+    assert "::error" in out
+    # The remedy, not just the diagnosis.
+    assert "Workflow permissions" in summary
+    assert "Read and write" in summary
+
+
+def test_a_fork_is_told_where_to_get_the_coverage_not_failed(tmp_path):
+    """The case that must NOT stop, and the reason this is not one `if`.
+
+    GitHub gives a fork's pull request a read-only token whatever the workflow
+    declares, so there is nothing the contributor can change to make this run
+    publish. Failing it would leave an outside contributor's Dockerfile change
+    permanently un-mergeable for a reason they cannot act on. So the gap keeps
+    the warning it has always had, and gains the thing it was missing: where to
+    go to close it.
+    """
+    outputs, rc, summary, out = preflight(tmp_path, needs_ghcr="true", fork="true")
+
+    assert rc == 0
+    assert outputs["ghcr-write"] == "false"
+    assert "::warning" in out and "::error" not in out
+    assert "no fix inside this run" in summary
+    assert "your own fork" in summary
+
+
+def test_pull_without_push_is_caught_here_and_not_at_the_push(tmp_path):
+    """The case a `docker login` check would have missed, and the likeliest one.
+
+    "Workflow permissions: read-only" is a fork's default, and a read-only
+    token logs in to the registry perfectly well -- so a login probe reports a
+    writable registry and the run fails half an hour later, uploading an image.
+    Asking what the registry *grants* is the difference, and it costs one
+    request.
+    """
+    outputs, rc, summary, _ = preflight(tmp_path, needs_ghcr="true", granted=["pull"])
+
+    assert rc == 1
+    assert outputs["ghcr-write"] == "false"
+    assert "not push" in summary
+
+
+def test_a_granted_push_reports_the_write(tmp_path):
+    outputs, rc, summary, _ = preflight(tmp_path, needs_ghcr="true", granted=["pull", "push"])
+
+    assert rc == 0
+    assert outputs["ghcr-write"] == "true"
+    assert "is writable" in summary
+
+
+def test_whitespace_in_the_registry_answer_does_not_defeat_the_probe(tmp_path):
+    """The bug this probe had when it was written, kept from coming back.
+
+    The JWT was pulled out with a single pattern that assumed `{"token":"..."}`
+    with no space after the colon. A response spelled `{"token": "..."}` left
+    the whole body in the variable, the decode produced nothing, and the run
+    fell through to the "could not be asked" fallback -- which assumes writable
+    and carries on. So the probe reported success for every answer it could not
+    read, which is the one failure mode a check like this must not have.
+    """
+    path = _curl_stub(tmp_path, _jwt(["pull"], spacing=True))
+    outputs, rc, summary, _ = preflight(tmp_path, needs_ghcr="true", path=path)
+
+    assert rc == 1, "a spaced-out answer was read as unreadable, not as 'pull only'"
+    assert "not push" in summary
+    assert "could not be asked" not in summary
+
+
+def test_a_probe_that_cannot_run_assumes_writable_rather_than_crashing(tmp_path):
+    """No route to the registry, no `curl`, an answer in an unreadable shape.
+
+    Two things must not happen. `set -e` must not take the job down before the
+    summary is written -- the message is the deliverable here, and a preflight
+    that dies without one fails in the same illegible way as the jobs it
+    replaced. And a run must not be called broken because a *check* could not
+    be made: the token is writable in principle here, so the run proceeds and
+    the push says otherwise if it is.
+    """
+    outputs, rc, summary, _ = preflight(tmp_path, needs_ghcr="true", granted=None)
+
+    assert rc == 0
+    assert outputs["ghcr-write"] == "true"
+    assert "could not be asked" in summary
+
+
+def test_the_ssh_key_is_reported_as_present_without_being_printed(tmp_path):
+    outputs, rc, summary, out = preflight(tmp_path, ssh_key="-----BEGIN OPENSSH PRIVATE KEY-----")
+
+    assert rc == 0
+    assert outputs["ssh-key"] == "true"
+    # Never the value. GitHub masks registered secrets in its own log, but this
+    # runs the script directly and the guarantee wanted here is that the script
+    # does not print it in the first place.
+    assert "BEGIN OPENSSH" not in summary
+    assert "BEGIN OPENSSH" not in out
+
+
+def test_a_scenario_that_needs_the_key_stops_a_run_without_one(tmp_path):
+    """False for every run today, and the input exists so that it need not be.
+
+    The only scenario that clones over SSH is `@wip`, which `behave.ini`
+    excludes. Un-tagging it is a one-word change in the workflow rather than a
+    rediscovery of what the key was for -- and this is what that word buys.
+    """
+    outputs, rc, summary, out = preflight(tmp_path, needs_ssh="true", ssh_key="")
+
+    assert rc == 1
+    assert "::error" in out
+    assert "SSH_PRIVATE_KEY_RO" in summary
+    assert "deploy key" in summary
+
+
+def test_nothing_that_runs_in_ci_clones_over_ssh():
+    """The claim `needs-ssh: "false"` rests on, checked rather than trusted.
+
+    If a scenario outside `@wip` gains an `ssh://` or `git@` dependency, the
+    behave jobs start needing a key that a fork does not have, and the symptom
+    is a clone that hangs or a permission denied inside a scenario. This fails
+    instead, next to the input that has to change.
+    """
+    import re
+
+    assert "tags = ~@wip" in (REPO_ROOT / "behave.ini").read_text()
+
+    for feature in (REPO_ROOT / "features").rglob("*.feature"):
+        text = feature.read_text()
+        for match in re.finditer(r"^.*(?:git@|ssh://).*$", text, re.M):
+            line = match.group(0)
+            # A URL that is rewritten to https before it is used is not an SSH
+            # clone: "Install packages with ssh" declares the mapping and then
+            # asserts the rewrite happened.
+            if "https://" in line or "should contain" in line:
+                continue
+            # Everything else has to sit under `@wip`, which CI excludes.
+            preceding = text[: match.start()]
+            scenario = preceding.rfind("Scenario")
+            tags = preceding[preceding.rfind("\n", 0, scenario) if scenario != -1 else 0 : match.start()]
+            assert "@wip" in preceding[max(0, scenario - 400) : scenario] or "@wip" in tags, (
+                "%s clones over SSH outside @wip; set 'needs-ssh: true' in the preflight step "
+                "of test.yml and test-dev.yml, and give CI a key.\n  %s" % (feature, line.strip())
+            )
+
+
+def _jobs(name):
+    return yaml.safe_load((WORKFLOWS / name).read_text())["jobs"]
+
+
+@pytest.mark.parametrize(
+    "workflow,credentialed",
+    [
+        ("test.yml", ("container-kicad", "build-containers")),
+        ("test-dev.yml", ("devcontainer", "container-kicad")),
+    ],
+)
+def test_every_job_that_holds_a_credential_waits_for_the_check(workflow, credentialed):
+    """And through them, every job that runs a test.
+
+    The gate is deliberately narrow: these are the jobs that talk to the
+    registry, and every test job already needs them, so the graph that exists
+    carries the rest. What must not happen is a credentialed job that does not
+    need `preflight` -- that is the push that fails at the registry with the
+    check sitting green beside it.
+    """
+    jobs = _jobs(workflow)
+    assert "preflight" in jobs, workflow
+
+    for name in credentialed:
+        needs = jobs[name].get("needs") or []
+        needs = [needs] if isinstance(needs, str) else needs
+        assert "preflight" in needs, "%s: %s does not wait for the preflight" % (workflow, name)
+
+
+@pytest.mark.parametrize(
+    "workflow,speaks_for",
+    [("test.yml", "build-containers"), ("test-dev.yml", "devcontainer")],
+)
+def test_the_check_holds_the_same_token_as_the_job_it_speaks_for(workflow, speaks_for):
+    """A GITHUB_TOKEN is scoped per job, so the probe must request what it measures.
+
+    Left at the workflow default of `contents: read`, the preflight would ask
+    the registry about a token nothing else uses: the answer would be "pull but
+    not push" on this repository too, where the push works fine, and every run
+    that builds an image would stop on a check that was measuring the wrong
+    thing. Requesting the write is not assuming it -- whether the repository
+    grants it is exactly the question.
+    """
+    jobs = _jobs(workflow)
+    assert (jobs["preflight"].get("permissions") or {}).get("packages") == "write", workflow
+    assert (jobs[speaks_for].get("permissions") or {}).get("packages") == "write", workflow
+
+
+@pytest.mark.parametrize("workflow,scope", [("test.yml", "set-matrix"), ("test-dev.yml", "scope")])
+def test_the_check_is_asked_about_wanting_rather_than_succeeding(workflow, scope):
+    """Reading `image-push` alone would make it silent on the run that matters.
+
+    `push` is already false for the fork that could not publish -- that is what
+    the action degraded to -- so a preflight gated on it would say nothing
+    exactly when there is something to say. `image-degraded` is the other half.
+    """
+    (step,) = [s for s in _jobs(workflow)["preflight"]["steps"] if s.get("uses") == USES]
+    needs_ghcr = " ".join(str(step["with"]["needs-ghcr"]).split())
+
+    assert "%s.outputs.image-push" % scope in needs_ghcr
+    assert "%s.outputs.image-degraded" % scope in needs_ghcr
+
+
+@pytest.mark.parametrize("workflow", ["test.yml", "test-dev.yml"])
+def test_the_ssh_agent_starts_only_where_there_is_a_key(workflow):
+    """Through the preflight's output, because nothing else can see a secret.
+
+    `secrets` is not readable from an `if:` and a step's own `env:` is not
+    readable from that same step's `if:`. Unconditional -- which is what this
+    was -- the action is handed an empty string on a fork and fails the job
+    with "The ssh-private-key argument is empty", which names neither the
+    secret nor the fork.
+    """
+    for job in _jobs(workflow).values():
+        for step in job.get("steps") or []:
+            if "webfactory/ssh-agent" in str(step.get("uses", "")):
+                assert "needs.preflight.outputs.ssh-key" in str(step.get("if", "")), workflow
+                break
