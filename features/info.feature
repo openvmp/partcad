@@ -137,6 +137,29 @@ Feature: `pc info` command
     And STDOUT should contain "Path: '//'"
 
   @success @pc-info
+  Scenario: `pc info -P` looks the object up in the given package
+    Given a directory named "sub" exists
+    And a file named "sub/test.scad" with content:
+      """
+      translate (v= [0,0,0])  cube (size = 10);
+      """
+    And a file named "sub/partcad.yaml" with content:
+      """
+        parts:
+          test:
+            type: scad
+      """
+    And a file named "partcad.yaml" with content:
+      """
+        import:
+          sub:
+            path: sub
+      """
+    When I run "pc info -P //sub test"
+    Then the command should exit with a status code of "0"
+    And STDOUT should contain "Path: '//sub'"
+
+  @success @pc-info
   Scenario: `pc info` without an object shows the current package
     Given a file named "partcad.yaml" with content:
       """
