@@ -384,6 +384,49 @@ pins the order of its `CLASSES` section, under the `reproducible` parameter of t
 default). An implementation another package supplies may not be, and those files are named one by one in that
 job's `UNSTABLE` list — keep it short, and give every entry a reason there and in the package it belongs to.
 
+**Coverage is merged in the repository, not by a service.** Codecov is gone: every suite uploads its raw
+`.coverage` data as a `coverage-data-*` artifact, and the `Coverage` job in `test.yml` runs
+`dev-tools/ci/coverage_report.py` over all of them — `coverage combine`, then the HTML report as the
+`coverage-html-report` artifact, one pull-request comment edited in place (`dev-tools/ci/pr_comment.py`, found
+by an invisible marker), and the gate. The merge is a **union of line numbers**, not an average of
+percentages, which is the only reason the number means anything: these suites overlap heavily and each covers
+what the others cannot. What makes that union possible is the `[paths]` section of `dev-tools/coverage.rc`,
+mapping the three roots one file is recorded under — the checkout, `site-packages`, and either with Windows
+separators — onto one; without it the report is produced, uploaded and commented on with every rate silently
+too low. Every producer must also **measure with that same file**. `coverage.rc` sets `branch = True`, and
+`coverage combine` refuses to mix branch data with statement-only data — it exits 1 with "Can't combine
+statement coverage data with branch data", which is not a degraded report but no report at all. The suites
+driving `coverage run` pass the file explicitly; the `Pytest` job measures through pytest-cov, which finds no
+configuration here on its own (there is no `.coveragerc` and no `[tool.coverage]` table) and would default to
+`branch = False` — so `addopts` in `pyproject.toml` names `--cov-config=dev-tools/coverage.rc`. That is the
+whole reason it is there, and the first run of the `Coverage` job with real data from every suite died on its
+absence.
+
+A job joins the merged report by passing `coverage-data:` to `.github/actions/upload-test-results`
+and nothing else; that prefix is the whole contract. Two details there are load-bearing rather than
+incidental: the value is a **glob** (`.coverage*`) and the step runs on `always()`, because a suite that died
+mid-run never reached its own `coverage combine` and what is on disk then is the parallel-mode parts — so a
+bare filename on a `success()` step silently drops a whole job from the merge, and with it moves the
+requirement's floor. That holds for the jobs driving `coverage run` themselves; the `Pytest` job measures
+through pytest-cov, which writes **nothing** when its session fails, so a failed `Pytest` contributes no
+coverage and no arrangement of the upload step changes that. And `always()` covers a job that *failed*, not
+one the runner *killed*: a job that hits its own `timeout-minutes` never reaches the step at all, so
+everything it had measured is absent from the merge rather than partially in it — however many data files
+that would have been, which is not always one (an example sweep writes a `.coverage.<n>` per `coverage run`
+before combining them). The merge takes that in its stride and produces the report over what did arrive.
+
+The merge also **records every in-scope file no job imported, at nought percent**, before writing any report:
+coverage.py reports the files it saw, so without that a brand-new module with no test at all is absent from
+the data rather than zero in it, and the gate finds nothing to hold it to.
+
+The requirement is a floor under **patch** coverage — the statements the pull request touched — set to the
+project's own statement rate in the same run. Nothing is stored between runs, so there is no baseline to
+maintain and the bar cannot drift; a change touching no measured statement passes with a notice. Two things
+it deliberately does not do: it does not fail a fork's pull request over the comment it cannot post (GitHub
+gives such a run a read-only token; the job summary carries the same report and the gate still gates), and it
+does not include `CI-Dev`'s coverage, because a `needs:` does not reach across workflows — the same fact the
+KiCad image cleanup is built around.
+
 Lint/format (Python): **`black`, `flake8` and `isort` all gate.** Each is a `pre-commit` hook and a
 `Lint (...)` job in `test.yml`, each pins the version `pyproject.toml` resolves so the hook and the job cannot
 disagree, and the tree satisfies all three. Run them as CI runs them, from the repository root:
