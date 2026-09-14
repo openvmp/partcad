@@ -103,7 +103,11 @@ IN_PROCESS = {
 # listed fails the test below, so widening this is a decision somebody makes on
 # purpose, in this file, next to the reason.
 IN_PROCESS_DAEMON_CALLS = {
-    "open.py": ("adhoc.convert",),
+    # 'adhoc.convert' converts a file the application cannot read; 'open.tools'
+    # asks which applications the workspace's packages declare. Both are
+    # questions for the side that has the package graph and the CAD wrappers,
+    # and neither opens anything: the window is still this process's to open.
+    "open.py": ("adhoc.convert", "open.tools"),
 }
 
 # Commands that have not been migrated to the daemon yet. This list is a debt

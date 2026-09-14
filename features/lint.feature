@@ -343,6 +343,27 @@ Feature: `pc lint` command
     Then the command should exit with a status code of "1"
     And STDOUT should contain "partcad.yaml:7:16: 1 is not of type 'string'"
 
+  @success
+  Scenario: Part offset written as an expression
+    Given a file named "partcad.yaml" with content:
+      """
+      parts:
+        block:
+          type: cadquery
+          parameters:
+            depth: 2.0
+          offset:
+            - [0, 0, "%depth / 2%"]
+            - [0.0, 0.0, 1.0]
+            - 0.0
+      """
+    And a file named "block.py" with content:
+      """
+      # This is a py file for block.py
+      """
+    When I run "pc lint"
+    Then the command should exit with a status code of "0"
+
   @failure
   Scenario: Part with invalid offset array
     Given a file named "partcad.yaml" with content:
@@ -358,7 +379,7 @@ Feature: `pc lint` command
       """
     When I run "pc lint"
     Then the command should exit with a status code of "1"
-    And STDOUT should contain "partcad.yaml:6:16: 'bad' is not of type 'number'"
+    And STDOUT should contain "partcad.yaml:6:16: 'bad' is neither a number nor a '%...%' expression"
 
   @success
   Scenario: Valid OCCTLocation in part offset

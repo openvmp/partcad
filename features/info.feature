@@ -106,7 +106,7 @@ Feature: `pc info` command
   Scenario: Show 'Url' & 'Path' as package info for remote imports(git/tar)
     Given a file named "partcad.yaml" with content:
       """
-      import:
+      dependencies:
         rob:
           type: git
           relPath: robotics/parts
@@ -183,6 +183,71 @@ Feature: `pc info` command
     Then the command should exit with a status code of "0"
     And STDOUT should contain "Path: '//'"
     And STDOUT should contain "sample PartCAD package"
+
+  @success @pc-info
+  Scenario: `pc info -i` on a parametrized interface
+    Given a file named "partcad.yaml" with content:
+      """
+      sketches:
+        m:
+          type: basic
+          circle: "%size / 2%"
+          parameters:
+            size:
+              type: float
+              default: 3.0
+
+      interfaces:
+        m:
+          desc: Abstract %size%mm circular interface
+          abstract: True
+          parameters:
+            size:
+              type: float
+              default: 3.0
+          ports:
+            m:
+              location: [[0, 0, 0], [0, 0, 1], 0]
+              sketch: m
+              params:
+                size: "%size%"
+        m-thru:
+          desc: "%depth%mm thick through hole of %size%mm diameter"
+          parameters:
+            size: 3.0
+            depth: 3.0
+          inherits:
+            "m;size=%size%": thru
+        m3-thru-3:
+          alias: "m-thru;size=3,depth=3"
+      """
+    When I run command:
+      """
+      pc info -i m-thru
+      """
+    Then the command should exit with a status code of "0"
+    And STDOUT should contain "3mm thick through hole of 3mm diameter"
+    When I run command:
+      """
+      pc info -i "m-thru;size=4,depth=2"
+      """
+    Then the command should exit with a status code of "0"
+    And STDOUT should contain "'m-thru;depth=2,size=4'"
+    And STDOUT should contain "2mm thick through hole of 4mm diameter"
+    And STDOUT should contain "'size': 4.0"
+    When I run command:
+      """
+      pc info -i -p size=5 m-thru
+      """
+    Then the command should exit with a status code of "0"
+    And STDOUT should contain "3mm thick through hole of 5mm diameter"
+    When I run command:
+      """
+      pc info -i m3-thru-3
+      """
+    Then the command should exit with a status code of "0"
+    And STDOUT should contain "3mm thick through hole of 3mm diameter"
+    And STDOUT should contain "'alias': 'm-thru;size=3,depth=3'"
 # And STDOUT should contain "cube" in the parts list
 # And STDOUT should contain "cylinder" in the parts list
 # And STDOUT should contain valid location coordinates

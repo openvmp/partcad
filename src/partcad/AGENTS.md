@@ -119,15 +119,18 @@ at all).
   corrected `fileHash` has to move the cache key, or `pc test` answers the new declaration with the old one's
   failure.
 
-- **Built-in packages** (`./src/partcad/builtin`): PartCAD ships two packages inside itself, reachable from
-  every context as `//builtin/export` and `//builtin/render` (loaded on demand by `Context.get_project`, see
-  `output.py`). They declare the file types `pc export` and `pc render` write, in exactly the form a user's
-  package declares one — a `path` to a script, its `pythonRequirements`, and the export parameters. So adding a
+- **Built-in packages** (`./src/partcad/builtin`): PartCAD ships three packages inside itself, reachable from
+  every context as `//builtin/export`, `//builtin/render` and `//builtin/scene` (loaded
+  on demand by `Context.get_project`, see `output.py`). The first two declare implementations — the file
+  types `pc export` and `pc render` write — in
+  exactly the form a user's package declares one: a `path` to a script, its `pythonRequirements`, and the
+  parameters. So adding a
   format, changing its defaults or changing which dependencies it needs is an edit to `builtin/*/partcad.yaml`, not
   to `shape.py`. The scripts run in a sandbox through `wrappers/wrapper_export.py`; they are data files, so
   anything new under `builtin/` has to be listed in `pyproject.toml`'s `package-data` and in the PyInstaller
   spec (see "Packaging" in the root [AGENTS.md](../../AGENTS.md)). The requirement strings there are the versions
-  `sandbox_versions.py` pins, which `tests/partcad/unit/test_output.py` enforces.
+  `sandbox_versions.py` pins, which `tests/partcad/unit/test_output.py` enforces — as does a check that every
+  built-in package validates against PartCAD's own configuration schema, since nothing else reads them.
 
 - **Engineering analysis** (`./src/partcad/cae.py`, `Shape.analyze_async()`, `./src/partcad/test/cae.py`):
   `pc cae fea`/`pc cae cfd` are a third output section, `cae:`, resolved by the very code that resolves
@@ -221,6 +224,80 @@ at all).
   remove-run-verify and calls `get_wrapped` and `_run_implementation_async` inside that), which a bare
   `asyncio.Lock` cannot do without waiting on itself for good. The cost is that two different outputs of one
   shape no longer overlap; PartCAD's parallelism is across shapes.
+  `//builtin/scene` is the odd one out: it declares an *object* rather than a way of producing one — the
+  scene a `simulate:` places its subject in when it names none of its own. It is an ordinary `assy` scene
+  whose `.assy` is a Jinja2 template, and the only thing that makes it the default is that
+  `simulation.DEFAULT_SCENE` names it.
+
+  **There is deliberately no `//builtin/simulate`.** `simulation:` is a third section resolved exactly like
+  the other two — a plugin is an `output.Implementation` like any other — and PartCAD implements none of it.
+  A simulator is somebody's program with a release cycle of its own, so PartCAD ships the concept (the
+  section, `wrappers/wrapper_simulate.py`, the runner in `simulation.py`, the `mjcf` export a scene reaches a
+  plugin through) and a package supplies the physics: `partcad/partcad-sim-mujoco` is the MuJoCo one.
+  `simulation:` is also **not** in `output.SECTIONS`: everything that reads that tuple is asking which file
+  types exist, and a simulation is not one.
+
+  **`import:` is the fourth, and the mirror image of `export:`.** It declares who turns somebody else's
+  file format *into* a PartCAD object, and it is why there is no `assembly_factory_urdf.py` any more:
+  `assembly_factory_imported.py` is one factory for every such type, and the reader it runs is named by the
+  declaration. Everything below the reader — sandbox, tree walk, part registration, the report of what was
+  dropped — was identical in the three factories that used to exist, so only the reader knows XML and only
+  the reader is a plugin. `//builtin/import` ships `urdf`; `mjcf` and `world` belong to the two engine
+  plugins, beside the exporter and the simulator that share their knowledge of the format.
+
+  Two things about it are easy to get wrong. **`import:` was the old name of `dependencies:`**, and
+  `project_config.py` used to migrate it in silence — copy the value across and delete the key — which would
+  now eat a reader declaration before anything could read it, then try to fetch it as a package. So the
+  migration is gone and the old use is **reported** instead: `Configuration._obsolete_import_entries()`
+  looks for a dependency's required `type:` (`git`/`tar`/`local`/`external`) or its transport-only keys
+  (`url`, `relPath`, `revision`, `subfolder`, `onlyInRoot`, `cacheVersion`, `includePaths`, `plugin`), none of
+  which a reader declaration has. Do not restore the copy: guessing is what made the two ambiguous.
+
+  **How loudly is the one thing that depends on whose package it is**, and both halves were learned the hard
+  way on #637. In the *root* package it is an error and the package is broken, the way every other unreadable
+  `partcad.yaml` is — that is the file the user can fix. In an *imported* one it is a warning and the package
+  stays usable for everything else it declares, because `Context.import_project()` reports a broken import as
+  an error of its own: `//pub/universe` in the public index uses the old spelling today, so marking it broken
+  failed `pc list all -r` — every command that merely walks past it — over a section the user cannot reach,
+  let alone rename. And do not make it raise in either case: an exception escaping a project factory strands
+  the name in `Context._projects_being_loaded`, so every later import of it reports a recursion that is not
+  happening — naming the innocent package rather than the one that failed. Both of those broke
+  `Examples ... via bundle`, in that order. And an
+  object type that no built-in factory is registered for is what
+  `factory.instantiate()` routes here, which is also how `project.produces_own_parts()` decides, by exclusion,
+  which objects materialize parts of their own: PartCAD cannot list the types in a section whose whole point
+  is that it does not know what is in it.
+
+  **`open:` is the fifth, and the only one whose implementation is not a script.** It declares the
+  third-party applications `pc open` launches, as data: binaries per OS, a container image, the arguments
+  each front end takes, and what the application can read. The logic is the same for every tool and stays in
+  `partcad_client.external`, which now *builds* its `Tool` table from those declarations instead of holding
+  five literals. Blender's argument builder was the one callable in that table and is now `fileArgs:`
+  templates (`{path}`, `{path_repr}`) plus `ownFormats:` — a package cannot ship a Python function into a
+  frozen client.
+
+  The subtlety is where the table is read. `pc open` deliberately needs **no package graph** (it is handed a
+  path; the window belongs to whoever ran the command; a daemon can be remote), so the built-in entries are
+  read straight off disk out of the wheel — `partcad_client` locates them with `importlib.util.find_spec`
+  without importing `partcad`, the same reason `object_types` holds its own copy of PartCAD's tables. Only a
+  tool a *package* declares needs the graph, and that is the `open.tools` method: the daemon says **which**
+  applications exist, and never opens one. Do not add a method that opens a file.
+
+- **A material is a fact a simulation reads** (`material.py`): `mu` sits beside `density`, and
+  `PHYSICS_FROM_MATERIAL` is what makes it reach an exporter. A shape names its material by a *reference*
+  (`:aluminium`), and resolving one needs the package graph — which the core has and a sandbox does not. So
+  `physics_by_shape()` resolves every reference in an export request against the package of the shape that
+  wrote it (which is what lets the reference be relative), and `wrapper_export.properties_index()` merges what
+  it found *underneath* what each shape states itself. No exporter knows materials exist, which is what keeps
+  URDF's `<mu1>`, SDFormat's `<mu>` and MJCF's `friction` agreeing for free.
+
+  Which reference it reads is `properties: material:`, and **a package never writes that by hand**.
+  `parameters:` is what is asked of the type that produces the shape; `properties:` is what the shape turned
+  out to be, and is filled in by whatever built it. For a type that accepts a `material` parameter — the
+  homogeneous ones, `PartFactoryHomogen` — what it turned out to be made of is exactly what was asked for, and
+  `PartFactory.record_object_type_properties()` is the instantiation code that writes it down. A `step` part
+  accepts no such parameter (its file states a material per solid, and says it better), so nothing is promoted
+  and the reader that read the file is what fills the property in.
 
 - **Drawing ports and interfaces** (`./src/partcad/render_overlay.py`, `./src/partcad/wrappers/stroke_text.py`):
   `pc render --with-ports`/`--with-interfaces` draws the connection metadata on top of a projection.
@@ -233,6 +310,91 @@ at all).
   overlay and neither overrides the other — the command line, and a `render:` file type declaring
   `with_ports:`/`with_interfaces:` — which is `render_overlay.effective()`, and is how
   `examples/feature_interface` keeps four such drawings checked in.
+
+- **Parametric interfaces and ports** (`./src/partcad/expr.py`, `interface_config.py`, `interface.py`,
+  `Project.get_interface`): an interface is parametrized the way a part or a sketch is —
+  `m-thru;size=4,depth=3` names an instance, `Project.get_interface` builds it from the declaration as a
+  template, and the shared `parse_parameterized_name`/`format_parameterized_name`/`apply_parameter_values`
+  are what read the suffix, so there is one answer to what `;size=4` means. Three things about it are
+  load-bearing:
+
+  **One `parameters:` section holds two kinds, told apart by content.** It has meant the freedom of
+  movement a made connection keeps (`InterfaceParameter`) since interfaces existed, and it now also holds
+  the construction values a reference sets — because "the same way as for a part" is the point of the
+  feature. The split is `interface_config.is_movement_parameter`, and it is safe because the two
+  vocabularies do not overlap: a movement parameter is one of the six predefined names, a `[min, max,
+  default]` list, or states `min`/`max`/`dir` or `type: move`/`turn`; a part's parameter states none of
+  those. Every movement parameter the schema has ever accepted is caught — a custom name is *required* to
+  state its `dir` — so nothing written before this changes meaning. `WithPorts` overrides both accessors:
+  for a shape that section has only ever meant construction values, so none of it is movement.
+
+  **The name is canonicalized before anything is looked up under it.** An interface's full name is what a
+  mating is registered under, so `m-thru;size=4` and `m-thru;size=4.0` being two objects would be two
+  halves of a connection that never find each other. `canonical_parameter_values` puts every value through
+  the type it is declared as and formats it back the way `expr.format_value` writes one — which is also how
+  an expression that produced it spelled it.
+
+  **An inherited instance may restate its boundary** (`sketch:` beside the instance, read by
+  `InterfaceInherits` and applied in `Interface.instantiate`). The same opening drawn differently: a slotted
+  hole *is* a through hole — it inherits one, so it mates as one and keeps its port where the plain hole would
+  have been — and what tells them apart is the outline and the freedom of movement. Without it a slotted hole
+  is what it used to be in `//pub/std/metric/m`: an orphan with no parents, no compatibility and no mate.
+
+  **`alias:` is what keeps a published name working.** It is spelled as inheriting exactly one interface,
+  once, unnamed, at the origin — which is the shape of inheritance that leaves the ports named as the
+  target names them and marks the interface a drop-in for it — plus `_adopt_alias_target()` for the handful
+  of things an interface states rather than derives. `//pub/std/metric/m` is the reason it exists: eleven
+  thousand enumerated names became aliases of nine parametric interfaces, with identical ports.
+
+  Two things had to be fixed for any of it to mean anything, and both change what an *existing* package
+  does — visibly, and for the better:
+
+  * **An interface's own freedom of movement now wins over the inherited one.** The inherited declaration
+    used to overwrite it, so a child could say nothing about the freedom it was given — which is what a
+    slotted hole is entirely made of (it narrows `moveX` to the length of the slot). `//pub/std/metric/m`
+    has always declared `moveZ: {max: length - 2}` on every `mN-screw-L`, and it had never taken effect:
+    425 of its interfaces gain the movement they were written to have. Fifty of them gain a range that runs
+    *backwards*, because `length - 2` is -1 for the 1mm screws its own lists name — `_check_movement_range`
+    reports those and reads them as no movement, which is what they silently were before. Do not remove
+    that check on the grounds that the package should be fixed instead: a bound may be an expression now,
+    so the next package can write one that inverts too.
+  * **`compatible_with` closes over the ancestors.** It used to be accumulated while inheriting, but
+    inheriting only *creates* the parent — instantiating it is what fills in what it is in turn compatible
+    with, and that had not happened yet — so the chain stopped at the first parent and an `m4-thru-3` never
+    reached `m4-opening`. It is a lazy property now, and fifty of that package's interfaces reach one level
+    further up than they used to. Nothing loses an entry.
+
+  `expr.py` is the `%...%` syntax, generalized from the one `Interface.instantiate` used for inherited
+  interface names. It is not Jinja2 and cannot be: `partcad.yaml` is rendered as a Jinja2 template before it
+  is parsed, which is one step before the instance being asked for exists. Expressions are resolved only in
+  the sections named in `Interface.EXPRESSION_SECTIONS` (`WithPorts` narrows it to `ports` and `implements`),
+  because `%` is an ordinary character in a URL and in prose, and only for an object that declares
+  parameters at all — a package written before this must not start reporting errors about a percent sign it
+  has always had.
+
+  **What an expression may do is a whitelist over the syntax tree, and it is wider than arithmetic.** The
+  form it replaced was an unrestricted `eval`, and one published package uses it as one:
+  `//pub/std/metric/cqwarehouse` names its screw interface `%size:value[1:value.index('-')]%`, reading
+  "M4-0.7" as 4. So `_ALLOWED_NODES` admits indexing and attribute access, and `SAFE_ATTRIBUTES` is what
+  makes the second of those safe — emptying `__builtins__` stops nothing on its own, since
+  `().__class__.__base__.__subclasses__()` walks from any literal to every class in the interpreter, and the
+  defence is that no name on that list leads anywhere. `format` is off it deliberately: `"{0.__class__}"
+  .format(x)` traverses attributes by name at run time, which is the whole of what the list prevents. Adding
+  a name to it is a decision about what a package may run at *load* time, not a convenience.
+
+- **What a `partcad.yaml` is rendered with** (`./src/partcad/config_template.py`): the file is a Jinja2 template
+  rendered to YAML before it is parsed, and this is the context. Beside the package name and the constants a CAD
+  file reaches for, it carries **which PartCAD is doing the rendering** — the version whole, its three numbers,
+  and `partcad_version_at_least(...)`. That is what lets one package serve two PartCADs: a package wanting a
+  feature this release has and the last one did not writes both forms and picks, rather than raising its
+  `partcad:` requirement and going dark for everyone who has not updated (`//pub/std/metric/m` is exactly this).
+
+  Two things about it are deliberate. The comparison is **component-wise** — `0.8.9` is older than `0.8.77`, and
+  every comparison of the strings says the opposite. And it is a **Python callable, not a Jinja2 macro**, which
+  is what it looks like it should be: a macro always renders to text, so a false one comes back as the string
+  `"False"`, which is not empty and so is true to `{% if %}`. A package that must also load on a PartCAD
+  predating all of this guards with `partcad_version_major is defined and ...`; Jinja2's `and` short-circuits,
+  so the call is never made where the name is absent.
 
 - **Sandbox environment** (`./src/partcad/python_env.py`): importing `partcad` sweeps every `PYTHON*` variable
   out of `os.environ` and puts back only `PARTCAD_PYTHON_ENV`. Everything PartCAD spawns — the wrappers, `pip`,

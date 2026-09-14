@@ -206,7 +206,7 @@ def test_the_container_is_named_after_the_tool_not_the_image(part, docker):
     external.open_file(str(part), use_docker=True)
     created = docker.command("docker", "run")
     assert created[created.index("--name") + 1] == "partcad-freecad"
-    assert created[-3] == external.FREECAD.image
+    assert created[-3] == external.TOOLS["freecad"].image
 
 
 def test_a_custom_image_replaces_the_default_one(part, docker):
@@ -389,9 +389,17 @@ def test_the_result_says_how_the_file_was_opened(part, docker):
 
 
 def test_every_tool_can_be_named_and_has_a_container_of_its_own():
-    assert external.tool_names() == ["freecad", "gazebo", "kicad", "blender"]
+    # A set: the order is the order of the declarations, and two of these are
+    # about to move into the plugin package for their engine.
+    assert set(external.tool_names()) == {"freecad", "gazebo", "kicad", "blender", "mujoco"}
     names = {external.TOOLS[name].container_name for name in external.tool_names()}
-    assert names == {"partcad-freecad", "partcad-gazebo", "partcad-kicad", "partcad-blender"}
+    assert names == {
+        "partcad-freecad",
+        "partcad-gazebo",
+        "partcad-kicad",
+        "partcad-blender",
+        "partcad-mujoco",
+    }
 
 
 def test_the_kicad_container_is_the_image_partcad_already_builds():
@@ -573,10 +581,14 @@ def converter():
     class Converter:
         def __init__(self):
             self.calls = []
+            # Which kind of object each conversion was of: "part" for the mesh a
+            # Blender open needs, "scene" for the MJCF a MuJoCo open needs.
+            self.kinds = []
             self.writes = True
 
-        def __call__(self, source, source_type, target, target_type):
+        def __call__(self, source, source_type, target, target_type, kind="part"):
             self.calls.append((source, source_type, target, target_type))
+            self.kinds.append(kind)
             if self.writes:
                 open(target, "w").write("solid converted\nendsolid converted\n")
 
@@ -752,7 +764,7 @@ def test_blender_runs_in_its_own_container_on_the_converted_mesh(part, docker, c
     assert result.method == "docker"
     created = docker.command("docker", "run")
     assert "partcad-blender" in created
-    assert external.BLENDER.image in created
+    assert external.TOOLS["blender"].image in created
     # The workspace that holds the *source* is what gets mounted: the mesh lives
     # under that workspace's state directory, which is mounted beside it, and a
     # workspace worked out from the mesh would have been the state directory.
@@ -790,11 +802,11 @@ def test_macos_runs_the_executable_inside_the_bundle(monkeypatch):
     monkeypatch.setattr(external.platform, "system", lambda: "Darwin")
     monkeypatch.setattr(external.shutil, "which", lambda _name: None)
     bundle = os.path.join("/Applications", "Blender.app")
-    executable = os.path.join(bundle, external.BLENDER.macos_executable)
+    executable = os.path.join(bundle, external.TOOLS["blender"].macos_executable)
     monkeypatch.setattr(external.os.path, "isdir", lambda path: path == bundle)
     monkeypatch.setattr(external.os.path, "isfile", lambda path: path == executable)
 
-    assert external.native_command(external.BLENDER) == [executable]
+    assert external.native_command(external.TOOLS["blender"]) == [executable]
 
 
 def test_macos_opens_the_bundle_for_an_application_that_takes_a_file(monkeypatch):
@@ -809,7 +821,7 @@ def test_macos_opens_the_bundle_for_an_application_that_takes_a_file(monkeypatch
     bundle = os.path.join("/Applications", "FreeCAD.app")
     monkeypatch.setattr(external.os.path, "isdir", lambda path: path == bundle)
 
-    assert external.native_command(external.FREECAD) == ["open", "-a", bundle]
+    assert external.native_command(external.TOOLS["freecad"]) == ["open", "-a", bundle]
 
 
 def test_a_bundle_without_the_executable_in_it_is_not_a_local_installation(monkeypatch):
@@ -825,7 +837,7 @@ def test_a_bundle_without_the_executable_in_it_is_not_a_local_installation(monke
     monkeypatch.setattr(external.os.path, "isdir", lambda path: path.endswith("Blender.app"))
     monkeypatch.setattr(external.os.path, "isfile", lambda _path: False)
 
-    assert external.native_command(external.BLENDER) is None
+    assert external.native_command(external.TOOLS["blender"]) is None
 
 
 def test_the_other_applications_are_still_handed_the_file_itself(monkeypatch, spawned, part):
@@ -833,3 +845,96 @@ def test_the_other_applications_are_still_handed_the_file_itself(monkeypatch, sp
     monkeypatch.setattr(external.shutil, "which", lambda name: "/usr/bin/" + name if name == "freecad" else None)
     external.open_file(str(part), tool="freecad")
     assert spawned == [["/usr/bin/freecad", str(part)]]
+
+
+# ---------------------------------------------------------------------------
+# MuJoCo: an application that reads one scene description and no other
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def mjcf(tmp_path):
+    """An MJCF model inside a workspace: what MuJoCo reads as it is."""
+    (tmp_path / "partcad.yaml").write_text("name: test\n")
+    path = tmp_path / "stack.xml"
+    path.write_text('<mujoco model="stack"><worldbody/></mujoco>\n')
+    return path
+
+
+def test_mujoco_opens_its_own_model_without_converting_anything(monkeypatch, spawned, mjcf, converter):
+    monkeypatch.setattr(external.shutil, "which", lambda name: "/usr/bin/simulate" if name == "simulate" else None)
+
+    result = external.open_file(str(mjcf), tool="mujoco", transcode=converter)
+
+    assert result.method == "native"
+    assert result.source is None
+    assert spawned == [["/usr/bin/simulate", str(mjcf)]]
+    assert converter.calls == []
+
+
+def test_a_world_is_written_out_as_mjcf_first(monkeypatch, spawned, world, converter):
+    """The conversion `pc open --with mujoco` exists for.
+
+    A Gazebo world handed to MuJoCo is not a slow way of opening a scene; it is
+    a file MuJoCo cannot read at all.
+    """
+    monkeypatch.setattr(external.shutil, "which", lambda name: "/usr/bin/simulate" if name == "simulate" else None)
+
+    result = external.open_file(str(world), tool="mujoco", transcode=converter)
+
+    source, source_type, target, target_type = converter.calls[0]
+    assert (source, source_type, target_type) == (str(world), "world", "mjcf")
+    # A scene, not a part: the two conversions differ in what they convert.
+    assert converter.kinds == ["scene"]
+    assert target.endswith(".xml")
+    assert result.path == target
+    assert result.source == str(world)
+    assert spawned == [["/usr/bin/simulate", target]]
+
+
+def test_an_assy_scene_is_refused_by_name_rather_than_converted(monkeypatch, tmp_path, converter):
+    """It is nothing but references to the parts of a package."""
+    (tmp_path / "partcad.yaml").write_text("name: test\n")
+    path = tmp_path / "bench.assy"
+    path.write_text("links: []\n")
+    monkeypatch.setattr(external.shutil, "which", lambda name: "/usr/bin/simulate" if name == "simulate" else None)
+
+    with pytest.raises(external.ExternalToolError) as error:
+        external.open_file(str(path), tool="mujoco", transcode=converter)
+
+    assert "only means anything inside a package" in str(error.value)
+    assert "pc export -S -t mjcf" in str(error.value)
+    assert converter.calls == []
+
+
+def test_a_file_that_is_no_scene_at_all_says_so(monkeypatch, part, converter):
+    monkeypatch.setattr(external.shutil, "which", lambda name: "/usr/bin/simulate" if name == "simulate" else None)
+
+    with pytest.raises(external.ExternalToolError) as error:
+        external.open_file(str(part), tool="mujoco", transcode=converter)
+
+    assert "MJCF" in str(error.value)
+    assert converter.calls == []
+
+
+def test_a_declared_type_says_what_the_scene_file_name_cannot(monkeypatch, spawned, tmp_path, converter):
+    """The VS Code tree knows the declared type; a name like '.sdf' does not."""
+    (tmp_path / "partcad.yaml").write_text("name: test\n")
+    path = tmp_path / "warehouse.sdf"
+    path.write_text('<sdf version="1.9"><world name="warehouse"/></sdf>\n')
+    monkeypatch.setattr(external.shutil, "which", lambda name: "/usr/bin/simulate" if name == "simulate" else None)
+
+    external.open_file(str(path), tool="mujoco", object_type="world", transcode=converter)
+
+    assert converter.calls[0][1] == "world"
+
+
+def test_mujoco_runs_in_its_own_container_with_the_model(mjcf, docker):
+    docker.binaries = ["/usr/bin/simulate"]
+
+    result = external.open_file(str(mjcf), tool="mujoco", use_docker=True)
+
+    assert result.method == "docker"
+    created = docker.command("docker", "run")
+    assert "partcad-mujoco" in created
+    assert external.TOOLS["mujoco"].image in created

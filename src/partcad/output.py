@@ -11,6 +11,10 @@ PartCAD writes output files in two flavours, each declared in a section of
     'export:'   the 3D and CAD formats 'pc export' writes
     'render:'   the 2D projections 'pc render' writes
 
+Two more sections are resolved by exactly the same machinery and produce no
+output file at all -- 'import:' (who *reads* a file format into a PartCAD
+object) and 'simulation:' (who runs a scene). See SIMULATE and IMPORT below.
+
 A section has one subsection per file type, whose fields are that type's
 parameters. Some of them are not parameters but say how the file is produced -
 'path' (the implementation script), 'package' (where that script lives),
@@ -28,9 +32,9 @@ that reaches the merged options from a calling package is inert (see
 'Implementation.python_version()').
 
 The built-in implementations are not special-cased anywhere: they are declared
-in exactly this form by two packages that ship inside 'partcad' itself and that
-every context can reach, '//builtin/export' and '//builtin/render' (see
-'builtin/'). Resolving a file type means layering the configuration of the
+in exactly this form by three packages that ship inside 'partcad' itself and
+that every context can reach -- '//builtin/export', '//builtin/render' and
+'//builtin/import' (see 'builtin/'). Resolving a file type means layering the configuration of the
 package that asked for it on top of the built-in package's, so a package that
 declares 'path' for a type replaces the implementation for itself and one that
 declares only a parameter keeps the built-in implementation and re-tunes it.
@@ -38,6 +42,7 @@ declares only a parameter keeps the built-in implementation and re-tunes it.
 
 from __future__ import annotations
 
+import base64
 import copy
 import os
 from typing import Optional
@@ -66,6 +71,90 @@ CAE = "cae"
 ANALYSIS_SECTIONS = (CAE,)
 ALL_SECTIONS = SECTIONS + ANALYSIS_SECTIONS
 
+# Another section resolved the same way that produces no output file at all:
+# 'simulation:' declares the plugins 'pc sim' runs a scene through. Out of
+# 'SECTIONS' for the reason 'cae:' is, and out of 'ANALYSIS_SECTIONS' too -- a
+# simulation names no file type, so there is nothing for 'pc export -t' or
+# 'pc cae' to be offered. It is an 'Implementation' like any other: a script,
+# the sandbox it needs, and the parameters it is handed. See
+# 'partcad.simulation'.
+#
+# Like 'cae:', PartCAD implements *nothing* of it. There is no
+# '//builtin/simulate', on purpose and for the reason there is no built-in
+# solver: a simulator is somebody's program with a release cycle of its own, and
+# shipping one inside the wheel would make every PartCAD release a statement
+# about which version of it you get. PartCAD ships the concept -- this section,
+# 'wrappers/wrapper_simulate.py', the runner in 'partcad.simulation', and the
+# MJCF export a plugin is handed a scene through -- and a package supplies the
+# simulator. The MuJoCo one is 'partcad/partcad-sim-mujoco'.
+SIMULATE = "simulation"
+
+# The fourth, and the mirror image of 'export:': 'import:' declares who turns a
+# file of some third-party format *into* a PartCAD object. It is not in SECTIONS
+# for the same reason 'simulation:' is not -- everything reading that tuple is
+# asking "which output file types are there", and an importer produces no file.
+#
+# It exists because reading a format and writing it are one piece of knowledge.
+# A package that teaches PartCAD to write MJCF knows MJCF; making it declare the
+# reader beside the writer is what lets the pair travel together, be versioned
+# together, and be replaced together. Before this section there was no way to
+# say it: every reader was a factory class registered in 'globals.py', so adding
+# one meant editing PartCAD.
+#
+# Unlike 'simulation:', this one does have a built-in package. A reader is not a
+# simulator: it is XML and geometry, it depends on nothing with a release cycle
+# of its own, and 'urdf' in particular describes a robot rather than any one
+# engine's world, so it ships here. The two that *are* an engine's own scene
+# format live with that engine's plugin -- 'mjcf' in 'partcad/partcad-sim-mujoco'
+# and 'world' in 'partcad/partcad-sim-gazebo'.
+#
+# The section is spelled 'import:' and not 'import:' because that name is
+# taken: 'import:' is the historical spelling of 'dependencies:', and
+# 'ProjectConfiguration' does not merely warn about it - it copies the value
+# into 'dependencies' and deletes the key (see 'project_config.py'). A section
+# by that name would be read as a dependency list and then removed before
+# anything here could see it. The plural also reads better beside 'partTypes:',
+# which is the other section where a package declares something PartCAD then
+# resolves by name.
+#
+# What an entry declares, beyond the implementation keys every section shares:
+#
+#   'kinds'      which object kinds the reader can produce ('assembly',
+#                'scene', or both). A format used for one thing only says so,
+#                and declaring it under the wrong section is then an error a
+#                package gets told about rather than a tree that comes out
+#                empty.
+#   'extension'  the source file's extension, used to find the file when the
+#                declaration names no 'path'.
+#   'noun'       what one of these is called in a log line ('model', 'world').
+#   'dropped'    what each counter of the reader's 'dropped' summary is called
+#                when it is reported -- the reader counts, the declaration
+#                words it.
+#
+# Everything else is handed to the reader as a parameter, which is what lets a
+# format carry its own options ('ignoreCollision', 'modelPaths') without PartCAD
+# knowing they exist.
+IMPORT = "import"
+
+# The fifth, and the only one whose implementation is not a script: 'open:'
+# declares the third-party applications 'pc open' can launch. An entry is data
+# and nothing else -- where the application is on each operating system, what to
+# run it as, which container to fall back to, and what it can read -- because
+# the one thing that would be code is the same for every tool there is, and
+# lives once in 'partcad_client.external'.
+#
+# It is resolved the same way as the rest, and for the same reason: an
+# application belongs to whoever knows it. Gazebo and MuJoCo are declared by
+# their engine's plugin package, beside the exporter, the reader and the
+# simulator for that engine's own scene format; a package that wraps some other
+# tool adds it without PartCAD having heard of it.
+#
+# 'pc open' is a client-side command that deliberately needs no package graph
+# (see 'partcad_cli.click.commands.open'), so the built-in half of this table is
+# read straight off disk out of the wheel and needs no context at all. Only a
+# tool a *package* declares needs one, and that is the daemon's to answer.
+OPEN = "open"
+
 # Where the built-in packages live, both as package paths and on disk. They are
 # inside the 'partcad' Python package so that they ship with it and are always
 # present, wheel or frozen bundle alike.
@@ -73,12 +162,22 @@ BUILTIN_ROOT_PACKAGE = "//builtin"
 BUILTIN_PACKAGES = {
     EXPORT: "//builtin/export",
     RENDER: "//builtin/render",
+    IMPORT: "//builtin/import",
+    OPEN: "//builtin/open",
 }
+# The one built-in package that declares objects rather than implementations:
+# the scene a 'simulate:' that names no scene of its own is run in, whose
+# 'subject' parameter is whatever is being simulated. Unlike the simulator that
+# runs it, an empty world costs nothing to ship and depends on nothing.
+BUILTIN_SCENE_PACKAGE = "//builtin/scene"
 BUILTIN_ROOT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "builtin")
 BUILTIN_PATHS = {
     BUILTIN_ROOT_PACKAGE: BUILTIN_ROOT_PATH,
     BUILTIN_PACKAGES[EXPORT]: os.path.join(BUILTIN_ROOT_PATH, EXPORT),
     BUILTIN_PACKAGES[RENDER]: os.path.join(BUILTIN_ROOT_PATH, RENDER),
+    BUILTIN_PACKAGES[IMPORT]: os.path.join(BUILTIN_ROOT_PATH, IMPORT),
+    BUILTIN_PACKAGES[OPEN]: os.path.join(BUILTIN_ROOT_PATH, OPEN),
+    BUILTIN_SCENE_PACKAGE: os.path.join(BUILTIN_ROOT_PATH, "scene"),
 }
 
 # File types declared in a 'render:' section like any other, but which no
@@ -143,6 +242,37 @@ IMPLEMENTATION_KEYS = frozenset(
 OUTPUT_KEYS = frozenset({"extension", "prefix", "exclude", "output_dir"})
 RESERVED_KEYS = IMPLEMENTATION_KEYS | OUTPUT_KEYS | frozenset({"desc"})
 
+# The same, for the 'simulation:' section. Both say how the scene reaches the
+# plugin rather than what the plugin is handed once it has it: 'format' is the
+# file type it is exported to, and 'formatOptions' the export parameters that
+# go with it (a physics simulation wants every body free to move, which is the
+# opposite of what a scene means on its own). They configure the run, so they
+# are held out of the plugin's request for the same reason 'path' is.
+SIMULATION_KEYS = frozenset({"format", "formatOptions"})
+
+# The same, for the 'import:' section. None of these is a parameter of the
+# reader: 'kinds' says which object kinds may be declared with this type,
+# 'noun' and 'dropped' are how the core words what the reader reports, and
+# 'extension' (already reserved above) is how the source file is found. The
+# reader is handed everything else.
+IMPORT_KEYS = frozenset({"kinds", "noun", "dropped"})
+
+# The request key the implementation script's path travels under. It is passed
+# in the request rather than on the command line because the two positional
+# arguments of a wrapper are already spent on the output path and the working
+# directory (see wrappers/wrapper_export.py, which spells this out again -- a
+# wrapper runs in a sandbox and cannot import 'partcad').
+SCRIPT_KEY = "__script__"
+
+# The request key a file type sets to 'true' to be handed what the shapes it is
+# given report about themselves. It is an ordinary export parameter rather than
+# a reserved one - a format with no way to state a material or a mass never
+# declares it - and it is named here so that the core can tell whether the
+# properties will be read at all. Its twin is 'wrapper_export.PROPERTIES_KEY',
+# spelled out there for the same reason SCRIPT_KEY is: a wrapper runs in a
+# sandbox and cannot import this.
+PROPERTIES_KEY = "properties"
+
 # The request key that says whether the sandbox rebuilds the shape and assembly
 # envelopes into live OCCT geometry before the implementation sees them. The
 # wrapper has to know before it deserializes anything, which is why it travels
@@ -174,9 +304,18 @@ class Implementation:
         self.decode = config.get("decode", True) is not False
 
     @property
+    def reserved(self) -> frozenset:
+        """The fields of this configuration that are not parameters."""
+        if self.section == SIMULATE:
+            return RESERVED_KEYS | SIMULATION_KEYS
+        if self.section == IMPORT:
+            return RESERVED_KEYS | IMPORT_KEYS
+        return RESERVED_KEYS
+
+    @property
     def parameters(self) -> dict:
         """The fields handed to the implementation as its 'request'."""
-        return {key: value for key, value in self.config.items() if key not in RESERVED_KEYS}
+        return {key: value for key, value in self.config.items() if key not in self.reserved}
 
     def extension(self, default: str) -> str:
         return self.config.get("extension") or default
@@ -362,6 +501,14 @@ def config_sections(section: str) -> tuple:
     the file type is read last so that it wins. What the other one provides is a
     fallback:
 
+    Neither a 'simulation:' nor an 'import:' has such a fallback, and neither
+    ever will: an export implementation writes a file, an importer reads one and
+    a simulation plugin runs one, so none of the three is usable where another
+    is asked for. An 'import:' in particular is the one section whose entries
+    share their names with 'export:' entries on purpose -- 'mjcf' is both the
+    format written and the format read -- and reading either as a fallback for
+    the other would hand a writer a file to parse.
+
     'export:' falls back to 'render:' for history. PartCAD had only a 'render:'
     section before 'export:' existed, and packages configured their STEP and
     STL output there; those configurations keep working.
@@ -374,8 +521,8 @@ def config_sections(section: str) -> tuple:
     'export:' request never falls back to a 'render:' implementation for a
     format that 'render:' owns.
     """
-    if section == CAE:
-        return (CAE,)
+    if section in (CAE, SIMULATE, IMPORT, OPEN):
+        return (section,)
     return (RENDER, EXPORT) if section == EXPORT else (EXPORT, RENDER)
 
 
@@ -416,6 +563,87 @@ def section_of(ctx, format_name: str) -> Optional[str]:
     return None
 
 
+def import_declaration(ctx, project, type_name: str):
+    """The 'import:' implementation for an object type, or None if there is none.
+
+    'type_name' is what a declaration's 'type:' said, and comes in two spellings
+    that mean the same thing in the end:
+
+      'mjcf'                a bare name. Layered the way a file type is - the
+                            built-in package underneath, the package that
+                            declares the object on top - so a package can
+                            re-tune a reader's parameters, or replace the reader
+                            outright, for its own objects.
+      'sim-mujoco:mjcf'     a full path, resolved against 'project' exactly as
+                            a 'simulation:' plugin is. This is how a
+                            package names a reader that is nobody's built-in,
+                            and it is the spelling a plugin's own README gives.
+
+    Returns None rather than raising for an unknown name: the caller is
+    'factory.instantiate()', where "nothing declares this type" is the ordinary
+    'UnknownTypeException' path and has a better message than anything here
+    could produce.
+    """
+    if not isinstance(type_name, str) or not type_name or ctx is None or project is None:
+        # Nothing to resolve against. Reached by a caller that is asking whether
+        # a type exists at all rather than building anything with it, and the
+        # answer there is the same as for a name nobody declared.
+        return None
+
+    layers = []
+    if ":" in type_name:
+        # Late, to keep this module importable from 'factory' without dragging
+        # the package machinery in behind it.
+        from .utils import resolve_resource_path
+
+        plugin_package, format_name = resolve_resource_path(project.name, type_name)
+        plugin_project = ctx.get_project(plugin_package)
+        if plugin_project is None:
+            pc_logging.error(
+                "The package implementing the '%s' object type is not found: %s" % (format_name, plugin_package)
+            )
+            return None
+        layers.append((plugin_project.name, plugin_project.config_obj))
+    else:
+        format_name = type_name
+        builtin = builtin_project(ctx, IMPORT)
+        if builtin is not None:
+            layers.append((builtin.name, builtin.config_obj))
+        # The declaring package itself, taken as the object it is rather than
+        # looked up by name: a package's 'name:' is what it calls itself, and
+        # the context registers the root one under '//' whatever that says, so
+        # a lookup here would miss exactly the package that is asking.
+        layers.append((project.name, project.config_obj))
+
+    opts = {}
+    found = False
+    for layer_package, config_obj in layers:
+        section_obj = config_obj.get(IMPORT)
+        if not isinstance(section_obj, dict) or format_name not in section_obj:
+            continue
+        found = True
+        opts = merge(opts, stamp(normalize(section_obj[format_name]), layer_package))
+    if not found:
+        return None
+    return Implementation(IMPORT, format_name, opts)
+
+
+def import_kinds(impl) -> tuple:
+    """The object kinds an importer declares it can produce.
+
+    A declaration that says nothing can produce either, which is what an
+    importer with no opinion means: the format describes a tree of placed
+    shapes, and whether that tree is a product or an arrangement of products is
+    what the section it is declared in says (see 'partcad.scene').
+    """
+    kinds = impl.config.get("kinds")
+    if isinstance(kinds, str):
+        kinds = [kinds]
+    if not isinstance(kinds, (list, tuple)) or not kinds:
+        return ("assembly", "scene")
+    return tuple(str(kind) for kind in kinds)
+
+
 def all_formats(ctx) -> list:
     """Every file type with a built-in implementation, render before export.
 
@@ -426,3 +654,86 @@ def all_formats(ctx) -> list:
     for section in (RENDER, EXPORT):
         formats.extend(name for name in format_names(builtin_formats(ctx, section)) if name not in formats)
     return formats
+
+
+async def materialize_script(ctx, impl) -> str:
+    """The on-disk path of the script that implements a file type or a plugin.
+
+    For a local package - which the built-in ones are - that is a file in the
+    package. For a plugin-backed package it is fetched from the plugin (like a
+    file-backed object) and written into the package's cache directory, the same
+    way a partType's wrapper script is.
+
+    Here rather than on 'Shape' because the answer is about the implementation
+    and not about what it is being run for: an export writes a shape out, a
+    simulation runs a scene, and both are a script named by a package that has
+    to be found the same way and confined to that package the same way.
+    """
+    builtin_package = BUILTIN_PACKAGES.get(impl.section)
+    if not impl.script:
+        if builtin_package is None:
+            # A section with no built-in package to fall back to - 'cae:', and
+            # 'simulation:' once PartCAD stopped shipping one - so an unresolved
+            # implementation means the configured one was not found rather than
+            # that somebody forgot a 'path'. Name both knobs and say which is
+            # which: the user configuration holds the default, and
+            # '--implementation' overrides one run.
+            if impl.section == CAE:
+                raise Exception(
+                    "No implementation of '%s' is declared. Name one in a 'cae:' section, "
+                    "override it for one run with 'pc cae %s --implementation <package>:<type>', "
+                    "or set the default in the 'cae%sImplementation' user configuration option"
+                    % (impl.format_name, impl.format_name, impl.format_name.capitalize())
+                )
+            # Every other section with no built-in. A simulation plugin has no
+            # '--implementation' flag and no user-configuration default to name,
+            # so saying it has both sends the reader looking for switches that
+            # do not exist.
+            raise Exception(
+                "No implementation of '%s' is declared: name one with a 'path' in a '%s:' section, "
+                "or import a package that provides it" % (impl.format_name, impl.section)
+            )
+        raise Exception(
+            "No implementation of '%s' is declared: neither %s nor this package provides a 'path'"
+            % (impl.format_name, builtin_package)
+        )
+
+    # 'stamp()' fills 'package' in for every layer that names a 'path', so the
+    # fallback is only reached by a file type whose implementation is the
+    # built-in one. A section with no built-in - 'cae:' and 'simulation:' -
+    # cannot reach here without a package.
+    package_name = impl.config.get("package") or builtin_package
+    if package_name is None:
+        raise Exception("The implementation of '%s' does not say which package it lives in" % impl.format_name)
+    project = ctx.get_project(package_name)
+    if project is None:
+        raise Exception("The package implementing '%s' is not found: %s" % (impl.format_name, package_name))
+    impl.project = project
+
+    # The script is named by the package's own configuration and is about to be
+    # executed, so it has to come from inside that package: a 'path' of
+    # '../../..' would otherwise both read and, for a plugin-backed package,
+    # write outside it.
+    config_dir = os.path.abspath(project.config_dir)
+    script_abs = os.path.abspath(os.path.join(config_dir, impl.script))
+    if os.path.commonpath([config_dir, script_abs]) != config_dir:
+        raise Exception("The implementation of '%s' is outside its package: %s" % (impl.format_name, impl.script))
+    if os.path.exists(script_abs):
+        return script_abs
+
+    get_data_async = getattr(project, "get_data_async", None)
+    if get_data_async is None:
+        raise Exception("The implementation of '%s' is not found: %s" % (impl.format_name, script_abs))
+
+    data = await get_data_async("files/" + impl.script)
+    if data is None:
+        raise Exception(
+            "The repository did not provide the implementation of '%s': %s" % (impl.format_name, impl.script)
+        )
+    content = base64.b64decode(data) if isinstance(data, str) else bytes(data)
+    dirs = os.path.dirname(script_abs)
+    if dirs and not os.path.exists(dirs):
+        os.makedirs(dirs, exist_ok=True)
+    with open(script_abs, "wb") as f:
+        f.write(content)
+    return script_abs

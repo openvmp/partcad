@@ -1,6 +1,6 @@
 {
   "name": "PartCAD Development Environment",
-  "image": "ghcr.io/partcad/partcad-devcontainer:0.8.77",
+  "image": "ghcr.io/partcad/partcad-devcontainer:0.8.80",
   "remoteEnv": {
     // TODO: @alexanderilyin do not patch PATH here but make `mamba` discoverable.
     "PATH": "${containerEnv:PATH}:/home/vscode/miniforge3/bin",
@@ -99,11 +99,6 @@
       "settings": {
         "dotfiles.repository": "partcad/devcontainer-dotfiles"
       },
-      "remote.extensionKind": {
-        "codecov.codecov": [
-          "ui"
-        ]
-      },
       // <!-- prettier-ignore-start -->
       "extensions": [
         "PartCAD.partcad-official",
@@ -154,7 +149,6 @@
         // Code Analysis
         "alexkrechik.cucumberautocomplete",
         "bbenoist.vagrant",
-        "codecov.codecov",
         "hediet.debug-visualizer",
         "ryanluker.vscode-coverage-gutters"
       ]

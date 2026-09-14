@@ -115,6 +115,73 @@ instance. This is intentional -- referencing two copies of the same package at
 once is almost always a mistake, and the alternative would be an implicit,
 easily-missed dependency on the upstream package.
 
+.. _templates:
+
+=========
+Templates
+=========
+
+``partcad.yaml`` is a Jinja2 template rendered to YAML before it is parsed, so a
+package can generate declarations rather than write every one out. These names
+are available while it is being rendered:
+
+.. list-table::
+  :header-rows: 1
+  :widths: 30 70
+
+  * - Name
+    - What it is
+  * - ``package_name``
+    - The package path this package is being loaded at.
+  * - ``partcad_version``
+    - The version of PartCAD doing the rendering, whole: ``"0.8.77"``.
+  * - ``partcad_version_major``, ``partcad_version_minor``, ``partcad_version_build``
+    - The same version as its three numbers.
+  * - ``partcad_version_at_least(...)``
+    - Whether that version is the one given or newer. Takes a string,
+      ``partcad_version_at_least("0.8.77")``, or the numbers themselves,
+      ``partcad_version_at_least(0, 8, 77)``.
+  * - ``PI``/``M_PI``, ``SQRT_2``, ``SQRT_3``, ``SQRT_5``
+    - The constants a CAD file keeps reaching for.
+  * - ``INCH``/``INCHES``, ``FOOT``/``FEET``
+    - Millimetres per imperial unit: 25.4 and 304.8.
+
+Serving two PartCADs at once
+----------------------------
+
+A package that wants a feature this release has and the last one did not has a
+choice: raise its ``partcad:`` requirement, which takes the package away from
+everyone who has not updated, or write both forms and pick between them.
+
+.. code-block:: jinja
+
+  {% if partcad_version_at_least("0.8.77") %}
+  # ... declared the way this PartCAD can read ...
+  {% else %}
+  # ... declared the way every PartCAD can ...
+  {% endif %}
+
+A PartCAD older than these names defines none of them, and a template that names
+one there fails to render at all. So a package that has to work on those asks
+first -- Jinja2's ``and`` short-circuits, so the call is never made where the
+name is absent:
+
+.. code-block:: jinja
+
+  {% set new = partcad_version_major is defined and partcad_version_at_least("0.8.77") %}
+
+The comparison is made one number at a time, which is the whole point of having
+it: ``0.8.9`` is *older* than ``0.8.77``, and every comparison of the strings
+says the opposite.
+
+.. note::
+
+  ``partcad_version_at_least`` is a function rather than a Jinja2 macro, which
+  is what it looks like it should be. A macro always renders to *text*, so a
+  false one comes back as the string ``"False"`` -- which is not empty, and so
+  is true to ``{% if %}``. A comparison that reads as its own opposite is not a
+  thing to leave lying in a template.
+
 ==========
 Validation
 ==========
@@ -643,15 +710,51 @@ The basic sketches are defined using the following syntax:
         side-y: <y edge size>
         x: <(optional) x offset>
         y: <(optional) y offset>
-      inner: <(optional) inner shape>
+      slot: <(optional)>
+        length: <overall length, measured over the rounded ends>
+        width: <width, which is the diameter of those ends>
+        x: <(optional) x of the centre of the first rounded end>
+        y: <(optional) y of the centre of the first rounded end>
+        angle: <(optional) degrees to turn it about that point, 0 = along X>
+      inner: <(optional) the shapes cut out of the one above>
         circle: <(optional) radius>
            ...
         square: <(optional) edge size>
            ...
         rectangle: <(optional)>
            ...
+        slot: <(optional)>
+           ...
+        circles: <(optional) several of them at once>
+          - ...
+        squares: ...
+        rectangles: ...
+        slots: ...
 
-There must be only one field ``circle``, ``square`` or ``rectangle`` at the top level of the sketch or in the ``inner`` field.
+There must be only one field ``circle``, ``square``, ``rectangle`` or ``slot`` at the top level of the sketch.
+Inside ``inner`` each shape may be given once by its own name, and several at a time in the plural list beside it.
+
+A **slot** is a rectangle with semicircular ends -- two arcs and two lines --
+which is what a slotted hole is. ``length`` is measured over those ends, the way
+a drawing dimensions it, so a slot as long as it is wide is a circle rather than
+an error.
+
+Unlike the other shapes, a slot is placed by the centre of its **first** rounded
+end rather than by its middle, and ``angle`` turns it about that point. That is
+where a slot comes from: it is a hole that may also sit somewhere else, so it
+starts where the plain hole would have been and runs ``length - width`` from
+there. A port keeps its coordinates when the opening it marks is slotted, and
+the freedom of movement that goes with it runs from zero rather than from half a
+slot back. It is also the only one of these shapes whose direction is part of
+what it is.
+
+.. code-block:: yaml
+
+  sketches:
+    m4-slotted-30:
+      desc: The boundary of an M4 hole that may sit anywhere in the next 26mm
+      type: basic
+      slot: { length: 30.0, width: 4.0 }
 
 DXF
 ---
@@ -708,6 +811,7 @@ Interfaces are declared in ``partcad.yaml`` using the following syntax:
       abstract: <(optional) whether the interface is abstract>
       desc: <(optional) textual description>
       path: <(optional) the source file path, "{interface name}.{ext}" otherwise>
+      alias: <(optional) the interface this one is another name for>
       threadStep: <(optional) axial distance per full turn of a connection made through this interface, in mm>
       selfScrew: <(optional) whether this interface cuts its own thread instead of matching one>
       multiConnect: <(optional) whether one instance of this interface may take more than one object>
@@ -716,13 +820,27 @@ Interfaces are declared in ``partcad.yaml`` using the following syntax:
         <other interface name>: # instance name is implied to be empty ("")
         <yet another interface>:
           <instance name>: <OCCT Location object> # e.g. [[x_off,y_off,z_off], [x_rot,y_rot,z_rot], rot_angle]
+        <and another>:
+          <instance name>:
+            location: <OCCT Location object>
+            sketch: <(optional) the boundary this instance's ports are drawn with>
       ports:  # (optional) the list of ports in addition to the inherited ones
         <port name>: <OCCT Location object> # e.g. [[x_off,y_off,z_off], [x_rot,y_rot,z_rot], rot_angle]
         <other port name>: # [[x_off,y_off,z_off], [x_rot,y_rot,z_rot], rot_angle] is implied
         <another port name>:
           location: <OCCT Location object> # e.g. [[x_off,y_off,z_off], [x_rot,y_rot,z_rot], rot_angle]
           sketch: <(optional) name of the sketch used for visualization>
+          params: # (optional) the parameter values to build that sketch with
+            <sketch parameter name>: <value or "%expression%">
       parameters:
+        # The values this interface is built from, declared exactly as a part's
+        # or a sketch's are, and set by a reference: "<interface>;<name>=<value>"
+        <parameter name>:
+          type: <string|int|float|bool>
+          default: ...
+        <other parameter name>: <value> # short form, same as for parts and sketches
+        # ... and, in the same section, what a connection made through this
+        # interface may still do:
         moveX: # (optional) offset along X
           min: <(optional) min value>
           max: <(optional) max value>
@@ -926,6 +1044,245 @@ get resolved and applied as inheritance or connection coordinate offsets.
         name: <target part>
         toParams:
           turnZ: 1.57
+
+.. _parametric_interfaces:
+
+Parametric interfaces
+---------------------
+
+An interface can be declared once and asked for with values, exactly as a part
+or a sketch is: the values go in ``parameters:``, and a reference names them
+with the same ``;<name>=<value>`` suffix ``pc inspect cube;width=20`` uses.
+
+.. code-block:: yaml
+
+  interfaces:
+    m-thru:
+      desc: "%depth%mm thick through hole of %size%mm diameter"
+      parameters:
+        size: 3.0
+        depth: 3.0
+      ports:
+        m:
+          sketch: m
+          params: { size: "%size%" }
+
+.. code-block:: shell
+
+  pc info -i m-thru                  # the defaults: a 3mm hole through 3mm
+  pc info -i "m-thru;size=4,depth=2" # a 4mm hole through 2mm
+  pc info -i m-thru -p size=4        # the same, said on the command line
+
+Every set of values is one interface, whatever order they are written in and
+however the numbers are spelled: ``m-thru;size=4,depth=2``,
+``m-thru;depth=2,size=4`` and ``m-thru;depth=2.0,size=4.00`` are one object with
+one name. That matters beyond tidiness -- an interface's name is what a mating
+is registered under, so two objects for one set of values would be two halves of
+a connection that never find each other.
+
+One section, two kinds of parameter
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``parameters:`` on an interface has meant `Interface parameters`_ -- the freedom
+of movement a *made* connection keeps -- since interfaces existed. It now holds
+both kinds, because "the same way as for a part" is the point and a second
+section would be a second thing to learn. They are told apart by what each
+declares rather than by where it is written, and the two vocabularies do not
+overlap: a freedom-of-movement parameter states a range and an axis, a
+construction parameter states a value type and a default.
+
+.. code-block:: yaml
+
+  interfaces:
+    m-screw:
+      parameters:
+        size: 3.0                 # a value: a reference sets it
+        length: 6.0               # a value
+        moveZ:                    # freedom of movement: what the connection may still do
+          min: 0
+          max: "%length - 2%"     # ... in terms of the values above
+          default: 0
+
+An entry is a **freedom-of-movement** parameter when any of the following is
+true, and a **construction** parameter otherwise:
+
+- it is one of the six predefined names -- ``moveX``, ``moveY``, ``moveZ``,
+  ``turnX``, ``turnY``, ``turnZ`` (or the hyphenated spellings a ``mates:``
+  section uses);
+- it is written in the short list form ``[min, max, default]``;
+- it states ``min``, ``max`` or ``dir``, or ``type: move`` / ``type: turn``.
+
+Every freedom-of-movement parameter PartCAD has ever accepted is caught by the
+first or the third of those -- a custom name is *required* to state its ``dir``
+-- so a declaration written before this existed keeps the meaning it had.
+
+A part's or an assembly's ``parameters:`` is not split: for a shape that section
+has only ever meant the values it is built from.
+
+An interface's own freedom of movement takes precedence over the one it
+inherits, so an interface narrows -- or widens -- what its parent allowed by
+naming the same parameter again. ``m-screw`` above says how far *this* screw may
+be driven in; ``m``, which it inherits, says only that a screw may move along
+its axis at all.
+
+.. note::
+
+  Before this, the inherited declaration won and a child's was discarded, so an
+  interface could not say anything about the freedom it was given. Packages that
+  already declare one therefore start behaving as they read:
+  ``//pub/std/metric/m`` has always said a screw may be driven in ``length - 2``,
+  and now it is. A range that runs *backwards* -- which that same expression
+  produces for the 1mm screws in its own list -- is reported and read as no
+  movement, rather than handed to a solver as an interval with nothing in it.
+
+Expressions
+^^^^^^^^^^^
+
+Wherever a declaration says something about the connection -- ``desc``,
+``ports``, ``inherits``, ``implements``, ``mates``, ``alias``, ``parameters``
+(its freedom-of-movement half), ``leadPort``, ``threadStep``, ``selfScrew``,
+``multiConnect`` and ``motion`` -- a value may be written as an expression over
+the interface's own values, between percent signs:
+
+.. code-block:: yaml
+
+  interfaces:
+    m-square-pattern:
+      desc: Four %size%mm holes on the corners of a %pitch%mm square
+      parameters:
+        size: 3.0
+        pitch: 31.0
+        depth: 3.0
+      inherits:
+        "m-thru;size=%size%,depth=%depth%":
+          TL: [["%-pitch / 2%", "%pitch / 2%", 0], [0, 0, 1], 270]
+          TR: [["%pitch / 2%", "%pitch / 2%", 0], [0, 0, 1], 180]
+          BL: [["%-pitch / 2%", "%-pitch / 2%", 0], [0, 0, 1], 0]
+          BR: [["%pitch / 2%", "%-pitch / 2%", 0], [0, 0, 1], 90]
+
+A value that is *nothing but* an expression evaluates to the value itself, which
+is what lets a coordinate be written as one; a value that merely contains an
+expression gets it formatted in, which is what builds a name or a description.
+Inside the delimiters is an ordinary arithmetic expression over the object's
+parameters, with the usual functions available (``sqrt``, ``sin``, ``cos``,
+``floor``, ``min``, ``max``, ``round``, ``pi``, ``INCH`` ...). Arithmetic,
+comparisons, a conditional, indexing and the plain methods of a string or a
+number (``index``, ``split``, ``replace``, ``startswith`` ...) are all of it: a
+declaration is read whenever a package is loaded -- long before anything is
+built and any CAD script runs -- so an expression may not call anything else,
+reach into an object, or define one. An expression that cannot be evaluated is
+reported by name and left standing as the text it was written as, so a
+misspelling costs that one value rather than the package.
+
+.. note::
+
+  ``%...%`` rather than Jinja2's ``{{ ... }}``, and it is not an alternative to
+  it. ``partcad.yaml`` is rendered as a Jinja2 template *before* it is parsed
+  (see :ref:`templates`), which is one step too early for
+  a value that depends on which instance of an object is being asked for: at
+  that point there are no instances yet. The two do not collide -- Jinja2 never
+  sees ``%...%``, and ``%...%`` is resolved long after Jinja2 has finished.
+  The spelling is not new either: the names in an ``inherits:`` section have
+  been written ``%moveX:value*2%`` since interfaces existed, and that form still
+  means what it meant. Writing just ``%moveX%``, with no colon, is the part that
+  is new -- the old resolver required the colon and failed without it.
+
+Parametrized sketches on ports
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A port's sketch takes parameter values too, either in ``params:`` beside it or
+spelled into its name (``sketch: "m;size=%size%"``) -- they are the same thing.
+So one sketch draws the boundary of every size the interface family has, instead
+of one pre-generated sketch per size:
+
+.. code-block:: yaml
+
+  sketches:
+    m:
+      type: basic
+      circle: "%size / 2%" # the radius, from the diameter the interface asked for
+      parameters:
+        size: 3.0
+
+A ``basic`` sketch has no script to hand its parameters to, so an expression is
+how it reads them; a ``cadquery`` or ``build123d`` sketch gets them as build
+parameters as usual.
+
+Parametric ports on a part
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The same applies to the ``ports:`` and ``implements:`` sections of a part or an
+assembly, over that shape's own ``parameters:``. A plate that is asked for by
+thickness implements the through-hole of that thickness:
+
+.. code-block:: yaml
+
+  parts:
+    plate:
+      type: cadquery
+      parameters:
+        thickness: 3.0
+      implements:
+        "m-square-pattern;size=3,pitch=31,depth=%thickness%":
+
+Nothing else in a shape's declaration is touched: ``desc`` is prose and
+``fileUrl`` is a URL that may be percent-encoded, and neither is an expression.
+
+.. _interface_alias:
+
+The same opening, drawn differently
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+An inherited instance may restate the boundary its ports are drawn with. A
+slotted hole *is* a through hole -- it inherits one, mates as one, and keeps its
+port where the plain hole would have been -- and what tells them apart is the
+outline and the freedom of movement:
+
+.. code-block:: yaml
+
+  interfaces:
+    m-thru-slotted:
+      desc: "%size%mm through hole, slotted %width%mm"
+      parameters:
+        size: 3.0
+        width: 10.0
+        moveX: [0, "%width - size%", 0]   # what slotting the hole is *for*
+      inherits:
+        "m-thru;size=%size%":
+          "slotted-%width%":
+            sketch: "m-slotted;size=%size%,width=%width%"
+
+``sketch:`` is a reference like any other, so the values go in the name. It
+replaces the boundary of every port that instance brings in; an instance that
+says nothing about it keeps the boundary the inherited interface draws with.
+
+Interface aliases
+-----------------
+
+``alias:`` declares that an interface *is* another one, under a different name.
+A bare string is the short form of the same thing, the way it is for a sketch or
+a part:
+
+.. code-block:: yaml
+
+  interfaces:
+    m3-thru-3:
+      alias: "m-thru;size=3,depth=3"
+    m3-thru-4: "m-thru;size=3,depth=4" # the same, said shorter
+
+The alias has the target's ports, under the target's port names -- not prefixed,
+the way an ``inherits:`` instance name would prefix them -- it is a drop-in for
+the target, so it mates with whatever the target mates with, and what it does
+not declare for itself (its description, ``leadPort``, ``abstract``, ``motion``,
+``physics``, ``threadStep`` ...) it takes from the target.
+
+That is what lets a package make a family parametric without withdrawing the
+names it has published. A package that spelled out ``m3-thru-3``,
+``m3-thru-4``, ``m4-thru-3`` and several thousand more can declare the family
+once and keep every one of those names as a one-line alias: a part that says
+``implements: m3-thru-3`` goes on working, with the same ports under the same
+names, and a part written today can say ``m-thru;size=3,depth=3`` instead. See
+the ``//pub/std/metric/m`` package, which is exactly this.
 
 Interface examples
 ------------------
@@ -1682,7 +2039,8 @@ Assemblies are defined using the ``partcad.yaml`` file in the package folder. Th
 
   assemblies:
     <assembly name>:
-      type: <assy|step>  # Assembly YAML, or a STEP file with an assembly structure
+      type: <assy|step|urdf|mjcf>  # Assembly YAML, a STEP file with an assembly structure,
+                                   # a URDF robot description, or a MuJoCo model
       path: <(optional) the source file path>
       fileFrom: <(optional) "url" to download the source file instead of keeping it in the package>
       fileUrl: <(fileFrom=url only) the URL to download the source file from>
@@ -1706,6 +2064,9 @@ Assemblies are defined using the ``partcad.yaml`` file in the package folder. Th
 
 The ``assy`` type is used to define assemblies in `Assembly YAML` format, and
 the ``step`` type reads the structure out of a STEP file (see :ref:`assembly_step`).
+The ``urdf`` and ``mjcf`` types read a robot description as an assembly directly
+(see :doc:`simulation`); ``mjcf`` is also a :ref:`scene <scenes>` type, and the
+section that declares it is what decides which it is.
 The ``path`` parameter specifies the source file path, and the ``parameters`` section allows for defining parameters that can be used within the assembly.
 The source file does not have to be a part of the package: ``fileFrom`` and
 ``fileUrl`` pull it from a remote location on first use, exactly as they do for
@@ -2078,7 +2439,7 @@ Declare scenes
 
   scenes:
     <scene name>:
-      type: <assy|world>  # Assembly YAML read as a scene, or a Gazebo world file
+      type: <assy|world|mjcf>  # Assembly YAML read as a scene, a Gazebo world, or a MuJoCo model
       desc: <(optional) textual description>
       path: <(optional) the source file path>
       fileFrom: <(optional) "url" to download the source file instead of keeping it in the package>
@@ -2165,6 +2526,320 @@ file the package does not declare yet, leaving the package holding PartCAD's own
 objects. ``pc add scene world warehouse.world`` declares the file where it lies
 instead.
 
+MuJoCo models
+-------------
+
+The ``mjcf`` type reads a `MuJoCo <https://mujoco.org/>`_ model as a scene, the
+same way ``world`` reads a Gazebo one: every body is placed where its ``pos``
+and orientation put it inside the body that holds it, and every geom becomes a
+part of the package named ``<scene>/<body>``.
+
+It is the one format that is **both** a scene type and an assembly type, and
+which of the two a given file is depends on the section that declares it rather
+than on the file. A URDF describes one robot and a ``.world`` describes one
+world; an MJCF file is used for both -- the same element holds a manipulator and
+the table it is bolted to -- and nothing in it says which it is. So the package
+says so:
+
+.. code-block:: yaml
+
+  assemblies:
+    arm:
+      type: mjcf
+      path: arm.xml        # a product
+
+  scenes:
+    cell:
+      type: mjcf
+      path: cell.xml       # an arrangement
+
+It is a best-effort reader in the same way the world reader is: joints,
+actuators, tendons, sensors, lights, cameras, contacts and keyframes are counted
+and reported, and ``pc info`` lists what was dropped. The reverse direction is
+the ``mjcf`` export file type, which writes an ``.xml`` file plus the meshes it
+references:
+
+.. code-block:: shell
+
+  pc export -S -t mjcf :cell     # a scene
+  pc export -t mjcf :arm         # or an assembly
+
+It is also the format ``pc sim`` hands a scene to MuJoCo in, and the one
+``pc open --with mujoco`` converts to; see :ref:`simulate`.
+
+.. _import-section:
+
+=========
+Importers
+=========
+
+``urdf``, ``mjcf`` and ``world`` are not object types PartCAD hard-codes. Each
+is one entry of an ``import:`` section -- a declaration saying which script
+reads that format, what its sandbox needs, and which object kinds it may
+produce -- and a package writes one to teach PartCAD a format of its own:
+
+.. code-block:: yaml
+
+  import:
+    demo:
+      desc: The DemoCAD scene format
+      path: read_demo.py           # the reader, in this package
+      extension: demo              # the source file's extension
+      kinds: [assembly, scene]     # what it may be declared as
+      noun: model                  # what one is called in a log line
+      pythonRequirements:
+        - cadquery-ocp==7.9.3.1.1
+      precision: 6                 # anything else is the reader's parameter
+      dropped:
+        joint: "joints (the object shows the bodies at their initial pose)"
+
+An object then names it the way it names any object type. A reader in the same
+package is named directly; one in another package is named by full path, exactly
+as a :ref:`partType <part-types>` or a ``simulation:`` plugin is:
+
+.. code-block:: yaml
+
+  scenes:
+    cell:
+      type: sim-gazebo:world       # the reader in the imported package
+      path: cell.world
+
+The reader itself is handed the file and its parameters, and returns a tree of
+placed shapes as plain data -- each node naming the *file* its geometry is read
+from rather than carrying geometry. The part factory for that file's own format
+reads it afterwards, so a mesh a scene references is never copied or rewritten.
+Only the primitives a format defines (a box, a cylinder, a sphere) have no file
+to name, and the reader writes those out itself. See
+``wrappers/wrapper_import.py`` for the contract in full.
+
+Two fields are worth dwelling on. ``kinds:`` is a claim the core holds the
+declaration to: a format that describes one robot is an assembly and declaring
+it under ``scenes:`` is an error, while a format used for both -- MJCF is the
+one that routinely is -- says both and lets the section decide. ``dropped:``
+words what the reader counted: every one of these formats describes something a
+static tree cannot hold, and the division of labour is that the *reader* counts
+what it had to drop and the *declaration* says what to call it.
+
+The section shares its name with what ``dependencies:`` used to be called, and
+that spelling is reported rather than silently migrated now: a package whose
+``import:`` entries carry a ``type:`` of ``git``/``tar``/``local``/``external``,
+or any of the transport-only keys (``url``, ``relPath``, ``revision``, ...), is
+told to rename the section, and those entries are dropped instead of being
+fetched as packages. Nothing is migrated for it.
+
+How loudly depends on whose package it is. In the package you are standing in it
+is an error and the package is broken -- the command exits non-zero and nothing
+loads out of it, because that is the file you can fix. In an imported package it
+is a warning naming the package, the entry and the fix: such a package is very
+often somebody else's, several levels below anything you wrote, and one of them
+anywhere in an index must not fail every command that merely walks past it. That
+package goes on providing everything else it declares; what is lost is exactly
+what the section named.
+
+PartCAD ships three of these, in ``//builtin/import``. ``urdf`` stays there
+because a URDF describes a robot rather than any one engine's world, and ROS,
+MuJoCo, PyBullet and Isaac all read it. ``mjcf`` and ``world`` belong to
+`partcad-sim-mujoco <https://github.com/partcad/partcad-sim-mujoco>`_ and
+`partcad-sim-gazebo <https://github.com/partcad/partcad-sim-gazebo>`_
+respectively, beside the exporter and the simulator that share their knowledge
+of the format: reading a format and writing it are one piece of knowledge, and
+this is what lets the pair travel together and be versioned together.
+
+.. _open-section:
+
+============
+Applications
+============
+
+``pc open`` launches a third-party application on the file it is given. Which
+applications it knows is an ``open:`` section -- one entry per application, and
+data all the way down: where the application is on each operating system, what
+to run it as, which container to fall back to when it is not installed, and what
+it can read. None of it is logic. Finding the binary, creating the container,
+forwarding the X display and converting a file the application cannot read is
+the same for every tool and happens once, in ``partcad_client.external``.
+
+.. code-block:: yaml
+
+  open:
+    democad:
+      displayName: DemoCAD
+      image: example/democad:latest      # when it is not installed here
+      binaries: [democad, democad-bin]   # on PATH and in the container
+      macosApps: [DemoCAD.app]
+      windowsGlobs: ["DemoCAD*/bin/democad.exe"]
+      flatpakId: org.example.DemoCAD
+      sceneType: demo                    # it reads this scene type and no other
+
+``pc open --with democad ./cell.demo`` then works, in a workspace whose packages
+import that one. PartCAD ships five of these in ``//builtin/open`` -- FreeCAD,
+KiCad, Blender, and (until the packages that own them are published) Gazebo and
+MuJoCo. A package's entry replaces a built-in of the same name, which is how the
+plugin for a simulation engine comes to own the application for it.
+
+Three fields are worth dwelling on, because they are how an application that
+cannot read what it was handed still gets to open something. ``companions:``
+names the extensions the application really opens, for a file that sits beside
+the one PartCAD was pointed at -- a ``kicad`` part *is* the STEP file KiCad's CLI
+writes, and the board is the project next to it. ``meshVia:`` says what a file
+that is not a mesh is converted to first, for an application that reads
+triangles and nothing else. ``sceneType:`` says which description language an
+application reads, for one that reads an arrangement rather than geometry: MuJoCo
+reads MJCF, so a Gazebo world it is pointed at is written out as MJCF first.
+
+``pc open`` is otherwise a **client-side** command and stays one: it is handed a
+path, the file is already on disk, and the window belongs to whoever ran the
+command -- a daemon can be remote. So the built-in entries are read straight out
+of the wheel the client is running from, with no context and no daemon, and only
+the applications a *package* declares are asked of the daemon (``open.tools``).
+It answers which applications exist; it never opens one, and there is no method
+for opening a file.
+
+.. _simulate:
+
+===========
+Simulations
+===========
+
+A part says what it *is*. ``simulate:`` is an optional section of a part or an
+assembly where it says what it is supposed to **do** once it is placed in a
+world and the world is switched on -- or, more often, what it is supposed not to
+do: not fall over, not slide off, not come apart. ``pc sim`` runs them.
+
+.. code-block:: yaml
+
+  parts:            # or assemblies:
+    <name>:
+      simulate:
+        <simulation name>:
+          desc: <(optional) what this simulation is about>
+          scene: <(optional) the scene to place this object in, by full path>
+          offset: <(optional) OCCT Location object: where in that scene it goes>
+          simulation: <(optional) the simulation plugin, by full path>
+          validation: <(optional) a Python expression that is true when it went as it should>
+          params: <(optional) parameter values handed to the plugin>
+
+The object's own full path is assigned to the scene's ``subject`` parameter --
+unconditionally, and whatever else the entry says. That is what lets one scene
+serve every object that names it, and nothing special is declared for it: a
+simulation scene is an ordinary scene with an ordinary parameter, and the
+Jinja2 template its file is read as (see :doc:`assy`) is what places the subject.
+
+``scene:`` does not have to be given: the default is ``//builtin/scene:subject``,
+an empty world holding the subject and nothing else, which is what "does this
+stand up on its own" means. ``simulation:`` does have to be given -- PartCAD
+implements no simulator, so a package imports one and says which:
+
+.. code-block:: yaml
+
+  dependencies:
+    sim-mujoco:
+      type: git
+      url: https://github.com/partcad/partcad-sim-mujoco.git
+
+  assemblies:
+    stack:
+      type: assy
+      simulate:
+        stands:
+          simulation: sim-mujoco:mujoco
+          # The blocks are drawn about their own centres, so lift the stack to
+          # stand its bottom face on the floor of the scene.
+          offset: [[0, 0, 10], [0, 0, 1], 0]
+          validation: |
+            max(
+                abs(after["bodies"][name]["pos"][2] - before["bodies"][name]["pos"][2])
+                for name in before["bodies"]
+            ) < 2.0
+
+``offset:`` is stated here rather than in the scene because it is a fact about
+*this* object -- where its origin sits relative to the floor it is meant to
+stand on -- and the scene is shared.
+
+``validation:`` is a Python expression evaluated over ``before`` and ``after``,
+the two objects the plugin produced, and ``result``, the whole of what it
+returned. It is the only thing PartCAD reads out of a result: what is *inside*
+those objects is the plugin's vocabulary, and the expression is written by
+whoever knows both the object and the plugin. An entry that states none runs and
+reports, and passes nothing.
+
+Simulation plugins
+------------------
+
+A simulation plugin is the third kind of implementation a package can declare,
+beside the export and render ones of :ref:`output-files`, and it is declared in
+exactly the same form -- a ``path`` to a script, the sandbox that script needs,
+and the parameters it is handed:
+
+.. code-block:: yaml
+
+  simulation:
+    <name>:
+      desc: <(optional) textual description>
+      path: <the script that runs the simulation>
+      package: <(optional) the package holding it, when it is not this one>
+      format: <the file type the scene is exported to before the plugin starts>
+      formatOptions: <(optional) export parameters for that conversion>
+      pythonVersion: <(optional) the sandbox interpreter>
+      pythonRequirements: <(optional) what that sandbox needs installed>
+      <anything else>: <a parameter handed to the script>
+
+The contract is narrow on purpose: **a scene with the subject in it goes in, as
+a file in the format** ``format:`` **names, and JSON carrying** ``before`` **and**
+``after`` **comes out.** The scene arrives as a file because a simulator reads
+its own model format and PartCAD already knows how to write several -- which is
+also what keeps a plugin free of any CAD dependency.
+
+**PartCAD ships none of these.** A simulator is somebody's program with a
+release cycle of its own, so PartCAD ships the concept -- this section, the
+sandbox a plugin runs in, and the export a scene reaches it through -- and a
+package supplies the physics.
+`partcad-sim-mujoco <https://github.com/partcad/partcad-sim-mujoco>`_ is the
+MuJoCo one: it is handed the scene as MJCF, steps it under gravity for
+``duration`` seconds of simulated time, and reports each body's position (in
+millimetres) and orientation before and after. Running it needs no MuJoCo on the
+machine, since the plugin runs in a PartCAD sandbox that installs one.
+
+Friction is a material property
+-------------------------------
+
+Whether a stack of blocks stands up is not a property of its geometry. Two 20 mm
+blocks squarely stacked stay put when they are aluminium (``mu: 1.05`` -- dry
+aluminium galls) and the top one slides off when they are PTFE (``mu: 0.04``),
+and nothing about the arrangement changes in between.
+
+So it is stated where it belongs, on the :ref:`material <materials>`, and a part
+that names one gets it. A part names one the way it always has -- with the
+``material`` parameter, on a part type that accepts one (see `Parameters`_) --
+and the factory records the answer as the shape's ``material`` property, which
+is what reads it from there on:
+
+.. code-block:: yaml
+
+  parts:
+    block:
+      type: cadquery
+      path: block.py
+      parameters:
+        material:
+          type: string
+          default: ":aluminium"
+
+``mu`` then becomes the shape's ``friction`` property unless the shape states a
+``friction`` of its own, and every format writes it in its own spelling --
+SDFormat's ``<friction><ode><mu>``, URDF's ``<gazebo><mu1>``, MJCF's first
+``friction`` component. A part that says nothing gets whatever the simulator
+defaults to, which is a number nobody chose.
+
+Note which section that is. ``parameters:`` is what is *asked of* the type that
+produces the shape and is where a package writes what it wants; ``properties:``
+is what the shape *turned out to be*, and is filled in by whatever built it -- a
+URDF reader naming a link's material, a STEP reader finding one in the file, or
+the part factory recording what its type was asked for. A package does not write
+``properties:`` by hand.
+
+See :doc:`simulation` and ``examples/feature_simulate``.
+
 .. _materials:
 
 =========
@@ -2190,6 +2865,7 @@ can do applies to it. What it is, is a set of facts about a substance:
       desc: <(optional) textual description>
       url: <(optional) where to read about it>
       density: <(optional) density in g/mm^3>
+      mu: <(optional) coefficient of sliding friction, dimensionless>
       tags: <(optional) a list of free-form tags, or a single tag>
 
 The short form gives the full name and nothing else:

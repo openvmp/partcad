@@ -32,7 +32,7 @@
 
 [project]
 name = "partcad"
-version = "0.8.77"
+version = "0.8.80"
 description = "Package manager for CAD models and a modelling framework"
 readme = "README.md"
 keywords = ["cadquery", "build123d", "sdf", "cad", "design", "openscad", "step", "stl"]
@@ -114,6 +114,14 @@ aws = {file = ["requirements-aws.txt"]}
 "partcad.builtin" = ["*.yaml"]
 "partcad.builtin.export" = ["*.py", "*.yaml"]
 "partcad.builtin.render" = ["*.py", "*.yaml"]
+"partcad.builtin.import" = ["*.py", "*.yaml"]
+# No scripts: the applications `pc open` launches are declarations and nothing
+# else, read by `partcad_client.external` straight out of the wheel.
+"partcad.builtin.open" = ["*.yaml"]
+# The one built-in package that declares an object rather than an
+# implementation: the scene a `simulate:` places its subject in. Its `.assy` is
+# read as a Jinja2 template, so it ships as a data file like the rest.
+"partcad.builtin.scene" = ["*.assy", "*.yaml"]
 "partcad.template" = ["*.yaml"]
 # The AI agent skills and the Claude plugin manifest `pc init` installs into a
 # repository (see `src/partcad/ai_agents/__init__.py`). They are data rather
@@ -168,11 +176,29 @@ pythonpath = [
 # test read as untested, and a pull request adding one was told its patch was
 # uncovered.
 #
+# `--cov-config` is not decoration: without it pytest-cov finds no configuration
+# at all -- there is no `.coveragerc` and no `[tool.coverage]` table here -- and
+# so measures with coverage.py's defaults, which means `branch = False`. Every
+# other suite passes `dev-tools/coverage.rc` to `coverage run` and so records
+# branch data, and `coverage combine` flatly refuses to mix the two: "Can't
+# combine statement coverage data with branch data". That is not a warning, it
+# is exit 1, and it took down the whole merged report in the "Coverage" job the
+# first time that job ever ran with real data from every suite at once. One
+# config file for every producer is the only arrangement that cannot drift back
+# into it.
+#
+# One consequence to know: `--cov=` sets coverage.py's `source`, and `source`
+# beats the `include` list in that file (coverage says so and then ignores
+# `include` -- see `disable_warnings` there). So this list, not `include`, is
+# what the pytest job measures. That is already how it behaved; naming the
+# config only changes `branch`.
+#
 # Keep the list here, above the string -- `addopts` is a TOML string, so a '#'
 # line inside it is passed to pytest as an argument rather than ignored.
 addopts = """
     --import-mode importlib
     --alluredir=allure-results
+    --cov-config=dev-tools/coverage.rc
     --cov-report=html:pytest-results/htmlcov
     --cov-report=xml:pytest-results/coverage.xml
     --cov=partcad

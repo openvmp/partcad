@@ -277,6 +277,32 @@ def test_the_scene_flavor_does_not_reach_a_configuration():
     assert schema_for_file("/pkg/logo.assy", FLAVOR_SCENE) is not get_schema(ASSY_SCHEMA)
 
 
+@pytest.mark.parametrize(
+    "declaration",
+    [
+        "parameters:\n      - moveX\n      - moveY\n      - turnZ\n",  # the oldest spelling there is
+        "parameters:\n      - move-x\n      - turn-z\n",  # and its hyphenated form
+        "parameters:\n      moveZ: [0, 10, 0]\n",
+        "parameters:\n      size: 3.0\n",
+    ],
+)
+def test_the_linter_accepts_every_way_an_interface_declares_parameters(declaration):
+    """What the loader accepts, `pc lint` has to accept.
+
+    The bare list is the one this nearly lost: the loader was fixed to expand it
+    and the schema went on refusing it, so a package that has used the form since
+    interfaces existed loaded fine and failed its own linter.
+    """
+    source = "interfaces:\n  iface:\n    desc: an interface\n    %s" % declaration
+    assert validate_source(source, get_schema(PARTCAD_SCHEMA)) == []
+
+
+def test_the_linter_still_wants_a_direction_for_a_name_it_does_not_know():
+    """The other half of the same rule: only those six may be named bare."""
+    source = "interfaces:\n  iface:\n    desc: an interface\n    parameters:\n      - slideAlongTheRail\n"
+    assert validate_source(source, get_schema(PARTCAD_SCHEMA)) != []
+
+
 def test_the_schemas_ship_with_the_package():
     schema = get_schema(ASSY_SCHEMA)
     assert schema["$schema"].startswith("http://json-schema.org/draft-07/")

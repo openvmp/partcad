@@ -353,8 +353,8 @@ class FakeContext:
     def get_scene(self, path, params=None):
         return self._get_shape("scene", path, params)
 
-    def get_interface(self, path):
-        return self._get_shape("interface", path)
+    def get_interface(self, path, params=None):
+        return self._get_shape("interface", path, params)
 
     def get_project(self, name):
         return self.projects.get(name)
@@ -895,6 +895,36 @@ def test_list_objects_reports_each_kind_with_its_header(kind, header, process_la
     assert output[1].startswith("\twidget")
     assert output[1].endswith("a cube")
     assert output[-1] == "Total: 1"
+
+
+def test_list_objects_survives_an_object_that_resolves_another_one():
+    """Reading one object can put another into the package, and listing must not care.
+
+    An interface declared as an alias takes its description from the interface
+    it names, and resolving that one registers it - so the very act of printing
+    a listing grows the dictionary the listing is walking.
+    """
+    session, _ = make_session()
+    project = session.partcad_ctx.projects["//"]
+
+    class _ResolvesOnRead(FakeObject):
+        @property
+        def desc(self):
+            if "resolved" not in project.interfaces:
+                project.add("interfaces", FakeObject("resolved", desc="the one it names"))
+            return "an alias"
+
+        @desc.setter
+        def desc(self, value):
+            pass
+
+    project.add("interfaces", _ResolvesOnRead("alias"))
+
+    operations.list_objects(session, {"kind": "interfaces", "package": "//"})
+
+    output = lines_of(session.partcad.logging.only("info"))
+    assert output[0] == "PartCAD interfaces:"
+    assert any(line.startswith("\talias") for line in output)
 
 
 def test_list_objects_reports_none_for_an_empty_package():
