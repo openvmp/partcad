@@ -315,6 +315,25 @@ def package_summaries(report):
     return summaries
 
 
+def normalised(report):
+    """The JSON report with every file named the way the rest of this script is.
+
+    coverage.py names files with the platform's separator, so on Windows the keys
+    arrive as `src\\partcad\\shape.py`. Everything that reads them afterwards
+    matches against forward slashes -- `git diff` emits those on every platform,
+    and `PACKAGES` is written with them -- so a backslash key matches neither:
+    patch coverage comes out empty and every file lands in `(elsewhere)`. Neither
+    says anything; they are just quietly zero.
+
+    The "Coverage" job runs on Linux, where this is a no-op. It is the developer
+    reproducing the merge locally on Windows -- which
+    `docs/source/contributing.rst` invites -- who would otherwise be handed a
+    patch figure of nothing at all.
+    """
+    report["files"] = {path.replace("\\", "/"): data for path, data in report["files"].items()}
+    return report
+
+
 def merge(args):
     """Combine every data file the run produced and write the reports."""
     report_dir, work_dir = Path(args.report_dir), Path(args.work_dir)
@@ -363,7 +382,7 @@ def merge(args):
     # debugging a surprising rate reads first.
     coverage("report", "--skip-covered", "--skip-empty", rcfile=args.rcfile, data_file=merged, check=False)
 
-    report = json.loads(json_report.read_text(encoding="utf-8"))
+    report = normalised(json.loads(json_report.read_text(encoding="utf-8")))
     totals = report["totals"]
     summary["totals"] = {
         "statements": totals["num_statements"],

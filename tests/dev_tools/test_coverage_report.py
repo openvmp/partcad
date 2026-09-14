@@ -160,12 +160,38 @@ def test_one_file_recorded_three_ways_merges_into_one(report_module, tmp_path):
     merged = json.loads((pathlib.Path(args.report_dir) / "summary.json").read_text())
     assert merged["data_files"] == 3
 
-    report = json.loads((pathlib.Path(args.work_dir) / "coverage.json").read_text())
+    # Through the script's own `normalised`, because coverage.py writes these
+    # keys with the platform's separator: on Windows the file on disk says
+    # `src\\partcad_utils\\user_config.py`. That is what the merge normalises,
+    # and asserting on the raw file made this the one test that failed on
+    # Windows and nowhere else.
+    report = report_module.normalised(json.loads((pathlib.Path(args.work_dir) / "coverage.json").read_text()))
     # One entry, under the checkout-relative name, covering every line the three
     # recordings mention between them.
     assert [name for name in report["files"] if "user_config" in name] == [relative]
     # The union of the three recordings, and not one third of it.
     assert set(report["files"][relative]["executed_lines"]) == {first, second, third, fourth}
+
+
+def test_the_merged_report_names_files_with_forward_slashes(report_module, tmp_path, monkeypatch):
+    """Whatever the platform, because everything downstream matches on `/`.
+
+    coverage.py names files with the platform's separator, so on Windows the
+    merged report's keys are `src\\partcad\\shape.py`. `git diff` emits forward
+    slashes everywhere and `PACKAGES` is written with them, so a backslash key
+    matches neither: patch coverage comes out empty and every file lands in
+    `(elsewhere)`, both without a word. Windows is exactly where a separator
+    written on Linux goes wrong, which is why this is pinned rather than left to
+    the `Coverage` job happening to run on Linux.
+    """
+    windows = {
+        "totals": {},
+        "files": {r"src\partcad\shape.py": {"summary": {"covered_lines": 1, "num_statements": 1}}},
+    }
+    assert list(report_module.normalised(windows)["files"]) == ["src/partcad/shape.py"]
+    # And the consumers then find it, which is the whole point.
+    assert report_module.package_of("src/partcad/shape.py") == "src/partcad"
+    assert report_module.package_of(r"src\partcad\shape.py") is None
 
 
 def test_the_paths_section_covers_every_package_the_include_list_names(report_module):
