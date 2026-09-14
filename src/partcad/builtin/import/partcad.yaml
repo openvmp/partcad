@@ -76,10 +76,15 @@ import:
       sensor: sensors
       calibration: "joint calibration references"
 
-  # The two below are here only until the packages that own them are published:
-  # `mjcf` belongs to `partcad/partcad-sim-mujoco` and `world` to
-  # `partcad/partcad-sim-gazebo`, beside the exporter and the simulator that
-  # share their knowledge of the format. See the note at the top of this file.
+  # The two below are here only until the wheel stops carrying them. Both are
+  # declared, identically, by the package that owns the format --
+  # `partcad/partcad-sim-mujoco` for `mjcf` and `partcad/partcad-sim-gazebo` for
+  # `world` -- so `type: sim-mujoco:mjcf` and `type: sim-gazebo:world` already
+  # read through the plugin rather than through this file. What is left before
+  # these can go is everything that resolves a format with no package graph to
+  # resolve it in: `partcad_client.object_types`, `SCENE_EXTENSION_MAPPING` in
+  # `shape.py`, and the ad-hoc conversion `pc open --with mujoco` asks for when
+  # the file it was handed is not already an MJCF model.
 
   mjcf:
     desc: |
