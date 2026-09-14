@@ -827,6 +827,36 @@ def test_step_export_carries_the_configured_comment(tmp_path):
 
 
 @pytest.mark.slow
+def test_a_package_renders_a_file_type_named_in_another_package(tmp_path):
+    """A bulk render honours a 'package:format' name (needs the sandbox).
+
+    The list of file types a package renders is what that package and the
+    built-in ones declare, and a type named by its full path is in neither -
+    being somewhere else is the whole reason for spelling it that way. Filtered
+    against that list, 'pc export -t <package>:<type>' reported success and
+    wrote nothing at all.
+    """
+    context = pc.Context(EXAMPLES)
+    project = context.get_project("//produce_part_step")
+    named = ctx_relative_format(context)
+    try:
+        asyncio.run(project.render_async(parts=["bolt"], format=named, output_dir=str(tmp_path)))
+    except Exception as e:
+        pytest.skip("Sandbox unavailable: %s" % e)
+
+    written = str(tmp_path / "bolt.stl")
+    assert os.path.exists(written), "nothing was written for '%s'" % named
+    # The other package's implementation, not the built-in one: ASCII, and named
+    # after that package's comment.
+    assert open(written).readline().startswith("solid Produced by the PartCAD")
+
+
+def ctx_relative_format(context):
+    """'<package>:stl', spelled the way a package's own configuration would."""
+    return "%s:stl" % context.get_project(CUSTOM_EXAMPLE).name
+
+
+@pytest.mark.slow
 def test_a_custom_implementation_writes_the_file(tmp_path):
     """The package's own STL exporter is the one that runs (needs the sandbox)."""
     context = pc.Context(EXAMPLES)
