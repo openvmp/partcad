@@ -409,12 +409,15 @@ mid-run never reached its own `coverage combine` and what is on disk then is the
 bare filename on a `success()` step silently drops a whole job from the merge, and with it moves the
 requirement's floor. That holds for the jobs driving `coverage run` themselves; the `Pytest` job measures
 through pytest-cov, which writes **nothing** when its session fails, so a failed `Pytest` contributes no
-coverage and no arrangement of the upload step changes that. And `always()` covers a job that *failed*, not one
-the runner *killed*: a job that hits its own `timeout-minutes` never reaches the step, so its coverage is
-missing rather than partial — which the merge takes in its stride, one file fewer and the report still
-produced. The merge also **records every in-scope file no job imported, at nought percent**, before
-writing any report: coverage.py reports the files it saw, so without that a brand-new module with no test at
-all is absent from the data rather than zero in it, and the gate finds nothing to hold it to.
+coverage and no arrangement of the upload step changes that. And `always()` covers a job that *failed*, not
+one the runner *killed*: a job that hits its own `timeout-minutes` never reaches the step at all, so
+everything it had measured is absent from the merge rather than partially in it — however many data files
+that would have been, which is not always one (an example sweep writes a `.coverage.<n>` per `coverage run`
+before combining them). The merge takes that in its stride and produces the report over what did arrive.
+
+The merge also **records every in-scope file no job imported, at nought percent**, before writing any report:
+coverage.py reports the files it saw, so without that a brand-new module with no test at all is absent from
+the data rather than zero in it, and the gate finds nothing to hold it to.
 
 The requirement is a floor under **patch** coverage — the statements the pull request touched — set to the
 project's own statement rate in the same run. Nothing is stored between runs, so there is no baseline to
