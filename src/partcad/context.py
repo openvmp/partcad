@@ -1036,7 +1036,7 @@ class Context:
         pc_logging.debug("Retrieving %s from %s" % (material_name, project_name))
         return prj.get_material(material_name, quiet=quiet)
 
-    def _get_interface(self, interface_spec):
+    def _get_interface(self, interface_spec, params=None):
         project_name, interface_name = resolve_resource_path(
             self.current_project_path,
             interface_spec,
@@ -1047,13 +1047,18 @@ class Context:
             pc_logging.error("Packages found: %s" % str(self.projects))
             return None
         pc_logging.debug("Retrieving %s from %s" % (interface_name, project_name))
-        return prj.get_interface(interface_name)
+        return prj.get_interface(interface_name, params)
 
-    def get_interface(self, interface_spec):
-        return self._get_interface(interface_spec)
+    def get_interface(self, interface_spec, params=None):
+        """The interface named by '<package>:<name>', or None.
 
-    def get_interface_shape(self, interface_spec):
-        return asyncio.run(self._get_interface(interface_spec).get_wrapped(self))
+        'interface_spec' may carry parameter values ('m-thru;size=4') and
+        'params' may add to them, the same as for a part or a sketch.
+        """
+        return self._get_interface(interface_spec, params)
+
+    def get_interface_shape(self, interface_spec, params=None):
+        return asyncio.run(self._get_interface(interface_spec, params).get_wrapped(self))
 
     async def find_suppliers(self, cart: ProviderCart) -> dict[str, list[str]]:
         """Find suppliers for each of the parts in the cart"""

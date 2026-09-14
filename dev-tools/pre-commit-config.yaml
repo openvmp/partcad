@@ -25,7 +25,10 @@ repos:
         exclude: "^examples/|_ai_.+\\.(py|scad)|\\.brep$"
         exclude_types: [svg]
       - id: check-yaml
-        exclude: "^tests/partcad/unit/data/project_config_(template|include).yaml$"
+        # Fixtures that are Jinja2 templates rather than YAML: a '{% ... %}' at
+        # the start of a line is not a YAML token, and rendering it is the whole
+        # point of what they test.
+        exclude: "^tests/partcad/unit/data/(project_config_(template|include)\\.yaml|config_template/partcad\\.yaml)$"
       - id: check-added-large-files
       # https://github.com/docker/for-mac/issues/5029
       # - id: check-executables-have-shebangs

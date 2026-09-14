@@ -260,7 +260,7 @@
         "axis": {
           "type": "array",
           "description": "The axis moved about or along, in the frame of this interface's port.",
-          "items": { "type": "number" },
+          "items": { "$ref": "#/definitions/number-or-expression" },
           "minItems": 3,
           "maxItems": 3
         },
@@ -268,8 +268,8 @@
           "type": "object",
           "description": "How far the movement may go: degrees for a turn, millimetres for a move.",
           "properties": {
-            "lower": { "type": "number" },
-            "upper": { "type": "number" }
+            "lower": { "$ref": "#/definitions/number-or-expression" },
+            "upper": { "$ref": "#/definitions/number-or-expression" }
           },
           "additionalProperties": false
         },
@@ -277,10 +277,10 @@
           "type": "object",
           "description": "Limits a controller enforces before the hard ones, and the gains it does it with.",
           "properties": {
-            "lower": { "type": "number" },
-            "upper": { "type": "number" },
-            "kPosition": { "type": "number" },
-            "kVelocity": { "type": "number" }
+            "lower": { "$ref": "#/definitions/number-or-expression" },
+            "upper": { "$ref": "#/definitions/number-or-expression" },
+            "kPosition": { "$ref": "#/definitions/number-or-expression" },
+            "kVelocity": { "$ref": "#/definitions/number-or-expression" }
           },
           "additionalProperties": false
         },
@@ -289,8 +289,8 @@
           "description": "A movement that follows another one: value = multiplier * other + offset.",
           "properties": {
             "joint": { "type": "string", "minLength": 1 },
-            "multiplier": { "type": "number" },
-            "offset": { "type": "number" }
+            "multiplier": { "$ref": "#/definitions/number-or-expression" },
+            "offset": { "$ref": "#/definitions/number-or-expression" }
           },
           "required": ["joint"],
           "additionalProperties": false
@@ -298,25 +298,111 @@
       },
       "additionalProperties": false
     },
+    "expression": {
+      "description": "A number written as a PartCAD expression instead of a literal, e.g. \"%size / 2%\". The whole value has to be the expression, delimiters included: a value that merely contains one (\"%size%mm\") resolves to text, and the places this is referenced from are the ones that need a number. The values are the parameters of the object it is declared in - an interface's or a part's 'parameters'. Not Jinja2: 'partcad.yaml' is rendered as a Jinja2 template before it is parsed, which is one step too early for a value that depends on which instance of the object is being asked for.",
+      "type": "string",
+      "pattern": "^%[^%]+%$"
+    },
+    "number-or-expression": {
+      "description": "A number, or an expression over the object's parameters that evaluates to one.",
+      "oneOf": [
+        { "type": "number" },
+        { "$ref": "#/definitions/expression" }
+      ]
+    },
+    "OCCTLocationValue": {
+      "$ref": "#/definitions/number-or-expression"
+    },
+    "sketch-inner-circle": {
+      "oneOf": [
+        { "$ref": "#/definitions/sketch-dimension" },
+        {
+          "type": "object",
+          "properties": {
+            "radius": { "$ref": "#/definitions/sketch-dimension" },
+            "x": { "$ref": "#/definitions/sketch-coordinate" },
+            "y": { "$ref": "#/definitions/sketch-coordinate" }
+          },
+          "required": ["radius"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "sketch-inner-square": {
+      "oneOf": [
+        { "$ref": "#/definitions/sketch-dimension" },
+        {
+          "type": "object",
+          "properties": {
+            "side": { "$ref": "#/definitions/sketch-dimension" },
+            "x": { "$ref": "#/definitions/sketch-coordinate" },
+            "y": { "$ref": "#/definitions/sketch-coordinate" }
+          },
+          "required": ["side"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "sketch-inner-rectangle": {
+      "type": "object",
+      "properties": {
+        "side-x": { "$ref": "#/definitions/sketch-dimension" },
+        "side-y": { "$ref": "#/definitions/sketch-dimension" },
+        "x": { "$ref": "#/definitions/sketch-coordinate" },
+        "y": { "$ref": "#/definitions/sketch-coordinate" }
+      },
+      "required": ["side-x", "side-y"],
+      "additionalProperties": false
+    },
+    "sketch-slot": {
+      "description": "A slot: a rectangle with semicircular ends, which is what a slotted hole is. 'length' is measured over those ends, so a slot as long as it is wide is a circle; 'width' is their diameter. Unlike the other shapes here it is placed by the centre of its FIRST rounded end rather than by its middle - 'x' and 'y' are that point, and 'angle' turns it about that point, in degrees from +X - so a port keeps its coordinates when the opening it marks is slotted.",
+      "type": "object",
+      "properties": {
+        "length": { "$ref": "#/definitions/sketch-dimension" },
+        "width": { "$ref": "#/definitions/sketch-dimension" },
+        "x": { "$ref": "#/definitions/sketch-coordinate" },
+        "y": { "$ref": "#/definitions/sketch-coordinate" },
+        "angle": { "$ref": "#/definitions/sketch-coordinate" }
+      },
+      "required": ["length", "width"],
+      "additionalProperties": false
+    },
+    "sketch-dimension": {
+      "description": "A length of a 'basic' sketch: a non-negative number, or an expression over the sketch's parameters that evaluates to one.",
+      "oneOf": [
+        { "type": "number", "minimum": 0 },
+        { "$ref": "#/definitions/expression" }
+      ]
+    },
+    "sketch-coordinate": {
+      "description": "A position within a 'basic' sketch: a number, or an expression over the sketch's parameters that evaluates to one.",
+      "$ref": "#/definitions/number-or-expression"
+    },
     "OCCTLocation":{
       "type": "array",
       "items": [
         {
           "type": "array",
-          "items": { "type": "number" },
+          "items": { "$ref": "#/definitions/OCCTLocationValue" },
           "minItems": 3,
           "maxItems": 3
         },
         {
           "type": "array",
-          "items": { "type": "number" },
+          "items": { "$ref": "#/definitions/OCCTLocationValue" },
           "minItems": 3,
           "maxItems": 3
         },
-        { "type": "number" }
+        { "$ref": "#/definitions/OCCTLocationValue" }
       ],
       "minItems": 3,
       "maxItems": 3
+    },
+    "object-reference": {
+      "description": "A reference to another object: a name of this package ('m3-thru'), or one qualified with a package path ('//std/metric/m:m3-thru'), either of them carrying parameter values ('m-thru;size=4,depth=3'). A value may be a '%...%' expression over the parameters of the object the reference is written in ('m-thru;size=%size + 1%'), which is why a complete expression is allowed anywhere in the name - it is resolved before the reference is looked up.",
+      "type": "string",
+      "pattern": "^(?:[a-zA-Z0-9_/.:;=,-]|%[^%]+%)+$",
+      "minLength": 1
     },
     "port":{
       "oneOf": [
@@ -326,7 +412,21 @@
           "type": "object",
           "properties": {
             "location": { "$ref": "#/definitions/OCCTLocation" },
-            "sketch": { "type": "string", "minLength": 1 }
+            "sketch": { "$ref": "#/definitions/object-reference" },
+            "project": { "type": "string" },
+            "params": {
+              "description": "The parameter values to build the port's sketch with, so that one parametrized sketch serves a family of ports. Equivalent to spelling them into the sketch's name ('sketch: m;size=3'); a value may be an expression over the parameters of the object that declares the port.",
+              "type": "object",
+              "patternProperties": {
+                "^[a-zA-Z0-9_/./-]+$": {
+                  "anyOf": [
+                    { "type": ["number", "boolean", "array"] },
+                    { "type": "string" }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
           },
           "additionalProperties": false
         }
@@ -370,57 +470,103 @@
       },
       "additionalProperties": false
     },
-    "interface-parameter": {
-      "oneOf": [
-        {
-          "type": "object",
-          "patternProperties": {
-            "^(move-[xyz])$": {
-              "type": "object",
-              "properties": {
-                "min": { "type": "number" },
-                "max": { "type": "number" },
-                "default": { "type": "number" }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "patternProperties": {
-            "^[a-zA-Z0-9_/./-]+$": {
-              "type": "object",
-              "properties": {
-                "min": { "type": "number" },
-                "max": { "type": "number" },
-                "default": { "type": "number" },
-                "type": { "type": "string", "enum": ["move", "turn"], "default": "move" },
-                "dir": {
-                  "type": "array",
-                  "items": { "type": "number" },
-                  "minItems": 3,
-                  "maxItems": 3
-                }
-              },
-              "required": ["dir"],
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
+    "interface-movement-body": {
+      "type": "object",
+      "properties": {
+        "min": { "$ref": "#/definitions/number-or-expression" },
+        "max": { "$ref": "#/definitions/number-or-expression" },
+        "default": { "$ref": "#/definitions/number-or-expression" },
+        "type": { "type": "string", "enum": ["move", "turn"], "default": "move" },
+        "dir": {
           "type": "array",
-          "items": [
-            { "type": "number" },
-            { "type": "number" },
-            { "type": "number" }
-          ],
-          "minItems": 2,
+          "items": { "$ref": "#/definitions/number-or-expression" },
+          "minItems": 3,
           "maxItems": 3
         }
+      },
+      "additionalProperties": false
+    },
+    "interface-movement-body-custom": {
+      "description": "One freedom-of-movement parameter under a name PartCAD does not know the axis of. The same as 'interface-movement-body' except that 'dir' is not optional: moveX/moveY/moveZ and turnX/turnY/turnZ carry their axis in the name, and anything else has to state it. It is also why a custom name has no short form - '[min, max, default]' has nowhere to put a direction.",
+      "type": "object",
+      "properties": {
+        "min": { "$ref": "#/definitions/number-or-expression" },
+        "max": { "$ref": "#/definitions/number-or-expression" },
+        "default": { "$ref": "#/definitions/number-or-expression" },
+        "type": { "type": "string", "enum": ["move", "turn"], "default": "move" },
+        "dir": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/number-or-expression" },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "required": ["dir"],
+      "additionalProperties": false
+    },
+    "interface-movement-value": {
+      "description": "One freedom-of-movement parameter under one of the six names PartCAD knows the axis of - moveX/moveY/moveZ, turnX/turnY/turnZ, and their hyphenated spellings. The range it may take, written as '{min, max, default}', as the short '[min, max, default]', or as the one value it is pinned to. A custom name is 'interface-movement-body-custom' instead, which has to state its 'dir'.",
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/definitions/number-or-expression" },
+        {
+          "type": "array",
+          "items": { "$ref": "#/definitions/number-or-expression" },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        { "$ref": "#/definitions/interface-movement-body" }
       ]
+    },
+    "interface-parameter": {
+      "description": "An interface's 'parameters:'. It holds two kinds at once, told apart by what each declares rather than by where it is written: a construction parameter, exactly as a part or a sketch declares one ('size: {type: float, default: 3.0}'), which a reference sets ('m-thru;size=4'); and a freedom-of-movement parameter, which states a range and an axis ('min', 'max', 'dir') and says what a connection made through the interface may still do. The two vocabularies do not overlap: one of the six predefined movement names, a '[min, max, default]' list, or a 'min'/'max'/'dir' or 'type: move'/'type: turn' makes it the second kind; anything else is the first.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "patternProperties": {
+            "^(move[XYZ]|turn[XYZ]|move-[xyz]|turn-[xyz])$": { "$ref": "#/definitions/interface-movement-value" },
+            "^(?!(move[XYZ]|turn[XYZ]|move-[xyz]|turn-[xyz])$)[a-zA-Z0-9_/./-]+$": {
+              "$comment": "Which kind this is, decided the same way 'partcad.interface_config.is_movement_parameter' decides it: a declaration stating 'min', 'max', 'dir' or 'type: move'/'type: turn' is freedom of movement, and anything else is a construction value. Written as 'if'/'then' rather than as an 'anyOf' of the two so that a declaration meant as one kind is reported against that kind - an 'anyOf' answers a missing 'dir' with whatever the *other* branch disliked.",
+              "if": {
+                "type": "object",
+                "anyOf": [
+                  { "required": ["min"] },
+                  { "required": ["max"] },
+                  { "required": ["dir"] },
+                  { "required": ["type"], "properties": { "type": { "enum": ["move", "turn"] } } }
+                ]
+              },
+              "then": { "$ref": "#/definitions/interface-movement-body-custom" },
+              "else": { "$ref": "#/definitions/shape-parameter-value" }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "The short list form. Either the names of the freedoms this interface allows with no bounds on them ('[moveX, moveY, turnZ]'), which is the oldest spelling of 'parameters:' there is, or one parameter's '[min, max, default]'.",
+          "type": "array",
+          "oneOf": [
+            {
+              "type": "array",
+              "items": { "$ref": "#/definitions/interface-movement-name" },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            {
+              "type": "array",
+              "items": { "$ref": "#/definitions/number-or-expression" },
+              "minItems": 2,
+              "maxItems": 3
+            }
+          ]
+        }
+      ]
+    },
+    "interface-movement-name": {
+      "description": "One of the six freedoms PartCAD knows the axis of, named on its own. Only these six: a custom name has to state the 'dir' it moves along or turns about, and a bare list has nowhere to put one.",
+      "type": "string",
+      "pattern": "^(move[XYZ]|turn[XYZ]|move-[xyz]|turn-[xyz])$"
     },
     "parameter-override": {
       "description": "One value of an object's 'with:'. A string may not contain ',', ';' or '=': overriding an object's parameters asks for the instance of it that has those values, and the name of that instance is spelled '<name>;<parameter>=<value>,...' - the same name 'pc inspect cube;width=20.0' asks for. Those three characters are what that spelling is made of, so a value carrying one of them cannot be named.",
@@ -435,6 +581,32 @@
       "anyOf": [
         { "type": "string", "pattern": "^[^,;=]*$" },
         { "type": ["number", "boolean", "array"] }
+      ]
+    },
+    "shape-parameter-value": {
+      "description": "One construction parameter of an object: the bare value it defaults to, or a declaration of its type, its default and what it may be. The same shape wherever an object is parametrized - a part, a sketch, an assembly, and the construction half of an interface's 'parameters:'.",
+      "oneOf": [
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "string", "pattern": "^[^,;=]*$" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "enum": ["string", "int", "bool", "float"] },
+            "enum": {
+              "type": "array",
+              "items": {
+                "allOf": [{ "type": "string", "minLength": 1 }, { "$ref": "#/definitions/parameter-default" }]
+              },
+              "uniqueItems": true
+            },
+            "desc": { "type": "string", "maxLength": 1000 },
+            "default": { "$ref": "#/definitions/parameter-default" },
+            "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+            "material": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        }
       ]
     },
     "shape-parameter": {
@@ -740,7 +912,7 @@
                 "implements": {
                   "type": "object",
                   "patternProperties": {
-                    "^[a-zA-Z0-9_/./-]+$": {
+                    "^(?:[a-zA-Z0-9_/.:;=,-]|%[^%]+%)+$": {
                       "oneOf": [
                         { "type": "string" },
                         { "type": "null" },
@@ -748,7 +920,7 @@
                         {
                           "type": "object",
                           "patternProperties": {
-                            "^[a-zA-Z0-9_/./-]+$": { "$ref": "#/definitions/OCCTLocation" }
+                            "^[a-zA-Z0-9_/.%-]+$": { "$ref": "#/definitions/OCCTLocation" }
                           },
                           "additionalProperties": false
                         },
@@ -775,7 +947,7 @@
                 "ports":{
                   "type": "object",
                   "patternProperties": {
-                    "^[a-zA-Z0-9_/./-]+$": { "$ref": "#/definitions/port" }
+                    "^[a-zA-Z0-9_/.%-]+$": { "$ref": "#/definitions/port" }
                   },
                   "additionalProperties": false
                 },
@@ -1000,13 +1172,13 @@
             "package": { "type": "string", "minLength": 1 },
             "circle": {
               "oneOf": [
-                { "type": "number", "minimum": 0 },
+                { "$ref": "#/definitions/sketch-dimension" },
                 {
                   "type": "object",
                   "properties": {
-                    "radius": { "type": "number", "minimum": 0 },
-                    "x": { "type": "number" },
-                    "y": { "type": "number" }
+                    "radius": { "$ref": "#/definitions/sketch-dimension" },
+                    "x": { "$ref": "#/definitions/sketch-coordinate" },
+                    "y": { "$ref": "#/definitions/sketch-coordinate" }
                   },
                   "required": ["radius"],
                   "additionalProperties": false
@@ -1015,13 +1187,13 @@
             },
             "square": {
               "oneOf": [
-                { "type": "number", "minimum": 0 },
+                { "$ref": "#/definitions/sketch-dimension" },
                 {
                   "type": "object",
                   "properties": {
-                    "side": { "type": "number", "minimum": 0 },
-                    "x": { "type": "number" },
-                    "y": { "type": "number" }
+                    "side": { "$ref": "#/definitions/sketch-dimension" },
+                    "x": { "$ref": "#/definitions/sketch-coordinate" },
+                    "y": { "$ref": "#/definitions/sketch-coordinate" }
                   },
                   "required": ["side", "x", "y"],
                   "additionalProperties": false
@@ -1031,55 +1203,38 @@
             "rectangle": {
               "type": "object",
               "properties": {
-                "side-x": { "type": "number", "minimum": 0 },
-                "side-y": { "type": "number", "minimum": 0 },
-                "x": { "type": "number" },
-                "y": { "type": "number" }
+                "side-x": { "$ref": "#/definitions/sketch-dimension" },
+                "side-y": { "$ref": "#/definitions/sketch-dimension" },
+                "x": { "$ref": "#/definitions/sketch-coordinate" },
+                "y": { "$ref": "#/definitions/sketch-coordinate" }
               },
               "required": ["side-x", "side-y"],
               "additionalProperties": false
             },
+            "slot": { "$ref": "#/definitions/sketch-slot" },
             "inner": {
+              "description": "The shapes cut out of the outer one. Each may be given once by its own name, or several at a time in the plural list beside it.",
               "type": "object",
               "properties": {
-                "circle": {
-                  "oneOf": [
-                    { "type": "number", "minimum": 0 },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "radius": { "type": "number", "minimum": 0 }
-                      },
-                      "required": ["radius"],
-                      "additionalProperties": false
-                    }
-                  ]
+                "circle": { "$ref": "#/definitions/sketch-inner-circle" },
+                "circles": {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/sketch-inner-circle" }
                 },
-                "square": {
-                  "oneOf": [
-                    { "type": "number", "minimum": 0 },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "side": { "type": "number", "minimum": 0 },
-                        "x": { "type": "number" },
-                        "y": { "type": "number" }
-                      },
-                      "required": ["side"],
-                      "additionalProperties": false
-                    }
-                  ]
+                "square": { "$ref": "#/definitions/sketch-inner-square" },
+                "squares": {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/sketch-inner-square" }
                 },
-                "rectangle": {
-                  "type": "object",
-                  "properties": {
-                    "side-x": { "type": "number", "minimum": 0 },
-                    "side-y": { "type": "number", "minimum": 0 },
-                    "x": { "type": "number" },
-                    "y": { "type": "number" }
-                  },
-                  "required": ["side-x", "side-y"],
-                  "additionalProperties": false
+                "rectangle": { "$ref": "#/definitions/sketch-inner-rectangle" },
+                "rectangles": {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/sketch-inner-rectangle" }
+                },
+                "slot": { "$ref": "#/definitions/sketch-slot" },
+                "slots": {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/sketch-slot" }
                 }
               },
               "additionalProperties": false
@@ -1103,17 +1258,29 @@
       "type": ["object", "null"],
       "patternProperties": {
         "^[a-zA-Z0-9_/./-]+$": {
+          "oneOf": [
+            {
+              "description": "The short form of an alias, the same one a sketch and a part have: the interface this one is another name for.",
+              "$ref": "#/definitions/object-reference"
+            },
+            {
           "type": "object",
           "properties": {
             "abstract": { "type": "boolean", "default": false },
             "desc": { "type": "string", "maxLength": 1000 },
             "unless": { "$ref": "#/definitions/unless" },
             "path": { "type": "string", "minLength": 1 },
+            "alias": {
+              "description": "This interface is that one, under another name: the same ports under the same names, a drop-in for it, mating with whatever it mates with. What is not declared here is taken from it. How a package that has published a name keeps publishing it after the family behind it becomes parametric - 'm3-thru-3' is 'm-thru;size=3,depth=3' spelled the way it always was.",
+              "$ref": "#/definitions/object-reference"
+            },
             "leadPort": { "type": "string", "minLength": 1 },
             "threadStep": {
               "description": "The axial distance a connection made through this interface advances per full turn, in mm. Inherited by the interfaces that inherit this one, and by the connections that use it.",
-              "type": "number",
-              "minimum": 0
+              "oneOf": [
+                { "type": "number", "minimum": 0 },
+                { "$ref": "#/definitions/expression" }
+              ]
             },
             "selfScrew": {
               "description": "Whether this interface cuts its own thread rather than matching one, so that it may be connected to an interface with a different 'threadStep' or none.",
@@ -1123,7 +1290,7 @@
             "inherits":{
               "type": "object",
               "patternProperties":{
-                "^[a-zA-Z0-9_/./-]+$":{
+                "^(?:[a-zA-Z0-9_/.:;=,-]|%[^%]+%)+$":{
                   "oneOf": [
                     { "type": "null" },
                     { "type": "string", "minLength": 1 },
@@ -1131,7 +1298,25 @@
                     {
                       "type": "object",
                       "patternProperties": {
-                        "^[a-zA-Z0-9_/./-]+$": { "$ref": "#/definitions/OCCTLocation" }
+                        "^[a-zA-Z0-9_/.%-]*$": { "$ref": "#/definitions/OCCTLocation" }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "patternProperties": {
+                        "^[a-zA-Z0-9_/.%-]*$": {
+                          "type": "object",
+                          "properties": {
+                            "sketch": {
+                              "description": "The boundary the ports this instance brings in are drawn with, instead of the one the inherited interface draws them with. The same opening drawn differently - a slotted hole is a through hole that mates as one and keeps its port, and what tells them apart is the outline. Written as a reference like any other, so parameter values go in the name: 'm-slotted;size=4,length=30'.",
+                              "$ref": "#/definitions/object-reference"
+                            },
+                            "location": { "$ref": "#/definitions/OCCTLocation" },
+                            "params": { "type": "object" }
+                          },
+                          "additionalProperties": false
+                        }
                       },
                       "additionalProperties": false
                     }
@@ -1143,7 +1328,7 @@
             "ports":{
               "type": "object",
               "patternProperties": {
-                "^[a-zA-Z0-9_/./-]+$": { "$ref": "#/definitions/port" }
+                "^[a-zA-Z0-9_/.%-]+$": { "$ref": "#/definitions/port" }
               },
               "additionalProperties": false
             },
@@ -1151,9 +1336,14 @@
               "oneOf": [
                 { "type": "string", "minLength": 1 },
                 {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/object-reference" },
+                  "uniqueItems": true
+                },
+                {
                   "type": "object",
                   "patternProperties": {
-                    "^[a-zA-Z0-9_/./-]+$": { "$ref": "#/definitions/interface-parameter"}
+                    "^(?:[a-zA-Z0-9_/.:;=,-]|%[^%]+%)+$": { "$ref": "#/definitions/interface-parameter"}
                   },
                   "additionalProperties": false
                 }
@@ -1164,6 +1354,8 @@
             "physics": { "$ref": "#/definitions/physics" }
           },
           "additionalProperties": false
+            }
+          ]
         }
       },
       "additionalProperties": false

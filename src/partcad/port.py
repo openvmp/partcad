@@ -7,7 +7,7 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-from . import telemetry
+from . import interface_config, telemetry
 from .interface import Interface
 
 
@@ -23,6 +23,34 @@ class WithPorts(Interface):
     ):
         super().__init__(name, project, config, config_section="implements")
         self.interfaces = None
+
+    # A shape's declaration is not an interface's: 'desc' is prose, 'fileUrl'
+    # is a URL that may be percent-encoded, and neither has parameters
+    # substituted into it. What a shape does declare about connections is where
+    # its ports are and which interfaces it implements, and those two are worth
+    # writing in terms of the shape's own dimensions.
+    EXPRESSION_SECTIONS = ("ports", "implements")
+
+    def declared_construction_params(self, config: dict) -> dict:
+        """A shape's 'parameters:', all of it.
+
+        The section is split in two on an *interface*, where it has always also
+        meant the freedom of movement a connection keeps. On a shape it never
+        did: 'parameters:' is what 'cube;width=20' sets and what a CAD script is
+        handed, and that is the whole of it. So a part whose parameter happens
+        to be called 'moveX' keeps it as the value it is.
+        """
+        return config.get(interface_config.PARAMETERS) or {}
+
+    def declared_movement_params(self, config: dict) -> dict:
+        """None: a shape states the freedom of movement in the interfaces it implements.
+
+        What it gets is whatever those interfaces declare, merged in as they are
+        inherited (see 'Interface.instantiate'). A shape's own 'parameters:' used
+        to be read as freedom of movement as well, which turned every dimension a
+        part was built from into an offset that composed into nothing.
+        """
+        return {}
 
     def get_interfaces(self):
         with self.lock:
