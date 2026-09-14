@@ -1591,6 +1591,52 @@ def test_bom_names_the_scene_it_could_not_find():
     assert session.partcad.logging.messages("error") == ["Scene //:world is not found"]
 
 
+def open_tools_of(projects):
+    """What 'open.tools' reports for a workspace holding these packages."""
+    session, _ = make_session()
+    session.partcad.output = types.SimpleNamespace(
+        OPEN="open",
+        BUILTIN_PACKAGES={"open": "//builtin/open"},
+    )
+    ctx = FakeContext()
+    for name, config_obj in projects.items():
+        ctx.projects[name] = FakeProject(name=name, config_obj=config_obj)
+    session.partcad_ctx = ctx
+    return operations.open_tools(session, {"package": "//"})
+
+
+def test_open_tools_reports_the_applications_a_package_declares():
+    """Which is the only half of 'pc open' that needs the package graph.
+
+    A plugin package declares no objects at all, so the default "keep only
+    packages holding something" filter is exactly the one that would drop it;
+    'open_tools' asks with 'has_stuff=False' for that reason.
+    """
+    declared = open_tools_of({"//plugin": {"open": {"gazebo": {"displayName": "Gazebo", "sceneType": "world"}}}})
+
+    assert declared == {"tools": {"gazebo": {"displayName": "Gazebo", "sceneType": "world"}}}
+
+
+def test_open_tools_does_not_send_the_built_in_table_over_the_wire():
+    """The client reads those out of the wheel it is running from.
+
+    Sending them too would mean a client whose daemon is a different release
+    quietly gets that release's table, for applications it already knows about.
+    """
+    declared = open_tools_of(
+        {
+            "//builtin/open": {"open": {"freecad": {"displayName": "FreeCAD"}}},
+            "//plugin": {"open": {"mujoco": {"displayName": "MuJoCo"}}},
+        }
+    )
+
+    assert list(declared["tools"]) == ["mujoco"]
+
+
+def test_a_package_with_no_open_section_contributes_nothing():
+    assert open_tools_of({"//other": {"parts": {"cube": {"type": "step"}}}}) == {"tools": {}}
+
+
 def fake_output_module(builtin=("svg",)):
     """A stand-in for 'partcad.output', answering what the validation asks of it."""
     return types.SimpleNamespace(
