@@ -599,16 +599,27 @@ jobs:
       # "preflight" so that the lost coverage is reported before the run, not
       # as a warning inside it.
       image-degraded: ${{ steps.images.outputs.degraded }}
-      # Whose copy of those images this run is about, empty unless it built its
-      # own. A fork cannot publish into "partcad", so its images land under its
-      # own owner -- and a run that went on pulling "ghcr.io/partcad/..." would
-      # build images, push them, and then test the upstream release's instead.
-      # Read by "partcad_utils.container_image.image_name".
+      # Whose copy of those images this run is about, empty unless they are
+      # this fork's own. A fork cannot publish into "partcad", so anything it
+      # publishes lands under its own owner -- and a run that went on pulling
+      # "ghcr.io/partcad/..." would build images, push them, and then test the
+      # upstream release's. Read by "partcad_utils.container_image.image_name".
+      #
+      # Gated on "push" and not on "override": a fork running this by hand from
+      # its Actions tab is a "workflow_dispatch", which "container-images" reads
+      # as a release publish -- so it publishes the *release* tag into the
+      # fork's namespace and overrides no tag at all. That run has its own
+      # images and no redirection to find them by, which is the one case the
+      # tag alone cannot express.
+      #
+      # And on "fork", because in this repository "push" is also true for the
+      # version bump and for a branch-image run, and both of those publish to
+      # "partcad" -- where the name in the source is already right.
       #
       # Only the owner: the image's own name still comes from "github.repository"
       # on the build side, so this holds for a fork that kept the repository name
       # (which is what forking gives you) and not for one that renamed it.
-      image-owner: ${{ steps.images.outputs.override != '' && github.repository_owner || '' }}
+      image-owner: ${{ steps.images.outputs.push == 'true' && github.event.repository.fork && github.repository_owner || '' }}
     steps:
       - uses: actions/checkout@v7
 

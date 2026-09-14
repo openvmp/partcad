@@ -77,7 +77,7 @@ jobs:
       image-degraded: ${{ steps.images.outputs.degraded }}
       # Whose copy this run addresses; empty unless it built its own. See the
       # longer note on the same output in "test.yml".
-      image-owner: ${{ steps.images.outputs.override != '' && github.repository_owner || '' }}
+      image-owner: ${{ steps.images.outputs.push == 'true' && github.event.repository.fork && github.repository_owner || '' }}
     steps:
       - uses: actions/checkout@v7
       - name: Decide the depth

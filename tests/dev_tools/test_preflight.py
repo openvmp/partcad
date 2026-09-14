@@ -360,6 +360,31 @@ def test_the_check_is_asked_about_wanting_rather_than_succeeding(workflow, scope
 
 
 @pytest.mark.parametrize("workflow", ["test.yml", "test-dev.yml"])
+def test_a_fork_pulls_the_images_it_published_rather_than_upstreams(workflow):
+    """`image-owner` has to follow publishing, not the tag override.
+
+    A fork running CI by hand from its Actions tab is a `workflow_dispatch`,
+    which `container-images` reads as a release publish: it pushes the *release*
+    tag into the fork's namespace and overrides no tag at all. Keyed on
+    `override`, the redirection would be empty for exactly that run -- the fork
+    would build its images, push them, and then have every test pull
+    `ghcr.io/partcad/...`, which is the failure this whole mechanism exists to
+    prevent, arriving through the one door the tag cannot cover.
+
+    And `fork` has to be in it, because `push` is true in this repository too
+    -- for the version bump and for a branch-image run -- and both publish to
+    `partcad`, where the name in the source is already right.
+    """
+    jobs = yaml.safe_load((WORKFLOWS / workflow).read_text())["jobs"]
+    (gate,) = [j for j in jobs.values() if "image-owner" in str(j.get("outputs") or {})]
+    owner = " ".join(str(gate["outputs"]["image-owner"]).split())
+
+    assert "outputs.push == 'true'" in owner, owner
+    assert "github.event.repository.fork" in owner, owner
+    assert "github.repository_owner" in owner, owner
+
+
+@pytest.mark.parametrize("workflow", ["test.yml", "test-dev.yml"])
 def test_the_ssh_agent_starts_only_where_there_is_a_key(workflow):
     """Through the preflight's output, because nothing else can see a secret.
 

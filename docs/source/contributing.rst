@@ -910,7 +910,7 @@ The ``Prerequisites`` job now says so before the run instead, and says where to 
 
 **Run CI in your fork to get that coverage.** Push the branch to your fork and start *CI* from its **Actions** tab
 with "Run workflow". There the token writes to ``ghcr.io/<you>/partcad-container-*``, the run builds your images, and
-its test jobs pull what it built rather than the release's -- ``PC_CONTAINER_IMAGE_OWNER`` is what redirects them,
+its test jobs pull what it built rather than upstream's -- ``PC_CONTAINER_IMAGE_OWNER`` is what redirects them,
 beside the ``PC_CONTAINER_IMAGE_TAG`` that redirects the tag. Link the run on your pull request and a reviewer can see
 it went green.
 
