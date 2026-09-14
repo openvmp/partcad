@@ -101,6 +101,11 @@ def test_an_expression_is_arithmetic_and_nothing_else(expression):
         "%'x' * 1000000000%",  # repeating a sequence is the other way to allocate
         "%['x'] * 1000000000%",
         "%label * 1000000000%",  # including through a parameter that holds text
+        # ... and through anything that merely *might* be text. A call is the
+        # case that matters: reading an unrecognised form as a number is what
+        # let this one through the first time.
+        "%str(1) * 1000000000%",
+        "%max('a', 'b') * 1000000000%",
     ],
 )
 def test_an_expression_cannot_cost_more_than_it_looks(expression):
@@ -124,6 +129,25 @@ def test_arithmetic_a_coordinate_actually_needs_still_works():
     assert expr.substitute("%pow(size, 2)%", values) == 16.0
     with pytest.raises(expr.ExpressionError):
         expr.substitute("%pow(9, 999999999)%", values)
+
+
+@pytest.mark.parametrize(
+    "expression,expected",
+    [
+        ("%size * 2%", 8.0),
+        ("%-size * 2%", -8.0),
+        ("%2 * (size + 1)%", 10.0),
+        ("%round(size) * 3%", 12),
+        ("%abs(-size) * 2%", 8.0),
+        ("%(size if size > 2 else 1) * 4%", 16.0),
+        # A method whose answer is a number, which is how the historical form
+        # reads a size out of a thread designation.
+        ("%label:value.index('-') * 2%", 4),
+    ],
+)
+def test_multiplication_of_things_that_are_numbers_is_allowed(expression, expected):
+    """ "Provably a number" has to admit the arithmetic a coordinate is made of."""
+    assert expr.substitute(expression, {"size": 4.0, "label": "M4-0.7"}) == expected
 
 
 def test_an_expression_may_be_a_conditional():

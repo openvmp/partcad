@@ -237,19 +237,71 @@ SAFE_ATTRIBUTES = frozenset(
 )
 
 
-def _is_sequence(node: ast.AST, values: dict[str, Any]) -> bool:
-    """Whether this operand is text or a list rather than a number.
+# The names in 'SAFE_NAMES' whose answer is always a number. 'max' and 'min' are
+# deliberately absent: 'max("a", "b")' is text. So is 'str'.
+NUMERIC_FUNCTIONS = frozenset(
+    [
+        "abs",
+        "bool",
+        "float",
+        "int",
+        "len",
+        "round",
+        "pow",
+        "acos",
+        "asin",
+        "atan",
+        "atan2",
+        "ceil",
+        "cos",
+        "degrees",
+        "floor",
+        "hypot",
+        "log",
+        "radians",
+        "sin",
+        "sqrt",
+        "tan",
+    ]
+)
 
-    Only as far as it can be told without evaluating: a literal says what it is,
-    and a parameter's value is already known here. Anything it cannot tell is
-    treated as a number, which is what the check below then has to live with.
+# The attributes from 'SAFE_ATTRIBUTES' whose answer is always a number, whether
+# read ('value.real') or called ('value.index("-")').
+NUMERIC_ATTRIBUTES = frozenset(
+    ["bit_length", "count", "denominator", "find", "imag", "index", "numerator", "real", "rfind", "rindex"]
+)
+
+
+def _is_numeric(node: ast.AST, values: dict[str, Any]) -> bool:
+    """Whether this operand is *certainly* a number.
+
+    Certainly, rather than "not obviously text", because this is what decides
+    whether a multiplication may run, and the two are not the same question. An
+    'ast.Call' is the case that makes the difference: 'str(1)' is a call like any
+    other, so reading an unknown form as a number lets '%str(1) * 1000000000%'
+    allocate the gigabyte the check exists to prevent. So the answer for
+    anything not recognised here is no.
     """
     if isinstance(node, ast.Constant):
-        return isinstance(node.value, (str, bytes))
-    if isinstance(node, (ast.List, ast.Tuple)):
-        return True
+        return isinstance(node.value, (int, float))  # bool is an int, and 'True * 3' is 3
     if isinstance(node, ast.Name):
-        return isinstance(values.get(node.id), (str, bytes, list, tuple))
+        return isinstance(values.get(node.id), (int, float))
+    if isinstance(node, ast.UnaryOp):
+        return _is_numeric(node.operand, values)
+    if isinstance(node, ast.BinOp):
+        return _is_numeric(node.left, values) and _is_numeric(node.right, values)
+    if isinstance(node, ast.IfExp):
+        return _is_numeric(node.body, values) and _is_numeric(node.orelse, values)
+    if isinstance(node, ast.Compare):
+        return True  # a comparison answers True or False, which are numbers
+    if isinstance(node, ast.Call):
+        if isinstance(node.func, ast.Name):
+            return node.func.id in NUMERIC_FUNCTIONS
+        if isinstance(node.func, ast.Attribute):
+            return node.func.attr in NUMERIC_ATTRIBUTES
+        return False
+    if isinstance(node, ast.Attribute):
+        return node.attr in NUMERIC_ATTRIBUTES
     return False
 
 
@@ -258,12 +310,14 @@ def _check(tree: ast.AST, expression: str, values: dict[str, Any]) -> None:
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mult):
             # Multiplying a sequence repeats it, and the repeat count is the
             # size of the result: "%'x' * 1000000000%" is a gigabyte allocated
-            # while a package is being loaded. Numbers only, then - which is all
-            # a coordinate ever multiplies anyway.
-            if _is_sequence(node.left, values) or _is_sequence(node.right, values):
+            # while a package is being loaded. So both sides have to be provably
+            # numbers - not merely "not obviously text", which still let
+            # "%str(1) * 1000000000%" through. That is all a coordinate ever
+            # multiplies anyway.
+            if not (_is_numeric(node.left, values) and _is_numeric(node.right, values)):
                 raise ExpressionError(
                     expression,
-                    SyntaxError("only numbers may be multiplied, and this repeats text or a list"),
+                    SyntaxError("only numbers may be multiplied, and this is not certainly a number"),
                 )
         if not isinstance(node, _ALLOWED_NODES):
             raise ExpressionError(

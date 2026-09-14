@@ -544,12 +544,29 @@
           "additionalProperties": false
         },
         {
+          "description": "The short list form. Either the names of the freedoms this interface allows with no bounds on them ('[moveX, moveY, turnZ]'), which is the oldest spelling of 'parameters:' there is, or one parameter's '[min, max, default]'.",
           "type": "array",
-          "items": { "$ref": "#/definitions/number-or-expression" },
-          "minItems": 2,
-          "maxItems": 3
+          "oneOf": [
+            {
+              "type": "array",
+              "items": { "$ref": "#/definitions/interface-movement-name" },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            {
+              "type": "array",
+              "items": { "$ref": "#/definitions/number-or-expression" },
+              "minItems": 2,
+              "maxItems": 3
+            }
+          ]
         }
       ]
+    },
+    "interface-movement-name": {
+      "description": "One of the six freedoms PartCAD knows the axis of, named on its own. Only these six: a custom name has to state the 'dir' it moves along or turns about, and a bare list has nowhere to put one.",
+      "type": "string",
+      "pattern": "^(move[XYZ]|turn[XYZ]|move-[xyz]|turn-[xyz])$"
     },
     "parameter-override": {
       "description": "One value of an object's 'with:'. A string may not contain ',', ';' or '=': overriding an object's parameters asks for the instance of it that has those values, and the name of that instance is spelled '<name>;<parameter>=<value>,...' - the same name 'pc inspect cube;width=20.0' asks for. Those three characters are what that spelling is made of, so a value carrying one of them cannot be named.",
