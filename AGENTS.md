@@ -409,7 +409,10 @@ mid-run never reached its own `coverage combine` and what is on disk then is the
 bare filename on a `success()` step silently drops a whole job from the merge, and with it moves the
 requirement's floor. That holds for the jobs driving `coverage run` themselves; the `Pytest` job measures
 through pytest-cov, which writes **nothing** when its session fails, so a failed `Pytest` contributes no
-coverage and no arrangement of the upload step changes that. The merge also **records every in-scope file no job imported, at nought percent**, before
+coverage and no arrangement of the upload step changes that. And `always()` covers a job that *failed*, not one
+the runner *killed*: a job that hits its own `timeout-minutes` never reaches the step, so its coverage is
+missing rather than partial — which the merge takes in its stride, one file fewer and the report still
+produced. The merge also **records every in-scope file no job imported, at nought percent**, before
 writing any report: coverage.py reports the files it saw, so without that a brand-new module with no test at
 all is absent from the data rather than zero in it, and the gate finds nothing to hold it to.
 
