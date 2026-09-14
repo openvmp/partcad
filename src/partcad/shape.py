@@ -910,14 +910,43 @@ class Shape(ShapeConfiguration):
     # format: gather the configuration, work out the file name, run the
     # implementation in a sandbox.
 
-    def _output_section(self, ctx, format_name, project=None, options_project=None) -> str:
+    def _output_implementor(self, ctx, format_name):
+        """Split a 'package:format' file type into the type and that package.
+
+        A bare name is left alone and answers None, which is every caller that
+        has not named a package. One that has named one is asking for that
+        package's implementation by its full path, the way an 'import:' type or
+        a 'simulation:' plugin is named, and a package it names that is not in
+        the graph is an error here rather than a file type nobody declares: the
+        caller said where the implementation lives, so "not found" is about the
+        package and saying anything else sends them looking in the wrong place.
+        """
+        format_name, package = output.split_format(self.project_name, format_name)
+        if package is None:
+            return format_name, None
+        impl_project = ctx.get_project(package)
+        if impl_project is None:
+            raise Exception("The package implementing the '%s' file type is not found: %s" % (format_name, package))
+        return format_name, impl_project
+
+    def _output_section(self, ctx, format_name, project=None, options_project=None, impl_project=None) -> str:
         """Whether a file type is an 'export:' or a 'render:' one.
 
-        The built-in packages decide it for the formats they implement. For one
-        they do not, the package that declares it does: a format is an export
-        format if it appears in an 'export:' section and a render format if it
-        appears in a 'render:' one.
+        A package named explicitly ('pc export -t sim-mujoco:mjcf') answers
+        first: the caller said whose implementation this is, so that package's
+        sections are what the file type means, even where a built-in of the same
+        name would have said otherwise.
+
+        Failing that the built-in packages decide it for the formats they
+        implement. For one they do not, the package that declares it does: a
+        format is an export format if it appears in an 'export:' section and a
+        render format if it appears in a 'render:' one.
         """
+        if impl_project is not None:
+            for candidate in output.SECTIONS:
+                if format_name in output.format_names(impl_project.config_obj.get(candidate)):
+                    return candidate
+
         section = output.section_of(ctx, format_name)
         if section is not None:
             return section
@@ -928,14 +957,23 @@ class Shape(ShapeConfiguration):
                     return candidate
         return output.EXPORT
 
-    def _output_getopts(self, ctx, format_name, section, project=None, options_project=None):
+    def _output_getopts(self, ctx, format_name, section, project=None, options_project=None, impl_project=None):
         """Layer every configuration of a file type, lowest priority first.
 
         The built-in package is the bottom layer, so a package that re-tunes a
         single parameter keeps the built-in implementation for everything else.
-        On top of it come the package the options were asked to come from (the
-        '--options-package' of 'pc export' / 'pc render'), then the package the
-        shape belongs to, then the shape itself.
+        Directly above it, the package a 'package:format' name pointed at, if
+        the caller named one. On top of that come the package the options were
+        asked to come from (the '--options-package' of 'pc export' /
+        'pc render'), then the package the shape belongs to, then the shape
+        itself.
+
+        A named package goes in as a layer rather than replacing the lot -- which
+        is what 'import_declaration()' does with the same spelling -- because
+        this section also decides where the file goes. 'output_dir' and 'prefix'
+        are the caller's business whoever writes the file, and a package asking
+        somebody else's exporter for a file in its own tree would otherwise be
+        told where to put it by that exporter.
 
         Returns the merged configuration and the output directory the sections
         asked for, if any.
@@ -944,7 +982,7 @@ class Shape(ShapeConfiguration):
         builtin = output.builtin_project(ctx, section)
         if builtin is not None:
             layers.append((builtin.name, builtin.config_obj))
-        for source in (options_project, project):
+        for source in (impl_project, options_project, project):
             if source is not None:
                 layers.append((source.name, source.config_obj))
         layers.append((self.project_name, self.config))
@@ -1003,8 +1041,11 @@ class Shape(ShapeConfiguration):
         lands. 'pc export' and 'pc render' differ only in which section the
         answer is read from.
         """
-        section = self._output_section(ctx, format_name, project, options_project)
-        opts, configured_output_dir = self._output_getopts(ctx, format_name, section, project, options_project)
+        format_name, impl_project = self._output_implementor(ctx, format_name)
+        section = self._output_section(ctx, format_name, project, options_project, impl_project)
+        opts, configured_output_dir = self._output_getopts(
+            ctx, format_name, section, project, options_project, impl_project
+        )
         # An explicitly requested output directory (e.g. 'pc export -O') beats
         # whatever the configuration asked for.
         output_dir = output_dir or configured_output_dir
@@ -1247,6 +1288,10 @@ class Shape(ShapeConfiguration):
     ):
         """Produce one output file, whatever its type."""
         impl, final_filepath = self.output_getopts(ctx, format_name, project, filepath, options_project, output_dir)
+        # What the file type is called from here on. The caller may have named
+        # it by its full path ('sim-mujoco:mjcf'), which said where to resolve it
+        # and has no business in a log line about the file.
+        format_name = impl.format_name
         final_filepath = os.path.abspath(final_filepath)
         # Create the output directory for the resolved path (the incoming
         # 'filepath' is None when called from Project.render_async) using the
@@ -1300,6 +1345,7 @@ class Shape(ShapeConfiguration):
         project: Optional[Project] = None,
         filepath=None,
         options_package: Optional[str] = None,
+        options_project: Optional[Project] = None,
         output_dir=None,
         overlay=None,
         **kwargs,
@@ -1317,6 +1363,12 @@ class Shape(ShapeConfiguration):
             options_package: A package to read the export/render options from
                 in addition to 'project', which is how a custom implementation
                 declared in one package is used from another.
+            options_project: The same, as the package itself rather than its
+                name, for a caller that already resolved it. Spelling a package
+                one is holding and looking it up again is a round trip with one
+                outcome that is not the package - so a caller with it in hand
+                (`partcad.simulation`, which resolved the plugin to reach its
+                'format:') hands it over instead.
             output_dir: Where the file goes when 'filepath' does not say,
                 overriding whatever the configuration asked for.
             overlay: A 'render_overlay.Overlay' asking for this shape's ports
@@ -1334,12 +1386,15 @@ class Shape(ShapeConfiguration):
         if project is None:
             project = ctx.get_project(self.project_name)
 
-        options_project = ctx.get_project(options_package) if options_package else None
-        if options_package and options_project is None:
-            pc_logging.error("The options package is not found: %s" % options_package)
-            return
+        if options_project is None and options_package:
+            options_project = ctx.get_project(options_package)
+            if options_project is None:
+                pc_logging.error("The options package is not found: %s" % options_package)
+                return
 
-        action = f"Render{format_name.upper()}" if format_name else "Render"
+        # The bare file type in the action name: a package path in it would make
+        # one operation look like several, one per package that asked.
+        action = f"Render{output.split_format(self.project_name, format_name)[0].upper()}" if format_name else "Render"
         with pc_logging.Action(action, self.project_name, self.name):
             obj = await self.get_wrapped(ctx)
             if obj is None:
