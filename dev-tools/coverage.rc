@@ -28,7 +28,12 @@ include =
         */partcad_ide_client/*
         */partcad_service_json_rpc/*
         */cad/freecad/*
-disable_warnings = already-imported
+# `include-ignored` because pytest-cov passes `--cov=<package>` for each of the
+# six, which sets `source`, and `source` beats the `include` list above --
+# coverage says so once per run and then ignores `include`. That is expected
+# rather than a problem (the list and `include` name the same packages), and the
+# warning would otherwise be printed by every pytest run a developer makes.
+disable_warnings = already-imported, include-ignored
 parallel = True
 omit =
         */.partcad/*

@@ -748,6 +748,12 @@ Lines that are not statements are in neither half of that fraction: a comment, a
 ``include`` list in ``dev-tools/coverage.rc`` does not name. The figure answers "is the new code exercised",
 not "how much did you type".
 
+Every suite measures through the same ``dev-tools/coverage.rc``, and that is load-bearing rather than tidy:
+it sets ``branch = True``, and ``coverage combine`` will not mix branch data with statement-only data. The
+suites that drive ``coverage run`` pass the file on the command line; ``pytest`` measures through pytest-cov,
+which finds no configuration on its own here, so ``addopts`` names ``--cov-config=dev-tools/coverage.rc``.
+Drop that and the merge does not degrade, it fails outright.
+
 A file **no job imported at all** does count, and it takes a step to make it. coverage.py reports the files it
 saw, so a module nothing exercises is absent from the merged data rather than zero in it -- which would be a
 hole in precisely the shape of the change worth catching, since a brand-new untested module would contribute

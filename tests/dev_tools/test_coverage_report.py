@@ -265,6 +265,32 @@ def test_the_omit_list_is_read_from_the_config_rather_than_repeated(report_modul
     assert all(pattern.startswith("*") for pattern in patterns)
 
 
+def test_every_producer_measures_with_the_same_config(report_module):
+    """One config file, or `coverage combine` refuses the merge outright.
+
+    `coverage.rc` sets `branch = True`, and coverage.py will not combine branch
+    data with statement-only data -- it exits 1 with "Can't combine statement
+    coverage data with branch data". The suites driving `coverage run` pass that
+    file explicitly. The pytest job measures through pytest-cov, which finds no
+    configuration on its own here (there is no `.coveragerc` and no
+    `[tool.coverage]` table) and would default to `branch = False`.
+
+    That is not a degraded report, it is no report: the first time the
+    "Coverage" job ran with data from every suite at once, the merge died on
+    exactly this. So `addopts` names the same file, and this is what keeps it
+    named.
+    """
+    rcfile = "dev-tools/coverage.rc"
+    assert "branch = True" in COVERAGE_RC.read_text()
+
+    pyproject = (REPO_ROOT / "pyproject.toml").read_text()
+    assert f"--cov-config={rcfile}" in pyproject, "pytest-cov must measure with the same config as `coverage run`"
+
+    # And the workflows hand `coverage run` that same file rather than a copy.
+    workflow_text = (WORKFLOWS / "test.yml").read_text()
+    assert f"--rcfile=./{rcfile}" in workflow_text or f"--rcfile=../{rcfile}" in workflow_text
+
+
 # --- Patch coverage -------------------------------------------------------
 
 

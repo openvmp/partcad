@@ -393,7 +393,16 @@ percentages, which is the only reason the number means anything: these suites ov
 what the others cannot. What makes that union possible is the `[paths]` section of `dev-tools/coverage.rc`,
 mapping the three roots one file is recorded under — the checkout, `site-packages`, and either with Windows
 separators — onto one; without it the report is produced, uploaded and commented on with every rate silently
-too low. A job joins the merged report by passing `coverage-data:` to `.github/actions/upload-test-results`
+too low. Every producer must also **measure with that same file**. `coverage.rc` sets `branch = True`, and
+`coverage combine` refuses to mix branch data with statement-only data — it exits 1 with "Can't combine
+statement coverage data with branch data", which is not a degraded report but no report at all. The suites
+driving `coverage run` pass the file explicitly; the `Pytest` job measures through pytest-cov, which finds no
+configuration here on its own (there is no `.coveragerc` and no `[tool.coverage]` table) and would default to
+`branch = False` — so `addopts` in `pyproject.toml` names `--cov-config=dev-tools/coverage.rc`. That is the
+whole reason it is there, and the first run of the `Coverage` job with real data from every suite died on its
+absence.
+
+A job joins the merged report by passing `coverage-data:` to `.github/actions/upload-test-results`
 and nothing else; that prefix is the whole contract. Two details there are load-bearing rather than
 incidental: the value is a **glob** (`.coverage*`) and the step runs on `always()`, because a suite that died
 mid-run never reached its own `coverage combine` and what is on disk then is the parallel-mode parts — so a
