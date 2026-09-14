@@ -200,6 +200,96 @@ Feature: `pc test` command
     # bought from -- but the software is no longer what is wrong with it.
     Then STDOUT should not contain "cannot be relied on"
 
+  @success @pc-test @pc-test-tolerance
+  Scenario: A STEP part that is made states its tolerance in the declaration
+    # A 'step' part rejects the 'tolerance' parameter -- a STEP file may hold
+    # many solids -- and answers with a field instead, for the STEP files that
+    # carry no tolerance of their own. The package declares no supplier, so the
+    # part still has nowhere to be made -- but the tolerance is no longer what
+    # is wrong with it.
+    Given a file named "partcad.yaml" with content:
+      """
+      manufacturable: true
+
+      parts:
+        bracket:
+          type: step
+          manufacturing:
+            method: subtractive
+          tolerance: 0.1
+      """
+    And a file named "bracket.step" with content:
+      """
+      ISO-10303-21;
+      HEADER;
+      ENDSEC;
+      DATA;
+      ENDSEC;
+      END-ISO-10303-21;
+      """
+    When I run "pc test -f cam bracket"
+    Then STDOUT should not contain "manufacturing tolerance"
+
+  @success @pc-test @pc-test-tolerance
+  Scenario: A STEP part that states no tolerance anywhere is not manufacturable
+    # Neither the declaration nor the file says how precisely, which is a
+    # demand for perfect precision and is not something a shop can be asked for.
+    Given a file named "partcad.yaml" with content:
+      """
+      manufacturable: true
+
+      parts:
+        bracket:
+          type: step
+          manufacturing:
+            method: subtractive
+      """
+    And a file named "bracket.step" with content:
+      """
+      ISO-10303-21;
+      HEADER;
+      ENDSEC;
+      DATA;
+      ENDSEC;
+      END-ISO-10303-21;
+      """
+    When I run "pc test -f cam bracket"
+    Then the command should exit with a status code of "1"
+    And STDOUT should contain "No manufacturing tolerance is specified"
+
+  @success @pc-test @pc-test-tolerance
+  Scenario: A STEP part tolerated feature by feature is accepted as it is
+    # The file states a flatness tolerance of 0.05 on one face and 0.2 on
+    # another, so there is no single number that is true of the part -- and no
+    # honest way to invent one. What the file says is more than one number
+    # holds, and it is the file that goes to the manufacturer.
+    Given a file named "partcad.yaml" with content:
+      """
+      manufacturable: true
+
+      parts:
+        bracket:
+          type: step
+          manufacturing:
+            method: subtractive
+      """
+    And a file named "bracket.step" with content:
+      """
+      ISO-10303-21;
+      HEADER;
+      ENDSEC;
+      DATA;
+      #10=(LENGTH_UNIT()NAMED_UNIT(*)SI_UNIT(.MILLI.,.METRE.));
+      #200=FLATNESS_TOLERANCE('','',#201,#900);
+      #201=LENGTH_MEASURE_WITH_UNIT(LENGTH_MEASURE(0.05),#10);
+      #210=FLATNESS_TOLERANCE('','',#211,#900);
+      #211=LENGTH_MEASURE_WITH_UNIT(LENGTH_MEASURE(0.2),#10);
+      ENDSEC;
+      END-ISO-10303-21;
+      """
+    When I run "pc test -f cam bracket"
+    Then STDOUT should not contain "manufacturing tolerance"
+
   @wip
   Scenario: Test with invalid configuration
     Given I have an invalid PartCAD configuration

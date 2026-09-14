@@ -1,0 +1,254 @@
+#
+# PartCAD, 2026
+#
+# Licensed under Apache License, Version 2.0.
+#
+
+"""The 'tolerance:' field, and the one reader of a part's tolerance.
+
+A 'step' part rejects the 'tolerance' object-type *parameter*, and goes on
+rejecting it, for the reason it always did: a STEP file may hold many solids,
+each already stating what it is, so a single value declared beside the file is a
+claim about a part the file describes better. That reasoning holds for what a
+STEP file states -- and plenty of them state no tolerance at all, which leaves a
+part read from one of those with nothing to say about how precisely it has to be
+made, and 'pc test' rejecting it for saying nothing.
+
+So the field: a way for the declaration to answer for a file that does not.
+'Part.get_tolerance()' is the one thing that reads it, along with the file and
+the parameter, because which of the three applies is a property of the part's
+type and not something each caller should work out again.
+"""
+
+import asyncio
+import math
+
+import pytest
+import yaml
+
+import partcad as pc
+
+# Types that take the field, and types that take neither it nor the parameter.
+ACCEPTING_TYPES = ["step", "kicad"]
+REJECTING_TYPES = ["stl", "cadquery", "build123d", "brep"]
+
+_EXTENSIONS = {
+    "stl": ".stl",
+    "step": ".step",
+    "brep": ".brep",
+    "kicad": ".kicad_pcb",
+    "cadquery": ".py",
+    "build123d": ".py",
+}
+
+MILLIMETRE = "#10=(LENGTH_UNIT()NAMED_UNIT(*)SI_UNIT(.MILLI.,.METRE.));"
+
+
+def _step(*tolerances):
+    """A STEP file stating a flatness tolerance of each of 'tolerances', in mm."""
+    body = "".join(
+        "#%d=FLATNESS_TOLERANCE('','',#%d,#900);\n#%d=LENGTH_MEASURE_WITH_UNIT(LENGTH_MEASURE(%r),#10);\n"
+        % (200 + 2 * i, 201 + 2 * i, 201 + 2 * i, value)
+        for i, value in enumerate(tolerances)
+    )
+    return "ISO-10303-21;\nHEADER;\nENDSEC;\nDATA;\n" + MILLIMETRE + "\n" + body + "ENDSEC;\nEND-ISO-10303-21;\n"
+
+
+def _write_package(tmp_path, parts, contents=None):
+    (tmp_path / "partcad.yaml").write_text(yaml.safe_dump({"name": "//test", "parts": parts}))
+    for name, part in parts.items():
+        for extension in set(_EXTENSIONS.values()):
+            (tmp_path / (name + extension)).write_text((contents or {}).get(name, ""))
+        path = part.get("path")
+        if path:
+            (tmp_path / path).write_text((contents or {}).get(name, ""))
+    return pc.Context(str(tmp_path))
+
+
+def _part(part_type, **extra):
+    config = {"type": part_type}
+    config.update(extra)
+    return config
+
+
+def _tolerance(part):
+    return asyncio.run(part.get_tolerance())
+
+
+@pytest.mark.parametrize("part_type", ACCEPTING_TYPES)
+def test_accepted_by_the_types_whose_file_may_state_one(tmp_path, part_type):
+    """'kicad' is a STEP file behind a footprint, and inherits this with it."""
+    pc.logging.reset_errors()
+    ctx = _write_package(tmp_path, {"body": _part(part_type, tolerance=0.1)})
+
+    part = ctx.get_part("//:body")
+
+    assert part is not None
+    assert pc.logging.had_errors is False
+    assert _tolerance(part) == 0.1
+
+
+@pytest.mark.parametrize("part_type", REJECTING_TYPES)
+def test_rejected_by_the_types_that_have_no_use_for_it(tmp_path, part_type):
+    """Per object, like every other declaration a type cannot honour.
+
+    Refused rather than ignored: a part whose author believed it was tolerated
+    would otherwise go to a manufacturer without a tolerance. The homogeneous
+    types have the parameter for this, which is what the message's 'field' says
+    it is not.
+    """
+    pc.logging.reset_errors()
+    ctx = _write_package(
+        tmp_path,
+        {"body": _part(part_type, tolerance=0.1), "sibling": _part("stl")},
+    )
+    project = ctx.get_project("//")
+
+    assert "body" not in project.parts
+    assert "sibling" in project.parts
+    assert pc.logging.had_errors is True
+
+    reason = project.get_broken_object_reason("part", "body")
+    assert "body" in reason
+    assert part_type in reason
+    assert "tolerance" in reason
+    assert "field" in reason
+
+
+def test_the_field_is_not_the_parameter(tmp_path):
+    """A 'step' part takes the field and still rejects the parameter.
+
+    They answer different questions. The parameter is a request made of the type
+    that produces the shape, and a STEP file's many solids are why that type
+    cannot honour one; the field says nothing about how the shape is built, only
+    how precisely the thing it describes has to be made.
+    """
+    pc.logging.reset_errors()
+    ctx = _write_package(
+        tmp_path,
+        {"body": _part("step", parameters={"tolerance": {"type": "float", "default": 0.1}})},
+    )
+    project = ctx.get_project("//")
+
+    assert "body" not in project.parts
+    reason = project.get_broken_object_reason("part", "body")
+    assert "parameter" in reason
+
+
+def test_a_non_numeric_tolerance_is_reported_and_treated_as_absent(tmp_path):
+    """The declaration is wrong, not the part - the same as for the parameter."""
+    pc.logging.reset_errors()
+    ctx = _write_package(tmp_path, {"body": _part("step", tolerance="quite tight")}, contents={"body": _step()})
+
+    part = ctx.get_part("//:body")
+
+    assert pc.logging.had_errors is True
+    assert _tolerance(part) == 0.0
+
+
+def test_a_step_part_that_says_nothing_anywhere_reads_back_as_nobody_said(tmp_path):
+    """0.0, not None: this part could have said and did not."""
+    ctx = _write_package(tmp_path, {"body": _part("step")}, contents={"body": _step()})
+
+    assert _tolerance(ctx.get_part("//:body")) == 0.0
+
+
+def test_a_step_file_is_read_when_nothing_is_declared(tmp_path):
+    ctx = _write_package(tmp_path, {"body": _part("step")}, contents={"body": _step(0.05)})
+
+    assert _tolerance(ctx.get_part("//:body")) == 0.05
+
+
+def test_a_step_file_that_tolerates_feature_by_feature_reads_back_as_nan(tmp_path):
+    ctx = _write_package(tmp_path, {"body": _part("step")}, contents={"body": _step(0.05, 0.2)})
+
+    assert math.isnan(_tolerance(ctx.get_part("//:body")))
+
+
+def test_the_declaration_outranks_the_file(tmp_path):
+    ctx = _write_package(tmp_path, {"body": _part("step", tolerance=0.3)}, contents={"body": _step(0.05)})
+
+    assert _tolerance(ctx.get_part("//:body")) == 0.3
+
+
+def test_the_file_is_read_once(tmp_path, monkeypatch):
+    """A STEP file large enough to be worth caring about is large enough not to
+    want scanned twice, and it does not change under a loaded package."""
+    from partcad import tolerance_inspect
+
+    reads = []
+    original = tolerance_inspect.of_step_file
+    monkeypatch.setattr(
+        tolerance_inspect,
+        "of_step_file",
+        lambda path: (reads.append(path), original(path))[1],
+    )
+    monkeypatch.setitem(tolerance_inspect._READERS, "step", tolerance_inspect.of_step_file)
+
+    ctx = _write_package(tmp_path, {"body": _part("step")}, contents={"body": _step(0.05)})
+    part = ctx.get_part("//:body")
+
+    assert _tolerance(part) == 0.05
+    assert _tolerance(part) == 0.05
+    assert len(reads) == 1
+
+
+def test_a_homogeneous_type_still_answers_from_its_parameter(tmp_path):
+    """Nothing about the field changes what the types that have the parameter do."""
+    ctx = _write_package(
+        tmp_path,
+        {
+            "declared": _part("stl", path="a.stl", parameters={"tolerance": {"type": "float", "default": 0.25}}),
+            "silent": _part("stl", path="b.stl"),
+        },
+    )
+
+    assert _tolerance(ctx.get_part("//:declared")) == 0.25
+    assert _tolerance(ctx.get_part("//:silent")) == 0.0
+
+
+def test_a_type_with_no_way_to_say_reads_back_as_none(tmp_path):
+    """Not 0.0: 'this part cannot say' and 'this part said nothing' differ, and
+    the manufacturability test reports them differently."""
+    ctx = _write_package(tmp_path, {"body": _part("brep")})
+
+    assert _tolerance(ctx.get_part("//:body")) is None
+
+
+def test_an_alias_carrying_the_field_is_ignored_rather_than_refused(tmp_path):
+    """An alias is a second name for another object, and what that object is
+    made to is the source's business. 'enrich.ENRICH_IGNORED_PROPERTIES' lists
+    this field among the ones such a declaration ignores."""
+    pc.logging.reset_errors()
+    ctx = _write_package(
+        tmp_path,
+        {"body": _part("step"), "other": _part("alias", source=":body", tolerance=0.1)},
+    )
+    project = ctx.get_project("//")
+
+    assert "other" in project.parts
+    assert pc.logging.had_errors is False
+
+
+def test_a_declared_tolerance_keys_the_cache(tmp_path):
+    """A consequence of the cache key being a deny-list, and left that way.
+
+    The field cannot change the geometry, so hashing it only ever costs a
+    rebuild. Exempting it would mean naming 'tolerance' in
+    'shape._NON_GEOMETRIC_CONFIG_KEYS', which is shared with sketches - where a
+    'tolerance:' is how a drawing's edges are merged into wires, and so is very
+    much what the shape is made of. Two sketches alike but for it would then
+    share one cache entry, which is the mistake that list warns about.
+    """
+    ctx = _write_package(
+        tmp_path,
+        {
+            "silent": _part("step", path="a.step"),
+            "declared": _part("step", path="a.step", tolerance=0.1),
+        },
+    )
+    project = ctx.get_project("//")
+    keys = {name: project.parts[name].hash.get() for name in ["silent", "declared"]}
+
+    assert None not in keys.values()
+    assert keys["silent"] != keys["declared"]

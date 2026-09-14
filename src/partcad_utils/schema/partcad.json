@@ -1125,6 +1125,11 @@
                   "additionalProperties": false
                 },
                 "manufacturable": { "type": "boolean" },
+                "tolerance": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "How precisely this part has to be made, in millimetres. Only for the part types that take it -- 'step' and 'kicad' -- whose file may state a tolerance of its own; every other type states this as the 'tolerance' parameter instead. What is declared here is what is used; the file is read only when nothing is."
+                },
                 "unless": { "$ref": "#/definitions/unless" },
                 "connect": { "$ref": "#/definitions/connect" },
                 "software": { "$ref": "#/definitions/software-refs" }
