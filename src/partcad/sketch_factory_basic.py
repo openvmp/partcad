@@ -7,6 +7,8 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import copy
+
 from . import config as pc_config
 from . import expr
 from . import logging as pc_logging
@@ -60,7 +62,11 @@ class SketchFactoryBasic(SketchFactory):
         worth seeing.
         """
         info: dict = super().info(sketch)
-        info["outline"] = dict(self.basic_config)
+        # Deep, because the outline nests ("slot: {length, width}") and this is
+        # handed out: a caller that edits it would otherwise be editing the
+        # configuration this factory builds from, under a hash that no longer
+        # describes it.
+        info["outline"] = copy.deepcopy(self.basic_config)
         return info
 
     async def instantiate(self, sketch):

@@ -409,9 +409,9 @@ class Interface:
         self.params = {}
         params_config = config.get(interface_config.PARAMETERS, None)
         if params_config is not None:
-            if isinstance(params_config, list):
-                params_config = {param: {} for param in params_config}
-            elif not isinstance(params_config, dict):
+            # The list short form is expanded by 'InterfaceConfiguration.normalize',
+            # which every reader of this config goes through first.
+            if not isinstance(params_config, dict):
                 raise Exception("Invalid 'parameters' section in the interface '%s'" % self.name)
 
             for param_name, param_config in self.declared_movement_params(config).items():

@@ -92,6 +92,40 @@ def test_an_expression_is_arithmetic_and_nothing_else(expression):
         expr.substitute(expression, {"size": 4.0})
 
 
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "%9**9**9%",  # seconds of CPU and gigabytes, in eight characters
+        "%2**64%",  # so the operator goes, not a size limit on it
+        "%1 << 1000000000%",
+        "%'x' * 1000000000%",  # repeating a sequence is the other way to allocate
+        "%['x'] * 1000000000%",
+        "%label * 1000000000%",  # including through a parameter that holds text
+    ],
+)
+def test_an_expression_cannot_cost_more_than_it_looks(expression):
+    """A package is loaded in this process, before anything is sandboxed.
+
+    So a declaration fetched from a git URL must not be able to hang the PartCAD
+    that imported it, which '%9**9**9%' otherwise does.
+    """
+    with pytest.raises(expr.ExpressionError):
+        expr.substitute(expression, {"size": 4.0, "label": "M4-0.7"})
+
+
+def test_arithmetic_a_coordinate_actually_needs_still_works():
+    """The bound above is on what the operators can cost, not on the arithmetic."""
+    values = {"size": 4.0, "width": 30.0}
+    assert expr.substitute("%size * 2%", values) == 8.0
+    assert expr.substitute("%-width / 2 + size%", values) == -11.0
+    assert expr.substitute("%max(size - 2, 0)%", values) == 2.0
+    # 'pow()' is what is left of exponentiation, and it cannot blow up: it is
+    # 'math.pow', which answers in floats and overflows rather than allocating.
+    assert expr.substitute("%pow(size, 2)%", values) == 16.0
+    with pytest.raises(expr.ExpressionError):
+        expr.substitute("%pow(9, 999999999)%", values)
+
+
 def test_an_expression_may_be_a_conditional():
     """What is allowed is allowed: comparisons and a conditional are arithmetic."""
     assert expr.substitute("%size if size > 3 else 3%", {"size": 4.0}) == 4.0
@@ -305,6 +339,18 @@ def test_an_interface_narrows_the_freedom_it_inherits(ctx):
     assert screw.params["moveZ"].max == 8.0
     # And what it does not redeclare it still gets: 'm' allows the full turn.
     assert screw.params["turnZ"].max == 360
+
+
+def test_parameters_may_be_the_bare_list_they_have_always_been(ctx):
+    """'parameters: [moveX, moveY, turnZ]' - names, no bounds, move freely.
+
+    It predates the two-kind section, and the reader that tells the two kinds
+    apart now sees this configuration before the one that expanded the list did.
+    """
+    iface = ctx.get_interface(":m-list-form")
+    assert iface is not None, "the list short form failed to load"
+    iface.test()
+    assert sorted(iface.params) == ["moveX", "moveY", "turnZ"]
 
 
 def test_a_freedom_that_runs_backwards_is_reported_and_read_as_none(ctx):

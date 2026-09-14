@@ -299,9 +299,9 @@
       "additionalProperties": false
     },
     "expression": {
-      "description": "A coordinate written as a PartCAD expression instead of a literal, e.g. \"%size% / 2\". The values are the parameters of the object the coordinate is declared in - an interface's 'variables', a part's 'parameters'. Not Jinja2: 'partcad.yaml' is rendered as a Jinja2 template before it is parsed, which is one step too early for a value that depends on which instance of the object is being asked for.",
+      "description": "A number written as a PartCAD expression instead of a literal, e.g. \"%size / 2%\". The whole value has to be the expression, delimiters included: a value that merely contains one (\"%size%mm\") resolves to text, and the places this is referenced from are the ones that need a number. The values are the parameters of the object it is declared in - an interface's or a part's 'parameters'. Not Jinja2: 'partcad.yaml' is rendered as a Jinja2 template before it is parsed, which is one step too early for a value that depends on which instance of the object is being asked for.",
       "type": "string",
-      "pattern": "%[^%]+%"
+      "pattern": "^%[^%]+%$"
     },
     "number-or-expression": {
       "description": "A number, or an expression over the object's parameters that evaluates to one.",
@@ -355,7 +355,7 @@
       "additionalProperties": false
     },
     "sketch-slot": {
-      "description": "A slot: a rectangle with semicircular ends, which is what a slotted hole is. 'length' is measured over those ends, so a slot as long as it is wide is a circle; 'width' is their diameter. 'angle' turns it about its own centre, in degrees from +X.",
+      "description": "A slot: a rectangle with semicircular ends, which is what a slotted hole is. 'length' is measured over those ends, so a slot as long as it is wide is a circle; 'width' is their diameter. Unlike the other shapes here it is placed by the centre of its FIRST rounded end rather than by its middle - 'x' and 'y' are that point, and 'angle' turns it about that point, in degrees from +X - so a port keeps its coordinates when the opening it marks is slotted.",
       "type": "object",
       "properties": {
         "length": { "$ref": "#/definitions/sketch-dimension" },
@@ -399,9 +399,9 @@
       "maxItems": 3
     },
     "object-reference": {
-      "description": "A reference to another object: a name of this package ('m3-thru'), or one qualified with a package path ('//std/metric/m:m3-thru'), either of them carrying parameter values ('m-thru;size=4,depth=3').",
+      "description": "A reference to another object: a name of this package ('m3-thru'), or one qualified with a package path ('//std/metric/m:m3-thru'), either of them carrying parameter values ('m-thru;size=4,depth=3'). A value may be a '%...%' expression over the parameters of the object the reference is written in ('m-thru;size=%size + 1%'), which is why a complete expression is allowed anywhere in the name - it is resolved before the reference is looked up.",
       "type": "string",
-      "pattern": "^[a-zA-Z0-9_/.:;=,%-]+$",
+      "pattern": "^(?:[a-zA-Z0-9_/.:;=,-]|%[^%]+%)+$",
       "minLength": 1
     },
     "port":{
@@ -895,7 +895,7 @@
                 "implements": {
                   "type": "object",
                   "patternProperties": {
-                    "^[a-zA-Z0-9_/.:;=,%-]+$": {
+                    "^(?:[a-zA-Z0-9_/.:;=,-]|%[^%]+%)+$": {
                       "oneOf": [
                         { "type": "string" },
                         { "type": "null" },
@@ -1273,7 +1273,7 @@
             "inherits":{
               "type": "object",
               "patternProperties":{
-                "^[a-zA-Z0-9_/.:;=,%-]+$":{
+                "^(?:[a-zA-Z0-9_/.:;=,-]|%[^%]+%)+$":{
                   "oneOf": [
                     { "type": "null" },
                     { "type": "string", "minLength": 1 },
@@ -1326,7 +1326,7 @@
                 {
                   "type": "object",
                   "patternProperties": {
-                    "^[a-zA-Z0-9_/.:;=,%-]+$": { "$ref": "#/definitions/interface-parameter"}
+                    "^(?:[a-zA-Z0-9_/.:;=,-]|%[^%]+%)+$": { "$ref": "#/definitions/interface-parameter"}
                   },
                   "additionalProperties": false
                 }

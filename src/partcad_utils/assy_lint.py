@@ -459,7 +459,7 @@ def _key_node(node, key):
 
 # The 'expression' definition's pattern in 'partcad.json'. Named here so that a
 # failure against it can be reported as what it means rather than as a regex.
-EXPRESSION_PATTERN = "%[^%]+%"
+EXPRESSION_PATTERN = "^%[^%]+%$"
 
 
 def _quoted(names) -> str:

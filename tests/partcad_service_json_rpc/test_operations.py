@@ -354,7 +354,7 @@ class FakeContext:
         return self._get_shape("scene", path, params)
 
     def get_interface(self, path, params=None):
-        return self._get_shape("interface", path)
+        return self._get_shape("interface", path, params)
 
     def get_project(self, name):
         return self.projects.get(name)

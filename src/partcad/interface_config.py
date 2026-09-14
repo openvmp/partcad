@@ -126,6 +126,14 @@ class InterfaceConfiguration:
             config["orig_name"] = name
 
         declared = config.get(PARAMETERS)
+        if isinstance(declared, list):
+            # The short list form, '[moveX, moveY, turnZ]': names with no bounds,
+            # which is how an interface says a connection may move along an axis
+            # freely. Expanded here rather than where it is read, because there
+            # is more than one reader now - 'split_parameters' sees this config
+            # before 'Interface.__init__' does, and a list has no '.items()'.
+            declared = {param_name: {} for param_name in declared}
+            config[PARAMETERS] = declared
         if declared:
             movement, construction = split_parameters(declared)
             if construction:

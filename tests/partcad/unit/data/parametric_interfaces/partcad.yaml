@@ -157,6 +157,16 @@ interfaces:
       p:
         location: [[0, 0, "%size * pitch%"], [0, 0, 1], 0]
 
+  m-list-form:
+    # The short list form of 'parameters:': names and nothing else, which is how
+    # an interface says a connection may move along an axis freely. It predates
+    # the two-kind section and has to keep working.
+    desc: Freedom of movement declared as a bare list
+    parameters:
+      - moveX
+      - moveY
+      - turnZ
+
 parts:
   plate:
     type: cadquery

@@ -147,7 +147,21 @@ _ALLOWED_NODES = (
     ast.Slice,
     ast.Attribute,
     ast.boolop,
-    ast.operator,
+    # The arithmetic, named one by one rather than as 'ast.operator'. What that
+    # leaves out is the point: '**' is how a short expression becomes an
+    # expensive one, and '%9**9**9%' does not finish. A declaration is evaluated
+    # while a package is *loaded*, in this process, before anything is sandboxed
+    # - so a package fetched from a git URL could hang the PartCAD that imported
+    # it. 'pow()' is still available and cannot: it is 'math.pow', which answers
+    # in floats and raises OverflowError instead of allocating.
+    # The bit operators go for the same reason ('1 << 10**9') and because a
+    # coordinate has no use for them.
+    ast.Add,
+    ast.Sub,
+    ast.Mult,
+    ast.Div,
+    ast.FloorDiv,
+    ast.Mod,
     ast.unaryop,
     ast.cmpop,
 )
@@ -223,8 +237,34 @@ SAFE_ATTRIBUTES = frozenset(
 )
 
 
-def _check(tree: ast.AST, expression: str) -> None:
+def _is_sequence(node: ast.AST, values: dict[str, Any]) -> bool:
+    """Whether this operand is text or a list rather than a number.
+
+    Only as far as it can be told without evaluating: a literal says what it is,
+    and a parameter's value is already known here. Anything it cannot tell is
+    treated as a number, which is what the check below then has to live with.
+    """
+    if isinstance(node, ast.Constant):
+        return isinstance(node.value, (str, bytes))
+    if isinstance(node, (ast.List, ast.Tuple)):
+        return True
+    if isinstance(node, ast.Name):
+        return isinstance(values.get(node.id), (str, bytes, list, tuple))
+    return False
+
+
+def _check(tree: ast.AST, expression: str, values: dict[str, Any]) -> None:
     for node in ast.walk(tree):
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mult):
+            # Multiplying a sequence repeats it, and the repeat count is the
+            # size of the result: "%'x' * 1000000000%" is a gigabyte allocated
+            # while a package is being loaded. Numbers only, then - which is all
+            # a coordinate ever multiplies anyway.
+            if _is_sequence(node.left, values) or _is_sequence(node.right, values):
+                raise ExpressionError(
+                    expression,
+                    SyntaxError("only numbers may be multiplied, and this repeats text or a list"),
+                )
         if not isinstance(node, _ALLOWED_NODES):
             raise ExpressionError(
                 expression,
@@ -247,7 +287,7 @@ def _eval(expression: str, values: dict[str, Any], reported: str) -> Any:
         tree = ast.parse(expression, mode="eval")
     except SyntaxError as e:
         raise ExpressionError(reported, e) from e
-    _check(tree, reported)
+    _check(tree, reported, values)
     try:
         return eval(  # nosec B307 - checked above, no builtins, only the object's own parameters
             compile(tree, "<partcad expression>", "eval"),
