@@ -1526,6 +1526,10 @@
               "type": "boolean",
               "default": false
             },
+            "multiConnect": {
+              "description": "Whether one instance of this interface may take more than one item. A stud takes one brick and a bolt hole takes one bolt, so two items connected to the same port is a mistake worth reporting; a shaft is the counter-example, since several parts sit along it. Inherited by the interfaces that inherit this one, and only silence is inherited over: 'multiConnect: false' on a child overrides a parent that allows many, rather than being skipped as unset.",
+              "type": "boolean"
+            },
             "inherits":{
               "type": "object",
               "patternProperties":{
