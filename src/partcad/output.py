@@ -628,7 +628,11 @@ def import_declaration(ctx, project, type_name: str):
         from .utils import resolve_resource_path
 
         plugin_package, format_name = resolve_resource_path(project.name, type_name)
-        plugin_project = ctx.get_project(plugin_package)
+        # From the package that declared the object, not from the root: this
+        # runs while that package is still being loaded (its objects are created
+        # as part of loading it), and the root is not registered until that
+        # finishes. See 'Context.get_project_from()'.
+        plugin_project = ctx.get_project_from(project, plugin_package)
         if plugin_project is None:
             pc_logging.error(
                 "The package implementing the '%s' object type is not found: %s" % (format_name, plugin_package)
