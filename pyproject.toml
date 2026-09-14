@@ -114,6 +114,14 @@ aws = {file = ["requirements-aws.txt"]}
 "partcad.builtin" = ["*.yaml"]
 "partcad.builtin.export" = ["*.py", "*.yaml"]
 "partcad.builtin.render" = ["*.py", "*.yaml"]
+"partcad.builtin.import" = ["*.py", "*.yaml"]
+# No scripts: the applications `pc open` launches are declarations and nothing
+# else, read by `partcad_client.external` straight out of the wheel.
+"partcad.builtin.open" = ["*.yaml"]
+# The one built-in package that declares an object rather than an
+# implementation: the scene a `simulate:` places its subject in. Its `.assy` is
+# read as a Jinja2 template, so it ships as a data file like the rest.
+"partcad.builtin.scene" = ["*.assy", "*.yaml"]
 "partcad.template" = ["*.yaml"]
 # The AI agent skills and the Claude plugin manifest `pc init` installs into a
 # repository (see `src/partcad/ai_agents/__init__.py`). They are data rather

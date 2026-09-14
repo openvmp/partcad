@@ -718,6 +718,48 @@ def info_object(session, params):
     return None
 
 
+def open_tools(session, params):
+    """The applications this workspace's packages declare, for `pc open`.
+
+    The one thing `pc open` needs the package graph for, and the reason it is
+    answered here: opening a file is deliberately client-side work -- the window
+    belongs to whoever ran the command, and a daemon can be remote -- but
+    *which* applications exist is a fact about the packages a workspace imports,
+    and only this side has those. So the client asks what is declared, and still
+    does the opening itself. There is no method for opening a file and there
+    must not be one.
+
+    Only what a package declares is returned. PartCAD's own applications ship in
+    the wheel the client is running out of, which reads them straight off disk
+    (see `partcad_client.external.builtin_tools`); sending them over the wire as
+    well would mean a client whose daemon is a different release quietly gets
+    that release's table.
+    """
+    ctx = _ctx(session, params)
+    if ctx is None:
+        return None
+    pc = session.partcad
+
+    builtin = pc.output.BUILTIN_PACKAGES[pc.output.OPEN]
+    declared = {}
+    # 'has_stuff=False': a plugin package declares implementations and no
+    # objects at all, so the default filter - which keeps only packages holding
+    # sketches, parts, assemblies or scenes - would drop precisely the ones this
+    # is looking for.
+    for package_name in ctx.get_all_packages(has_stuff=False):
+        name = package_name["name"] if isinstance(package_name, dict) else package_name
+        if name == builtin:
+            continue
+        project = ctx.get_project(name)
+        section = getattr(project, "config_obj", {}).get(pc.output.OPEN) if project else None
+        if not isinstance(section, dict):
+            continue
+        for tool_name, config in section.items():
+            if isinstance(config, dict):
+                declared[tool_name] = config
+    return {"tools": declared}
+
+
 def adhoc_convert(session, params):
     """Convert a CAD or sketch file between formats, ad-hoc (no package/context).
 
@@ -731,6 +773,12 @@ def adhoc_convert(session, params):
     if kind == "part":
         from partcad.adhoc.convert import convert_cad_file as convert_fn
         from partcad.shape import PART_EXTENSION_MAPPING as mapping
+    elif kind == "scene":
+        # The third kind of object a file can hold: an arrangement rather than a
+        # shape or a drawing. `pc open --with mujoco` is what asks for it -- a
+        # Gazebo world written out as the MJCF MuJoCo reads.
+        from partcad.adhoc.convert import convert_scene_file as convert_fn
+        from partcad.shape import SCENE_EXTENSION_MAPPING as mapping
     else:
         from partcad.adhoc.convert import convert_sketch_file as convert_fn
         from partcad.shape import SKETCH_EXTENSION_MAPPING as mapping
@@ -746,7 +794,7 @@ def adhoc_convert(session, params):
     # Sketch conversion says "input sketch type"; part conversion says
     # "input type" (matches the per-command CLI messages on devel, which the
     # behave scenarios assert on).
-    noun = "sketch type" if kind == "sketch" else "type"
+    noun = "sketch type" if kind == "sketch" else ("scene type" if kind == "scene" else "type")
     if not input_type:
         pc.logging.error("Cannot infer input %s. Please specify --input explicitly." % noun)
         return None
@@ -1015,6 +1063,126 @@ def lint_run(session, params):
             packages = [package]
         asyncio.run(_lint_async(ctx, pc, packages, params.get("filter")))
     return None
+
+
+async def _simulate_async(ctx, pc, packages, object_name, is_assembly, filter_name):
+    """Run every declared simulation of what was selected, one after another.
+
+    Sequentially, and deliberately: a simulation plugin is a whole simulator
+    running a physics model, so the machine is what limits how many of them fit
+    at once, not the event loop -- and two of them competing for it would make
+    both slower and neither more informative. It is also what keeps the log
+    readable, which for a command whose whole output is a verdict per run is
+    most of what it is for.
+    """
+    from partcad import simulation as pc_simulation
+
+    targets = []
+    if object_name:
+        package, name = pc.utils.resolve_resource_path(ctx.get_current_project_path(), object_name)
+        prj = ctx.get_project(package)
+        if prj is None:
+            raise JsonRpcError(USAGE_ERROR, "Package %s is not found" % package)
+        if is_assembly:
+            shape, kind = prj.get_assembly(name), "assembly"
+        else:
+            # Awaited, not 'get_part()': this is a coroutine, and a part a URDF,
+            # MJCF or STEP assembly produces has to have that assembly built
+            # before it exists. See 'Project.get_part_async()'.
+            shape, kind = await prj.get_part_async(name), "part"
+        if shape is None:
+            raise JsonRpcError(USAGE_ERROR, "%s is not found" % object_name)
+        targets.append((kind, shape))
+    else:
+        for package in packages:
+            prj = ctx.get_project(package)
+            if prj is None:
+                continue
+            targets.extend(("part", shape) for shape in list(prj.parts.values()))
+            targets.extend(("assembly", shape) for shape in list(prj.assemblies.values()))
+
+    results = []
+    for kind, shape in targets:
+        for declaration in pc_simulation.of_shape(shape):
+            if filter_name and declaration.name != filter_name:
+                continue
+            results.append(await pc_simulation.run_async(ctx, shape, kind, declaration))
+    return results
+
+
+def simulate_run(session, params):
+    """Run the simulations a part or an assembly declares, and validate them."""
+    import asyncio
+
+    ctx = _ctx(session, params)
+    if ctx is None:
+        return None
+    pc = session.partcad
+    package = ctx.resolve_package_path(params.get("package") or ".")
+    package_obj = ctx.get_project(package)
+    if not package_obj:
+        pc.logging.error("Package %s is not found" % package)
+        return None
+    package = package_obj.name
+
+    with pc.logging.Process("Simulate", package):
+        if params.get("recursive"):
+            all_packages = ctx.get_all_packages(parent_name=package)
+            packages = [p["name"] for p in all_packages]
+        else:
+            packages = [package]
+        results = asyncio.run(
+            _simulate_async(
+                ctx,
+                pc,
+                packages,
+                params.get("object"),
+                params.get("assembly"),
+                params.get("filter"),
+            )
+        )
+
+    # Asking for something in particular and matching nothing is a failure;
+    # walking a tree that happens to declare no simulation is not. The two look
+    # identical here - an empty result list - and only the request tells them
+    # apart, so it is the request that is consulted. Without this, 'pc sim -a'
+    # on a name that does not exist reports success and exits 0.
+    asked_for = [params.get("object"), params.get("assembly"), params.get("filter")]
+    named_one = any(value for value in asked_for)
+
+    unmatched = False
+    if not results:
+        if named_one:
+            unmatched = True
+            pc.logging.error(
+                "Nothing here declares a 'simulate:' section matching %s"
+                % ", ".join("'%s'" % value for value in asked_for if value)
+            )
+        else:
+            pc.logging.info("Nothing declares a 'simulate:' section here")
+    for result in results:
+        pc.logging.info(_simulation_line(result))
+    failed = [result for result in results if result.failed]
+
+    return {
+        "simulations": [result.to_dict() for result in results],
+        "total": len(results),
+        "failed": len(failed),
+        # What the CLI exits non-zero on, said once here rather than derived
+        # from the list by every caller.
+        "ok": not failed and not unmatched,
+    }
+
+
+def _simulation_line(result) -> str:
+    """One run, as the single line the log reports it with."""
+    if result.error is not None:
+        verdict = "ERROR: %s" % result.error
+    elif result.passed is None:
+        verdict = "ran (no 'validation' to check it against)"
+    else:
+        verdict = "PASSED" if result.passed else "FAILED"
+    return "%s: %s: %s" % (result.object_name, result.name, verdict)
 
 
 def daemon_reset(session, params):

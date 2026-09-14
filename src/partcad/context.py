@@ -136,6 +136,31 @@ def param_getters(attr_name: str):
 
 # Context
 @telemetry.instrument(attr_getters=param_getters)
+def _located(dependency_config: dict, path: str) -> dict:
+    """The dependency's configuration with the location it is being loaded at.
+
+    A *copy*, and that is the whole point. 'import_project()' is told which
+    package path to load by the 'name' of the configuration it is handed, and
+    writing that into the parent's own 'dependencies' entry used to be how it
+    got there -- which left the parent holding a configuration that no longer
+    said what its 'partcad.yaml' says.
+
+    Nothing reads the location back out of there, but 'Project.get_readme()'
+    reads 'name' to title a sub-package's section, so a generated README named a
+    dependency by its alias or by its full package path depending on whether
+    that dependency had happened to be *loaded* by the time the README was
+    rendered. Rendering offline, where a git dependency never loads, produced a
+    different file from rendering in CI, where it does -- and the examples'
+    READMEs are checked in precisely so that a change in what PartCAD renders is
+    a diff somebody has to look at.
+    """
+    located = dict(dependency_config)
+    if "name" in dependency_config:
+        located["orig_name"] = dependency_config["name"]
+    located["name"] = path
+    return located
+
+
 class Context:
     """Stores and caches all imported objects.
 
@@ -433,63 +458,71 @@ class Context:
                     pc_logging.error("Recursive project loading detected (%s), aborting." % name)
                     return None
                 self._projects_being_loaded[name] = True
+                try:
+                    return self._import_project_locked(parent, project_import_config, name)
+                finally:
+                    # Whatever happened. An exception escaping a project factory
+                    # used to leave the name marked as being loaded for the life
+                    # of the context, so every later import of it reported a
+                    # recursion that was not happening - and the report named
+                    # the innocent package rather than the one that failed.
+                    self._projects_being_loaded.pop(name, None)
 
-                # Depending on the project type, use different factories
-                if "type" not in project_import_config or project_import_config["type"] == "local":
-                    with pc_logging.Action("Local", name):
-                        rfl.ProjectFactoryLocal(self, parent, project_import_config)
-                        pc_logging.debug("Local project loaded: %s" % name)
-                elif project_import_config["type"] == "git":
-                    with pc_logging.Action("Git", name):
-                        rfg.ProjectFactoryGit(self, parent, project_import_config)
-                elif project_import_config["type"] == "tar":
-                    with pc_logging.Action("Tar", name):
-                        rft.ProjectFactoryTar(self, parent, project_import_config)
-                elif project_import_config["type"] == "external":
-                    with pc_logging.Action("External", name):
-                        rfe.ProjectFactoryExternal(self, parent, project_import_config)
-                else:
-                    pc_logging.error("Invalid project type found: %s." % name)
-                    del self._projects_being_loaded[name]
-                    return None
+    def _import_project_locked(self, parent, project_import_config, name):
+        """The body of 'import_project', with the package marked as loading."""
 
-                # Check whether the factory was able to successfully add the project
-                if name not in self.projects:
-                    pc_logging.error("Failed to create the project: %s" % project_import_config)
-                    del self._projects_being_loaded[name]
-                    return None
+        # Depending on the project type, use different factories
+        if "type" not in project_import_config or project_import_config["type"] == "local":
+            with pc_logging.Action("Local", name):
+                rfl.ProjectFactoryLocal(self, parent, project_import_config)
+                pc_logging.debug("Local project loaded: %s" % name)
+        elif project_import_config["type"] == "git":
+            with pc_logging.Action("Git", name):
+                rfg.ProjectFactoryGit(self, parent, project_import_config)
+        elif project_import_config["type"] == "tar":
+            with pc_logging.Action("Tar", name):
+                rft.ProjectFactoryTar(self, parent, project_import_config)
+        elif project_import_config["type"] == "external":
+            with pc_logging.Action("External", name):
+                rfe.ProjectFactoryExternal(self, parent, project_import_config)
+        else:
+            pc_logging.error("Invalid project type found: %s." % name)
+            return None
 
-                imported_project = self.projects[name]
-                if imported_project is None:
-                    pc_logging.error("Failed to import the package: %s" % name)
-                    del self._projects_being_loaded[name]
-                    return None
-                if imported_project.broken:
-                    pc_logging.error("Failed to parse the package's 'partcad.yaml': %s" % name)
+        # Check whether the factory was able to successfully add the project
+        if name not in self.projects:
+            pc_logging.error("Failed to create the project: %s" % project_import_config)
+            return None
 
-                # A package is addressed by where it was loaded, never by the
-                # name it declares for itself: the same package vendored into
-                # two different locations is two independent instances, each
-                # reachable at its own path. 'Configuration' therefore forces
-                # 'name' to the location for every package but the root, which
-                # has no location to be derived from and so adopts the name it
-                # declares. Re-key that one.
-                if imported_project.name != name:
-                    assert name == consts.ROOT, "Only the root package may adopt its declared name"
-                    self.projects[imported_project.name] = self.projects.pop(name)
+        imported_project = self.projects[name]
+        if imported_project is None:
+            pc_logging.error("Failed to import the package: %s" % name)
+            return None
+        if imported_project.broken:
+            pc_logging.error("Failed to parse the package's 'partcad.yaml': %s" % name)
 
-                if project_import_config.get("isRoot", False):
-                    # Adopt the root package's name before returning: the
-                    # context's own name and 'current_project_path' are derived
-                    # from it, and everything downstream resolves against them.
-                    self.name = imported_project.name
-                    self._recompute_current_project_path()
+        # A package is addressed by where it was loaded, never by the
+        # name it declares for itself: the same package vendored into
+        # two different locations is two independent instances, each
+        # reachable at its own path. 'Configuration' therefore forces
+        # 'name' to the location for every package but the root, which
+        # has no location to be derived from and so adopts the name it
+        # declares. Re-key that one.
+        if imported_project.name != name:
+            assert name == consts.ROOT, "Only the root package may adopt its declared name"
+            self.projects[imported_project.name] = self.projects.pop(name)
 
-                self.stats_packages += 1
-                self.stats_packages_instantiated += 1
+        if project_import_config.get("isRoot", False):
+            # Adopt the root package's name before returning: the
+            # context's own name and 'current_project_path' are derived
+            # from it, and everything downstream resolves against them.
+            self.name = imported_project.name
+            self._recompute_current_project_path()
 
-                del self._projects_being_loaded[name]
-                return imported_project
+        self.stats_packages += 1
+        self.stats_packages_instantiated += 1
+
+        return imported_project
 
     def resolve_package_path(self, package: str):
         """ "
@@ -663,10 +696,7 @@ class Context:
                     if prj_conf.get("onlyInRoot", False):
                         next_project_path = "//" + prj_name
                     pc_logging.debug(f"Loading the dependency: {next_project_path}...")
-                    if "name" in prj_conf:
-                        prj_conf["orig_name"] = prj_conf["name"]
-                    prj_conf["name"] = next_project_path
-                    next_project = self.import_project(project, prj_conf)
+                    next_project = self.import_project(project, _located(prj_conf, next_project_path))
                     if next_project is not None:
                         result = self._get_project_recursive(next_project, import_list)
                         return result
@@ -750,11 +780,11 @@ class Context:
                     continue
                 pc_logging.debug("Importing: %s..." % next_project_path)
 
-                if "name" in prj_conf:
-                    prj_conf["orig_name"] = prj_conf["name"]
-                prj_conf["name"] = next_project_path
-
-                tasks.append(asyncio.create_task(threadpool_manager.run(self.import_project, project, prj_conf)))
+                tasks.append(
+                    asyncio.create_task(
+                        threadpool_manager.run(self.import_project, project, _located(prj_conf, next_project_path))
+                    )
+                )
 
         # Second, iterate over all subfolder and check for packages. A
         # plugin-backed package has no directory on disk, so there is nothing to

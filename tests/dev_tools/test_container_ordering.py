@@ -98,10 +98,25 @@ def test_the_tag_it_publishes_is_the_tag_the_runtime_pulls():
     # tests/partcad_utils/test_container_image.py: both of them resolve the tag
     # through `container_image.image_tag`, which is the release unless CI has
     # redirected them at the images built out of this commit.
-    for source in ("src/partcad/part_factory_kicad.py", "src/partcad_client/external.py"):
+    #
+    # The two readers name the image in different places now. `part_factory_kicad`
+    # builds the reference in Python. The client's copy is an `open:` declaration
+    # -- `//builtin/open` is where the applications `pc open` launches are
+    # described, as data -- so the repository holds the image name and
+    # `external.py` holds the substitution that resolves its `{version}`. Both
+    # halves are checked, because either one alone can drift into naming a tag
+    # nobody pulls.
+    kicad_image = "partcad-container-kicad:"
+    for source in ("src/partcad/part_factory_kicad.py",):
         text = (REPO_ROOT / source).read_text()
-        assert "partcad-container-kicad:" in text, source
+        assert kicad_image in text, source
         assert "image_tag(" in text, source
+
+    declaration = (REPO_ROOT / "src/partcad/builtin/open/partcad.yaml").read_text()
+    assert kicad_image + "{version}" in declaration
+    client = (REPO_ROOT / "src/partcad_client/external.py").read_text()
+    assert "image_tag(" in client
+    assert '"{version}"' in client
 
 
 def test_whether_it_publishes_is_the_callers_answer_and_not_a_second_one():

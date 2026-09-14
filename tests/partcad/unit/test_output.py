@@ -170,8 +170,37 @@ def test_builtin_formats_cover_what_the_exporters_supported(ctx):
         "threejs",
         "urdf",
         "world",
+        "mjcf",
     }
     assert set(output.builtin_formats(ctx, output.RENDER)) == {"svg", "png", "jpeg", "dxf"}
+
+
+def test_every_built_in_package_validates_against_partcads_own_schema():
+    """Whatever PartCAD's own tooling writes has to pass PartCAD's own checks.
+
+    The built-in packages are ordinary packages -- that is the whole point of
+    them -- so nothing exempts them from the schema every other 'partcad.yaml'
+    is held to, and nothing else checks them: `pc lint` walks a *user's*
+    package, and these are never in one's dependency tree.
+
+    It bites in an unobvious place. A parameter value has to be spellable in an
+    instance name ("scene;subject_offset=..."), where ',', ';' and '=' are the
+    separators, so the schema refuses a string default that carries one -- and a
+    PartCAD location written the usual way is nothing but those characters. The
+    built-in scene's offset parameter is spelled the way it is because of this,
+    and this is what says so.
+    """
+    import jsonschema
+
+    from partcad.lint.all import get_partcad_schema
+
+    schema = get_partcad_schema()
+    for package, path in output.BUILTIN_PATHS.items():
+        config = yaml.safe_load(open(os.path.join(path, "partcad.yaml")))
+        try:
+            jsonschema.validate(config, schema)
+        except jsonschema.ValidationError as e:
+            raise AssertionError("%s does not validate: %s" % (package, e.message)) from e
 
 
 def test_builtin_requirements_match_the_pinned_cad_stack():
@@ -604,13 +633,14 @@ def test_the_builtin_implementations_still_get_their_own_requirements(ctx):
 
 
 def test_a_format_decodes_its_envelopes_unless_it_declares_otherwise(ctx):
-    """'decode' is off for the two tree exporters, and neither may lose it silently.
+    """'decode' is off for the three tree exporters, and none may lose it silently.
 
-    The URDF and world exporters are handed the assembly tree, one link (or one
-    model) per node; decoded geometry carries no node names, labels or separate
-    placements to build those from, so both reject it outright and the export
-    fails with "needs a shape or an assembly to export". They are the only
-    built-in formats that ask for that, so this also guards the other direction.
+    The URDF, world and MJCF exporters are handed the assembly tree, one link
+    (one model, one body) per node; decoded geometry carries no node names,
+    labels or separate placements to build those from, so all three reject it
+    outright and the export fails with "needs a shape or an assembly to export".
+    They are the only built-in formats that ask for that, so this also guards the
+    other direction.
     """
     off = set()
     for section in output.SECTIONS:
@@ -619,7 +649,7 @@ def test_a_format_decodes_its_envelopes_unless_it_declares_otherwise(ctx):
             impl = output.Implementation(section, format_name, config)
             if not impl.decode:
                 off.add(format_name)
-    assert off == {"urdf", "world"}
+    assert off == {"urdf", "world", "mjcf"}
 
 
 # --------------------------------------------------------------------------- #

@@ -119,15 +119,18 @@ at all).
   corrected `fileHash` has to move the cache key, or `pc test` answers the new declaration with the old one's
   failure.
 
-- **Built-in packages** (`./src/partcad/builtin`): PartCAD ships two packages inside itself, reachable from
-  every context as `//builtin/export` and `//builtin/render` (loaded on demand by `Context.get_project`, see
-  `output.py`). They declare the file types `pc export` and `pc render` write, in exactly the form a user's
-  package declares one — a `path` to a script, its `pythonRequirements`, and the export parameters. So adding a
+- **Built-in packages** (`./src/partcad/builtin`): PartCAD ships three packages inside itself, reachable from
+  every context as `//builtin/export`, `//builtin/render` and `//builtin/scene` (loaded
+  on demand by `Context.get_project`, see `output.py`). The first two declare implementations — the file
+  types `pc export` and `pc render` write — in
+  exactly the form a user's package declares one: a `path` to a script, its `pythonRequirements`, and the
+  parameters. So adding a
   format, changing its defaults or changing which dependencies it needs is an edit to `builtin/*/partcad.yaml`, not
   to `shape.py`. The scripts run in a sandbox through `wrappers/wrapper_export.py`; they are data files, so
   anything new under `builtin/` has to be listed in `pyproject.toml`'s `package-data` and in the PyInstaller
   spec (see "Packaging" in the root [AGENTS.md](../../AGENTS.md)). The requirement strings there are the versions
-  `sandbox_versions.py` pins, which `tests/partcad/unit/test_output.py` enforces.
+  `sandbox_versions.py` pins, which `tests/partcad/unit/test_output.py` enforces — as does a check that every
+  built-in package validates against PartCAD's own configuration schema, since nothing else reads them.
 
 - **Engineering analysis** (`./src/partcad/cae.py`, `Shape.analyze_async()`, `./src/partcad/test/cae.py`):
   `pc cae fea`/`pc cae cfd` are a third output section, `cae:`, resolved by the very code that resolves
@@ -221,6 +224,80 @@ at all).
   remove-run-verify and calls `get_wrapped` and `_run_implementation_async` inside that), which a bare
   `asyncio.Lock` cannot do without waiting on itself for good. The cost is that two different outputs of one
   shape no longer overlap; PartCAD's parallelism is across shapes.
+  `//builtin/scene` is the odd one out: it declares an *object* rather than a way of producing one — the
+  scene a `simulate:` places its subject in when it names none of its own. It is an ordinary `assy` scene
+  whose `.assy` is a Jinja2 template, and the only thing that makes it the default is that
+  `simulation.DEFAULT_SCENE` names it.
+
+  **There is deliberately no `//builtin/simulate`.** `simulation:` is a third section resolved exactly like
+  the other two — a plugin is an `output.Implementation` like any other — and PartCAD implements none of it.
+  A simulator is somebody's program with a release cycle of its own, so PartCAD ships the concept (the
+  section, `wrappers/wrapper_simulate.py`, the runner in `simulation.py`, the `mjcf` export a scene reaches a
+  plugin through) and a package supplies the physics: `partcad/partcad-sim-mujoco` is the MuJoCo one.
+  `simulation:` is also **not** in `output.SECTIONS`: everything that reads that tuple is asking which file
+  types exist, and a simulation is not one.
+
+  **`import:` is the fourth, and the mirror image of `export:`.** It declares who turns somebody else's
+  file format *into* a PartCAD object, and it is why there is no `assembly_factory_urdf.py` any more:
+  `assembly_factory_imported.py` is one factory for every such type, and the reader it runs is named by the
+  declaration. Everything below the reader — sandbox, tree walk, part registration, the report of what was
+  dropped — was identical in the three factories that used to exist, so only the reader knows XML and only
+  the reader is a plugin. `//builtin/import` ships `urdf`; `mjcf` and `world` belong to the two engine
+  plugins, beside the exporter and the simulator that share their knowledge of the format.
+
+  Two things about it are easy to get wrong. **`import:` was the old name of `dependencies:`**, and
+  `project_config.py` used to migrate it in silence — copy the value across and delete the key — which would
+  now eat a reader declaration before anything could read it, then try to fetch it as a package. So the
+  migration is gone and the old use is **reported** instead: `Configuration._obsolete_import_entries()`
+  looks for a dependency's required `type:` (`git`/`tar`/`local`/`external`) or its transport-only keys
+  (`url`, `relPath`, `revision`, `subfolder`, `onlyInRoot`, `cacheVersion`, `includePaths`, `plugin`), none of
+  which a reader declaration has. Do not restore the copy: guessing is what made the two ambiguous.
+
+  **How loudly is the one thing that depends on whose package it is**, and both halves were learned the hard
+  way on #637. In the *root* package it is an error and the package is broken, the way every other unreadable
+  `partcad.yaml` is — that is the file the user can fix. In an *imported* one it is a warning and the package
+  stays usable for everything else it declares, because `Context.import_project()` reports a broken import as
+  an error of its own: `//pub/universe` in the public index uses the old spelling today, so marking it broken
+  failed `pc list all -r` — every command that merely walks past it — over a section the user cannot reach,
+  let alone rename. And do not make it raise in either case: an exception escaping a project factory strands
+  the name in `Context._projects_being_loaded`, so every later import of it reports a recursion that is not
+  happening — naming the innocent package rather than the one that failed. Both of those broke
+  `Examples ... via bundle`, in that order. And an
+  object type that no built-in factory is registered for is what
+  `factory.instantiate()` routes here, which is also how `project.produces_own_parts()` decides, by exclusion,
+  which objects materialize parts of their own: PartCAD cannot list the types in a section whose whole point
+  is that it does not know what is in it.
+
+  **`open:` is the fifth, and the only one whose implementation is not a script.** It declares the
+  third-party applications `pc open` launches, as data: binaries per OS, a container image, the arguments
+  each front end takes, and what the application can read. The logic is the same for every tool and stays in
+  `partcad_client.external`, which now *builds* its `Tool` table from those declarations instead of holding
+  five literals. Blender's argument builder was the one callable in that table and is now `fileArgs:`
+  templates (`{path}`, `{path_repr}`) plus `ownFormats:` — a package cannot ship a Python function into a
+  frozen client.
+
+  The subtlety is where the table is read. `pc open` deliberately needs **no package graph** (it is handed a
+  path; the window belongs to whoever ran the command; a daemon can be remote), so the built-in entries are
+  read straight off disk out of the wheel — `partcad_client` locates them with `importlib.util.find_spec`
+  without importing `partcad`, the same reason `object_types` holds its own copy of PartCAD's tables. Only a
+  tool a *package* declares needs the graph, and that is the `open.tools` method: the daemon says **which**
+  applications exist, and never opens one. Do not add a method that opens a file.
+
+- **A material is a fact a simulation reads** (`material.py`): `mu` sits beside `density`, and
+  `PHYSICS_FROM_MATERIAL` is what makes it reach an exporter. A shape names its material by a *reference*
+  (`:aluminium`), and resolving one needs the package graph — which the core has and a sandbox does not. So
+  `physics_by_shape()` resolves every reference in an export request against the package of the shape that
+  wrote it (which is what lets the reference be relative), and `wrapper_export.properties_index()` merges what
+  it found *underneath* what each shape states itself. No exporter knows materials exist, which is what keeps
+  URDF's `<mu1>`, SDFormat's `<mu>` and MJCF's `friction` agreeing for free.
+
+  Which reference it reads is `properties: material:`, and **a package never writes that by hand**.
+  `parameters:` is what is asked of the type that produces the shape; `properties:` is what the shape turned
+  out to be, and is filled in by whatever built it. For a type that accepts a `material` parameter — the
+  homogeneous ones, `PartFactoryHomogen` — what it turned out to be made of is exactly what was asked for, and
+  `PartFactory.record_object_type_properties()` is the instantiation code that writes it down. A `step` part
+  accepts no such parameter (its file states a material per solid, and says it better), so nothing is promoted
+  and the reader that read the file is what fills the property in.
 
 - **Drawing ports and interfaces** (`./src/partcad/render_overlay.py`, `./src/partcad/wrappers/stroke_text.py`):
   `pc render --with-ports`/`--with-interfaces` draws the connection metadata on top of a projection.

@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import contextlib
 import os
 import sys
@@ -20,6 +19,7 @@ from typing import TYPE_CHECKING, Optional
 
 from . import cae as pc_cae
 from . import logging as pc_logging
+from . import material as pc_material
 from . import output, render_overlay
 from . import runtime as pc_runtime
 from . import sandbox_versions, wrapper
@@ -62,6 +62,22 @@ SKETCH_EXTENSION_MAPPING = {
     "dxf": "dxf",
     "cadquery": "py",
     "build123d": "py",
+}
+
+# The scene types that are file formats, and the extension each is stored in.
+# The counterpart of the two mappings above for the third kind of object a file
+# can hold: an arrangement rather than a shape or a drawing. It exists for the
+# same reason they do -- to tell from a file name what a conversion should read
+# it as -- and it is what `pc open --with mujoco` uses to work out whether the
+# file it was handed already is a model MuJoCo reads.
+#
+# 'assy' is in it and is not convertible ad-hoc (see
+# 'partcad.adhoc.adhoc.PACKAGE_ONLY_TYPES'): naming it is what lets the refusal
+# say what the file is instead of reporting an unknown extension.
+SCENE_EXTENSION_MAPPING = {
+    "assy": "assy",
+    "world": "world",
+    "mjcf": "xml",
 }
 
 # The 2D projections '//builtin/render' implements, and the file extension each
@@ -555,6 +571,13 @@ class Shape(ShapeConfiguration):
         of the object type that produces the shape, while these describe the
         shape that came out. Nothing here takes part in the cache hash, which is
         why a cached entry can be shared by objects that state different ones.
+
+        Read as it stands, and nothing is derived here. What a shape turned out
+        to be made of is written into 'properties:' by whatever instantiated it
+        - a reader that found it in the file, or the part factory promoting the
+        'material' its type was asked for (see
+        'PartFactory.record_object_type_properties()'). By the time a shape is
+        being asked what it reports, that has already happened.
         """
         if not isinstance(self.config, dict):
             return None
@@ -1009,67 +1032,14 @@ class Shape(ShapeConfiguration):
     async def _materialize_output_script(self, ctx, impl):
         """The on-disk path of the script that writes this file type.
 
-        For a local package - which the built-in ones are - that is a file in
-        the package. For a plugin-backed package it is fetched from the plugin
-        (like a file-backed object) and written into the package's cache
-        directory, the same way a partType's wrapper script is.
+        'output.materialize_script()' is the whole of it: nothing about finding
+        an implementation's script depends on the shape it is about to be run
+        for, and the simulation runner needs the very same answer for a plugin
+        that writes no file at all (see 'partcad.simulation').
         """
-        builtin_package = output.BUILTIN_PACKAGES.get(impl.section)
-        if not impl.script:
-            if builtin_package is None:
-                # 'cae:' has no built-in package to fall back to, so an
-                # unresolved implementation means the configured one was not
-                # found rather than that somebody forgot a 'path'. Name both
-                # knobs and say which is which: the user configuration holds the
-                # default, and '--implementation' overrides one run.
-                raise Exception(
-                    "No implementation of '%s' is declared. Name one in a 'cae:' section, "
-                    "override it for one run with 'pc cae %s --implementation <package>:<type>', "
-                    "or set the default in the 'cae%sImplementation' user configuration option"
-                    % (impl.format_name, impl.format_name, impl.format_name.capitalize())
-                )
-            raise Exception(
-                "No implementation of '%s' is declared: neither %s nor this package provides a 'path'"
-                % (impl.format_name, builtin_package)
-            )
+        return await output.materialize_script(ctx, impl)
 
-        package_name = impl.config.get("package") or builtin_package
-        if package_name is None:
-            raise Exception("The implementation of '%s' does not say which package it lives in" % impl.format_name)
-        project = ctx.get_project(package_name)
-        if project is None:
-            raise Exception("The package implementing '%s' is not found: %s" % (impl.format_name, package_name))
-        impl.project = project
-
-        # The script is named by the package's own configuration and is about to
-        # be executed, so it has to come from inside that package: a 'path' of
-        # '../../..' would otherwise both read and, for a plugin-backed package,
-        # write outside it.
-        config_dir = os.path.abspath(project.config_dir)
-        script_abs = os.path.abspath(os.path.join(config_dir, impl.script))
-        if os.path.commonpath([config_dir, script_abs]) != config_dir:
-            raise Exception("The implementation of '%s' is outside its package: %s" % (impl.format_name, impl.script))
-        if os.path.exists(script_abs):
-            return script_abs
-
-        get_data_async = getattr(project, "get_data_async", None)
-        if get_data_async is None:
-            raise Exception("The implementation of '%s' is not found: %s" % (impl.format_name, script_abs))
-
-        data = await get_data_async("files/" + impl.script)
-        if data is None:
-            raise Exception(
-                "The repository did not provide the implementation of '%s': %s" % (impl.format_name, impl.script)
-            )
-        content = base64.b64decode(data) if isinstance(data, str) else bytes(data)
-        dirs = os.path.dirname(script_abs)
-        if dirs and not os.path.exists(dirs):
-            os.makedirs(dirs, exist_ok=True)
-        with open(script_abs, "wb") as f:
-            f.write(content)
-        return script_abs
-
-    async def _output_request(self, obj, impl, kwargs, overlay=None, ports=None):
+    async def _output_request(self, ctx, obj, impl, kwargs, overlay=None, ports=None):
         """What the implementation is handed.
 
         The shape, every parameter the layered configuration ended up with, and
@@ -1105,6 +1075,19 @@ class Shape(ShapeConfiguration):
         # exporter looks them up in is built in the sandbox, out of the request
         # that arrives there - see wrappers/wrapper_export.py. Nothing has to be
         # collected here, and nothing has to be instantiated to collect it.
+        #
+        # A material is the exception, and only because it is a *name*: what a
+        # shape carries is ':aluminium', and turning that into a coefficient of
+        # friction means resolving it against the package that wrote it and
+        # loading the package that catalogues it - neither of which the sandbox
+        # can do. So the names are resolved here and the facts travel beside the
+        # shapes, keyed by the shape that inherits them; the wrapper merges them
+        # under what each shape said about itself. See
+        # 'partcad.material.physics_by_shape()'.
+        if request.get(output.PROPERTIES_KEY):
+            facts = pc_material.physics_by_shape(ctx, request)
+            if facts:
+                request[pc_material.FACTS_KEY] = facts
         return request
 
     async def _overlay_ports_async(self, ctx, overlay, cache):
@@ -1281,7 +1264,7 @@ class Shape(ShapeConfiguration):
                 ctx, effective_overlay, ports_cache if ports_cache is not None else {}
             )
 
-        request = await self._output_request(obj, impl, kwargs, overlay=effective_overlay, ports=ports)
+        request = await self._output_request(ctx, obj, impl, kwargs, overlay=effective_overlay, ports=ports)
         result = await self._run_implementation_async(ctx, impl, script, request, final_filepath)
         if result is None:
             return
@@ -1746,7 +1729,7 @@ class Shape(ShapeConfiguration):
                 boundary = await self._analysis_boundary_async(ctx, config)
                 script = await self._materialize_output_script(ctx, impl)
 
-                request = await self._output_request(obj, impl, kwargs)
+                request = await self._output_request(ctx, obj, impl, kwargs)
                 request.update(config.to_data())
                 # The ports each condition landed on, in the shape's own
                 # coordinate system. 'fix' and 'load' above say what the user

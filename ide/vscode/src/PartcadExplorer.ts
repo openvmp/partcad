@@ -83,6 +83,7 @@ export class PartcadExplorer implements vscode.TreeDataProvider<PartcadItem> {
         vscode.commands.registerCommand(`partcad.openInGazebo`, (item) => this.openWith('gazebo', item));
         vscode.commands.registerCommand(`partcad.openInKiCad`, (item) => this.openWith('kicad', item));
         vscode.commands.registerCommand(`partcad.openInBlender`, (item) => this.openWith('blender', item));
+        vscode.commands.registerCommand(`partcad.openInMuJoCo`, (item) => this.openWith('mujoco', item));
 
         vscode.commands.registerCommand(`partcad.test`, (item) => this.test(item));
 
@@ -368,7 +369,10 @@ export class PartcadExplorer implements vscode.TreeDataProvider<PartcadItem> {
         for (const scene of scenes) {
             let filepath = undefined;
             // The scene types that *are* a file, so the tree can open one.
-            if (scene.type === 'assy' || scene.type === 'world') {
+            // 'mjcf' belongs here for the same reason 'world' does: without a
+            // path 'PartcadItem' cannot tell it from a scene with no source,
+            // and "Open in > MuJoCo" has nothing to act on.
+            if (scene.type === 'assy' || scene.type === 'world' || scene.type === 'mjcf') {
                 filepath = scene.item_path;
             }
             elements.push(new PartcadItem(dir, scene.name, items.name, scene, filepath, ITEM_TYPE_SCENE));
