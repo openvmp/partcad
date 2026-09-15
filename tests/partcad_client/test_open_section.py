@@ -101,8 +101,20 @@ def test_an_application_with_no_templates_just_takes_the_file():
 
 
 def test_a_front_end_gets_its_own_arguments():
-    """Gazebo is three generations of one program, and they differ."""
-    gazebo = external.TOOLS["gazebo"]
+    """Gazebo is three generations of one program, and they differ.
+
+    Declared rather than looked up, because the Gazebo entry belongs to
+    `partcad/partcad-sim-gazebo` now -- which makes this a test of what a
+    package's own declaration reaches, which is the point of `binaryArgs`.
+    """
+    gazebo = external.tool_from_declaration(
+        "gazebo",
+        {
+            "displayName": "Gazebo",
+            "binaries": ["gz", "ign", "gazebo"],
+            "binaryArgs": {"gz": ["sim"], "ign": ["gazebo"]},
+        },
+    )
 
     assert gazebo.launch_args("gz") == ("sim",)
     assert gazebo.launch_args("ign") == ("gazebo",)

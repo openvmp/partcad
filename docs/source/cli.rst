@@ -109,15 +109,16 @@ Host commands
     pc open --use-docker cube.step          # or in a container, when there is none
     pc open --with blender cube.stl         # a mesh, in Blender
     pc open --with blender cube.step        # a solid, converted to STL for Blender first
-    pc open --with gazebo warehouse.world   # a scene, in Gazebo
-    pc open --with mujoco stack.xml         # a scene, in MuJoCo
-    pc open --with mujoco warehouse.world   # a world, converted to MJCF for MuJoCo first
+    pc open --with gazebo warehouse.world   # a scene, in Gazebo (from partcad-sim-gazebo)
+    pc open --with mujoco stack.xml         # a scene, in MuJoCo (from partcad-sim-mujoco)
     pc open --with kicad Arduino_Nano.step  # a board, in KiCad
 
-  ``--with`` names the application: ``freecad`` (the default), ``blender``, ``gazebo`` for a Gazebo world --
-  which is what a :ref:`scene <scenes>` of type ``world`` is, and what ``pc export -S -t world`` writes --
-  ``mujoco`` for a scene, and
-  ``kicad`` for a board. A locally installed one is always
+  ``--with`` names the application: ``freecad`` (the default), ``blender`` and ``kicad`` for a board are the
+  ones PartCAD itself ships. ``gazebo`` and ``mujoco`` come from the plugin package for that engine
+  (`partcad-sim-gazebo <https://github.com/partcad/partcad-sim-gazebo>`_,
+  `partcad-sim-mujoco <https://github.com/partcad/partcad-sim-mujoco>`_), beside the reader, the exporter and
+  the simulator for its scene format, so they are offered in a workspace that imports one and are an unknown
+  application anywhere else. A locally installed one is always
   used when there is one: the command looks on the ``PATH``, in ``/Applications`` on macOS, under
   ``Program Files`` on Windows, and for a flatpak on Linux. Gazebo is looked for under all three of the names
   it has had (``gz sim``, ``ign gazebo``, ``gazebo``), and whichever the machine has is the one used.
@@ -132,13 +133,16 @@ Host commands
   one -- and the VS Code extension passes the declared type of the object you clicked. A ``.blend`` is
   Blender's own file and is opened, not converted.
 
-  MuJoCo reads MJCF and no other model format, so the same thing happens for the same reason: a scene that is
-  not already an MJCF model -- a Gazebo world, above all -- is written out as one and MuJoCo is given that.
-  It is the same daemon round trip and the same conversion machinery, asked for a scene instead of a part.
+  MuJoCo reads MJCF and no other model format, and a scene that is not already one is **not** converted here.
+  That is not an omission: MJCF is written by ``partcad-sim-mujoco``'s exporter and a Gazebo world is read by
+  ``partcad-sim-gazebo``'s reader, and a file handed to ``pc open`` has no package around it to reach either
+  through. So such a file is refused with the export that does work rather than converted wrongly. An
+  application's ``open:`` entry names the extensions its own format is stored in (``sceneExtensions``), which
+  is how a file that already is one goes straight over without any conversion at all.
 
   An object that only means something inside a package -- an ASSY file, a URDF -- has nothing to convert
-  ad-hoc, and is refused with that rather than converted wrongly: export it to a mesh first
-  (``pc export -t stl``), or a scene to MJCF (``pc export -S -t mjcf``), and open that.
+  ad-hoc, and is refused with that for the same reason: export it to a mesh first (``pc export -t stl``), or
+  a scene to its engine's format (``pc export -S -t sim-mujoco:mjcf``), and open that.
 
   KiCad is handed the board rather than the file named, when the two are not the same: a ``kicad`` part *is*
   the STEP file KiCad's command line writes out of the board, so ``pc open --with kicad`` on it opens the
@@ -150,9 +154,9 @@ Host commands
   — one container per application, named after it (``partcad-freecad``, ``partcad-blender``,
   ``partcad-gazebo``, ``partcad-mujoco``, ``partcad-kicad``), created from the application's image
   (``--docker-image`` overrides it; FreeCAD's is ``linuxserver/freecad:latest``, since the FreeCAD project
-  publishes no image of its own, Blender's is ``linuxserver/blender:latest`` for the same reason, Gazebo's is
-  ``gazebosim/gz-harmonic:latest``, MuJoCo's is ``ghcr.io/google-deepmind/mujoco:latest``, and KiCad's is the
-  ``ghcr.io/partcad/partcad-container-kicad`` image PartCAD already builds for ``kicad`` parts) the first
+  publishes no image of its own, Blender's is ``linuxserver/blender:latest`` for the same reason, KiCad's is
+  the ``ghcr.io/partcad/partcad-container-kicad`` image PartCAD already builds for ``kicad`` parts, and an
+  engine's is whatever its plugin package declares) the first
   time and reused afterwards, so a container you have prepared
   keeps being the one that is used. Without ``--use-docker``, a machine with neither the application nor
   Docker is told so rather than being left with a command that quietly did nothing. Remove the application's
@@ -546,17 +550,19 @@ Object commands
 ``pc export``
   Export a 3D view of parts, assemblies, or scenes. Use ``-a`` for an assembly and ``-S`` for a scene.
   Choose the format with ``-t``:
-  ``step``, ``brep``, ``stl``, ``3mf``, ``threejs``, ``obj``, ``gltf``, ``iges``, ``urdf``, ``world``,
-  ``mjcf``, or any
+  ``step``, ``brep``, ``stl``, ``3mf``, ``threejs``, ``obj``, ``gltf``, ``iges``, ``urdf``, or any
   file type a package implements itself (see :ref:`output-files`). Use ``-O`` to set the output directory and
   ``-r`` to export recursively. ``urdf`` writes a ``.urdf`` file plus a directory of the mesh files it
-  references, and ``world`` (a Gazebo ``.world``, SDFormat) and ``mjcf`` (a MuJoCo model) write theirs the
-  same way -- those are the formats a scene has.
+  references.
 
   ``-t`` also takes a full path, ``-t sim-gazebo:world``, which names the package the implementation lives
-  in. That is how a format PartCAD ships no implementation of is reached: an engine's own scene format
-  belongs to that engine's plugin package, so ``world`` and ``mjcf`` are on their way out of the wheel and
-  the qualified spelling is the one that keeps working. ``-e``
+  in. That is how a format PartCAD ships no implementation of is reached, and an engine's own scene format is
+  exactly that: a Gazebo world (SDFormat) is written by
+  `partcad-sim-gazebo <https://github.com/partcad/partcad-sim-gazebo>`_ and a MuJoCo model (MJCF) by
+  `partcad-sim-mujoco <https://github.com/partcad/partcad-sim-mujoco>`_, beside the reader and the simulator
+  that share their knowledge of the format, so ``-t sim-gazebo:world`` is the spelling that resolves and a
+  bare ``-t world`` resolves to nothing. Both write a file plus a directory of the meshes it references, the
+  way ``urdf`` does. ``-e``
   names a further package whose ``export:`` options and implementations are used, which is how one package's
   exporter is applied to another package's objects -- the same answer for every file type at once, where
   ``-t <package>:<type>`` is the answer for one.
