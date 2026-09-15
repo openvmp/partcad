@@ -7,6 +7,7 @@
 #
 #   - `//builtin/export` -- the 3D/CAD formats `pc export` writes.
 #   - `//builtin/render` -- the 2D projections `pc render` writes.
+#   - `//builtin/cam` -- the machine programs `pc cam` writes.
 #
 # And one that declares an object rather than a way of producing one:
 #
@@ -19,15 +20,15 @@
 # supplies the physics (`partcad/partcad-sim-mujoco` for MuJoCo).
 #
 # A package that wants to produce a format differently does not patch anything
-# here. It declares the same format in its own `export:`/`render:` section with
-# a `path` of its own, which replaces the built-in implementation for that
-# package (see `docs/source/configuration.rst`).
+# here. It declares the same format in its own `export:`/`render:`/`cam:`
+# section with a `path` of its own, which replaces the built-in implementation
+# for that package (see `docs/source/configuration.rst`).
 
 name: //builtin
 desc: |
   The packages PartCAD ships with itself: the built-in ways of producing output
-  files, declared in `//builtin/export` and `//builtin/render`, and the scene a
-  simulation places its subject in, in `//builtin/scene`.
+  files, declared in `//builtin/export`, `//builtin/render` and `//builtin/cam`,
+  and the scene a simulation places its subject in, in `//builtin/scene`.
 
 dependencies:
   export:
@@ -36,6 +37,9 @@ dependencies:
   render:
     type: local
     path: render
+  cam:
+    type: local
+    path: cam
   scene:
     type: local
     path: scene

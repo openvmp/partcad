@@ -179,6 +179,37 @@ at all).
   that now analyses perfectly well. `CaeTest` is the only test that reaches that state, and the flag exists
   for it.
 
+- **Routes** (`./src/partcad/cam.py`, `Shape.route_async()`, `./src/partcad/builtin/cam/`):
+  `pc cam` is a fourth output section, `cam:`, resolved by the very code that resolves the other three, and
+  out of `output.SECTIONS` for the reason `cae:` is. It differs from `cae:` in one thing that matters: it
+  **has a built-in package**. A route is arithmetic on the object's own outline rather than somebody else's
+  program with a release cycle of its own, which is the test `export:`/`render:` pass and a solver does not,
+  so `//builtin/cam` ships and `camImplementation` names it by default.
+
+  The object declares the job in a `cam:` section of its own -- the same word as the package-level section,
+  and deliberately so. For CAE the two names differ because boundary conditions and mesh sizes are different
+  kinds of thing; here the tool, the depth and the feed are the file type's parameters *and* the object's
+  statement about itself, so they are one namespace with `//builtin/cam`, the package and the object as its
+  three layers. What keeps that unambiguous is that `cam.KEYS` is a **closed** set: an object's section holds
+  job parameters and nothing else, so it can never be read as a file-type declaration, and a key that is
+  neither is refused with a sentence rather than passed through.
+
+  `cam.py` parses and converts (lengths to millimetres, feeds to millimetres per minute, and both at *every*
+  layer through `normalize_job()` -- a `2400 mm/min` written by the package is as much PartCAD's to understand
+  as one written on the object). Like `cae.py` it imports nothing from `partcad`, which is what lets it be
+  tested without a sandbox. It requires nothing, on purpose: "a route needs a cutter diameter" is
+  `//builtin/cam`'s statement about itself, not PartCAD's about a plugin it has never seen.
+
+  The section is also the object's **opt-in**, and `Project.routable_shapes_async()` is where that is read:
+  `pc cam` with no object named visits every sketch and part that declares one and passes over the rest
+  silently, which is why `cam.declared_config()` exists beside `config_of()` -- deciding what to visit must
+  not raise on a neighbour's broken section. Sketches and parts only; an assembly is put together rather than
+  cut.
+
+  Coming back, the implementation reports **stats** beside the file it wrote, the way a `cae:` one reports
+  findings, and `wrapper_export.py` passes them through without interpreting them: what is worth counting
+  differs between a router and a wire EDM.
+
 - **A part is a body, not a skin** (`wrappers/wrapper_common.solidify`, `brep_inspect.py`,
   `test/shell.py`): a shell is a set of faces with nothing said about which side of them is material; a solid
   is a shell declared to bound a volume. The declaration changes nothing about how the shape looks and

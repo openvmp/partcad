@@ -3739,6 +3739,80 @@ is a property of the part rather than of whoever analyses it; see
 :ref:`pc cae <cae>` for how ``fix:`` and ``load:`` are written and what units
 they are in.
 
+.. _cam-section:
+
+Routes
+------
+
+``cam:`` is a fourth section of the same shape, and it is where a route -- the
+program a machine cuts an object with -- is implemented. Its file types are what
+:ref:`pc cam <cam>` produces, and every field means what it means above:
+
+.. code-block:: yaml
+
+  cam:
+    gcode:
+      path: post_gcode.py
+      extension: nc           # required: PartCAD has no default to guess at
+      feed: 2400              # a parameter of this implementation ...
+      depth_per_pass: 3       # ... and of every object it routes
+
+Two things are different from ``export:`` and ``render:``, and one thing is
+different from ``cae:``:
+
+* **There is a built-in package**, unlike ``cae:``. A route is arithmetic on the
+  object's own outline rather than somebody else's program with a release cycle
+  of its own, which is the test ``export:`` and ``render:`` already pass and a
+  solver does not -- so PartCAD ships ``//builtin/cam``, whose ``gcode`` file
+  type is what ``camImplementation`` names by default. Nothing has to be
+  installed for ``pc cam`` to work.
+* **There is no fallback section.** A route is not a file another CAD tool opens
+  as a part, so a ``gcode`` declared under ``render:`` is a render format that
+  happens to be called ``gcode``, and neither section stands in for the other.
+* **``extension`` is required**, for the reason it is required of an analysis:
+  what a controller reads is the implementation's decision.
+
+The file it writes is named after the object alone -- ``panel.nc`` -- because an
+object has one route at a time and the extension already says what the file is.
+
+**Every parameter of the file type is also a key an object may set for itself**,
+and that is what makes this section and the object's own ``cam:`` section three
+layers of one namespace rather than two different things:
+
+.. code-block:: yaml
+
+  # The package: what this shop does, for every object in it.
+  cam:
+    gcode:
+      feed: 2400 mm/min
+      safe_z: 8 mm
+
+  parts:
+    panel:
+      type: build123d
+      path: panel.py
+      # The object: what is true of this object, and nothing else.
+      cam:
+        operation: profile
+        tool: 6 mm
+
+``//builtin/cam`` is underneath both. So a package cutting twenty parts from one
+sheet sets the tool once, and the one part that needs a smaller cutter says so
+for itself. It is deliberately not the ``cae:``/``fea:`` split, where the
+implementation's parameters and what the part declares are named separately:
+there they are different kinds of thing -- boundary conditions belong to the
+part and the mesh size belongs to whoever solves it -- and here the tool, the
+depth and the feed are the same thing said at a different scope.
+
+What keeps the two readings of the word unambiguous is that an object's ``cam:``
+takes a **closed** set of keys -- ``operation``, ``tool``, ``depth``,
+``depth_per_pass``, ``safe_z``, ``feed``, ``plunge``, ``speed``, ``stepover``,
+plus ``implementation`` and ``desc`` -- so it can never be read as the file-type
+declaration a package's ``cam:`` section holds. Anything else in it is refused
+with a sentence, which is what turns a typo into an error rather than a route
+cut to a default. See :ref:`pc cam <cam>` for what each key means, which units
+it may be written in, and why ``tool:`` has no default.
+
 Drawing the ports and the interfaces
 ------------------------------------
 

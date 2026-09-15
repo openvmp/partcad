@@ -2247,6 +2247,172 @@ def cae_analyze(session, params):
     return result
 
 
+def cam_route(session, params):
+    """Produce the route files of the objects that declare one, and say where they went.
+
+    Backs ``pc cam``. An object declares what is to be cut in its own ``cam:``
+    section (see ``partcad.cam``), and the implementation is whatever
+    ``implementation`` -- or, failing that, the object's own ``implementation:``,
+    or the caller's ``camImplementation`` -- names, as ``<package>:<file type>``.
+
+    ``object`` routes that one object and refuses if it declares nothing. With no
+    ``object`` every sketch and part of the package that declares a ``cam:``
+    section is routed and everything else is passed over in silence, which is
+    what makes the command usable in a package where three parts of forty are
+    cut. ``recursive`` does the same through the packages below this one.
+
+    A whole-package run reports every object and then fails if any of them
+    failed, rather than stopping at the first. A route is a file: an object
+    whose section is wrong must not cost the other nineteen theirs, and a user
+    who ran this over a package wants the list rather than the first line of it.
+    """
+    import asyncio
+
+    ctx = _ctx(session, params)
+    if ctx is None:
+        return None
+    pc = session.partcad
+
+    package = ctx.resolve_package_path(params.get("package") or ".")
+    package_obj = ctx.get_project(package)
+    if not package_obj:
+        pc.logging.error("Package %s is not found" % package)
+        return None
+    package = package_obj.name
+
+    object_name = params.get("object")
+    if params.get("recursive"):
+        packages = [p["name"] for p in ctx.get_all_packages(parent_name=package, has_stuff=True)]
+    else:
+        packages = [package]
+
+    with pc.logging.Process("CAM", package):
+        ctx.option_create_dirs = bool(params.get("create_dirs", False))
+        results, failures = asyncio.run(
+            _route_packages_async(
+                pc,
+                ctx,
+                packages,
+                object_name,
+                sketch=bool(params.get("sketch")),
+                implementation=params.get("implementation") or None,
+                output_dir=params.get("output_dir") or None,
+            )
+        )
+
+    if not params.get("json"):
+        for result in results:
+            pc.logging.info(pc.cam.route_report(result["object"], result))
+        if not results and not failures and not object_name:
+            # Nothing was wrong and nothing was produced, which is a real answer
+            # and one a user acting on an empty command line needs said out
+            # loud: `pc cam` in a package where nothing declares a `cam:`
+            # section otherwise looks exactly like a route that went somewhere
+            # the user did not notice.
+            #
+            # Only where no object was named. A name that resolved to nothing
+            # has already been reported as the object it is -- which is what the
+            # user typed -- and saying that the package declares no `cam:`
+            # section on top of it answers a question nobody asked, about a
+            # package that may be full of them.
+            pc.logging.info("Nothing in %s declares a 'cam:' section, so no route was produced" % package)
+
+    if failures:
+        # One error naming every object that failed. The individual reports are
+        # already in the log above, where each was produced.
+        raise JsonRpcError(
+            ANALYSIS_FAILED,
+            "No route was produced for %s" % ", ".join(sorted(name for name, _ in failures)),
+        )
+    return {"routes": results}
+
+
+async def _route_packages_async(pc, ctx, packages, object_name, sketch, implementation, output_dir):
+    """Route the objects of every package named, reporting each as it lands.
+
+    Bounded the way a recursive render is bounded, and for the same reason: what
+    keeps the machine busy is the sandbox process budget, so enough objects to
+    keep that budget full is all the concurrency there is any use for.
+
+    Nothing is cancelled when one object fails. A route is a file, and a package
+    interrupted half way through writing them is worse than one that finishes
+    and reports.
+    """
+    import asyncio
+
+    from partcad.sandbox_lock import process_slots
+
+    # The packages PartCAD ships inside itself are loaded on demand, by the
+    # first thing that asks what file types exist. Ask once here, before
+    # anything runs, so that several objects arriving at that question together
+    # do not each import them -- the same thing a recursive render does.
+    pc.output.all_formats(ctx)
+
+    shapes = []
+    seen = set()
+    for package in packages:
+        target, obj = package, object_name
+        if obj:
+            # Resolved against the package being routed rather than the current
+            # one: a '//elsewhere:name' names its own package whichever package
+            # it was reached from, and an unqualified name means one object in
+            # each of them. The same resolution a recursive render and a
+            # recursive test do.
+            target, obj = pc.utils.resolve_resource_path(package, obj)
+            if (target, obj) in seen:
+                continue
+            seen.add((target, obj))
+        prj = ctx.get_project(target)
+        if prj is None:
+            pc.logging.error("Package %s is not found" % target)
+            continue
+        if obj is None:
+            # The whole package: every sketch and part of it that declares a
+            # 'cam:' section.
+            shapes.extend(await prj.routable_shapes_async())
+        elif sketch:
+            shapes.extend(await prj.routable_shapes_async(sketches=[obj]))
+        else:
+            shapes.extend(await prj.routable_shapes_async(parts=[obj]))
+
+    at_once = asyncio.Semaphore(max(1, process_slots.count))
+
+    async def route(shape):
+        async with at_once:
+            return await shape.route_async(ctx, implementation=implementation, output_dir=output_dir)
+
+    produced = await asyncio.gather(*[route(shape) for shape in shapes], return_exceptions=True)
+
+    results, failures = [], []
+    for shape, result in zip(shapes, produced):
+        name = "%s:%s" % (shape.project_name, shape.name)
+        if not isinstance(result, BaseException):
+            results.append(result)
+            continue
+        if isinstance(result, (pc.cam.CamConfigError, pc.cam.CamFailed)):
+            # Both are answers to the user's question rather than faults of the
+            # machinery: the section is wrong, or the implementation was asked
+            # and did not deliver. Reported as the sentence each carries.
+            pc.logging.error(str(result))
+        elif isinstance(result, pc.runtime.SandboxUnavailable):
+            # No sandbox to produce the route in is the same answer as an
+            # implementation that was asked and could not run: the object has no
+            # route, and the machine is why. Reported the way `pc cae` reports
+            # it, with both remedies rather than a traceback.
+            pc.logging.error(
+                pc.cam.dysfunction_report(
+                    name,
+                    implementation or "the configured implementation",
+                    result,
+                    remedy=pc.cam.NO_RUNTIME_REMEDY,
+                )
+            )
+        else:
+            raise result
+        failures.append((name, result))
+    return results, failures
+
+
 def supply_quote(session, params):
     """Where to buy what an object is made of, and for how much.
 

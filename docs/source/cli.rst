@@ -405,6 +405,108 @@ Object commands
   solver is something somebody can fix. A Docker daemon running Windows containers is not one of these
   runtimes: every image PartCAD uses is a Linux image.
 
+.. _cam:
+
+``pc cam``
+  Produce the route files of the objects that declare one: the program a machine cuts them with. It takes the
+  object's own outline, offsets it by the radius of the cutter, and cuts it at a series of depths -- a 2.5D
+  route, which is what a CNC router does to sheet goods and what a mill does to a plate::
+
+      pc cam                    # every object of this package that declares a `cam:` section
+      pc cam :panel             # one of them
+      pc cam -s :nameplate      # one that is a sketch
+      pc cam -r                 # this package and everything it imports
+
+  Unlike ``pc cae``, this is a **package-level** command. An analysis is asked of one part; a route is what a
+  package's cut list is made of, so with nothing named ``pc cam`` produces one for every sketch and part of
+  the package that declares a ``cam:`` section and passes over every object that does not, silently. Most
+  objects are never cut, and a package where three parts of forty are is the ordinary case rather than
+  thirty-seven warnings. Naming an object that declares nothing *is* an error: naming one is asking about it,
+  and coming back with nothing would look exactly like a route that went somewhere the user did not notice.
+  An assembly and a scene are not routed at all -- an assembly is put together rather than cut, and a scene is
+  an arrangement of things that were each cut on their own.
+
+  The object says what is cut out of it, and how, in a ``cam:`` section of its own::
+
+      parts:
+        panel:
+          type: build123d
+          path: panel.py
+          cam:
+            operation: profile    # around the outside of it
+            tool: 6 mm            # the cutter's diameter
+            depth_per_pass: 3 mm
+            feed: 2400 mm/min
+            speed: 18000 rpm
+
+  ``operation:`` says which side of the outline the tool runs on. ``profile`` goes around the outside of the
+  material and around the inside of every hole, so the object survives at its nominal size -- and cuts the
+  holes first, because a profile cut ends by separating the part from its stock and a hole cut after that is
+  cut in something that is no longer held. ``pocket`` clears what is inside the outline, ring by ring,
+  innermost first so that the wall is cut last by a tool engaged on one side rather than buried in a slot; an
+  island in the middle of one is refused rather than cut through. ``engrave`` follows the outline itself,
+  offset by nothing, which is what a V-bit or a drag knife wants.
+
+  A length may be written as a number and a unit -- ``mm``, ``cm``, ``m``, ``um``, ``in``, ``inch``, ``"``,
+  ``ft``, ``mil`` or ``thou`` -- matched case-insensitively, with or without a space in front of it and with
+  or without a plural. A bare number is **millimetres**. A feed may name the length, the time, or both:
+  ``2400``, ``2400 mm/min``, ``40 mm/s``, ``60 in/min``; a bare number is millimetres per minute. A spindle
+  speed is rpm, with or without the word. What the *file* is written in is a separate question and the
+  ``units:`` parameter of the file type: a part 18 mm thick is cut 18 mm deep whether the program says ``G21``
+  or ``G20``.
+
+  ``safe_z:`` is a **clearance above the top of the object** rather than an absolute height, so it means the
+  same thing wherever the object sits in Z.
+
+  ``depth:`` is the one key with a conditional default. An object that does not say is cut **through**, from
+  the top of its bounding box to the bottom. A sketch has no thickness to be cut through, so a sketch that
+  does not say how deep to cut is refused. ``tool:`` has no default at all and must not get one: every other
+  parameter has a defensible default, and the diameter of the cutter is the one number that cannot be guessed
+  from the part -- a route produced against a diameter nobody chose is wrong by exactly the amount nobody
+  noticed.
+
+  Every key of that section is also a parameter of the ``cam:`` file type that produces the route, which is
+  what makes it three layers of one namespace: ``//builtin/cam`` underneath, then the package's own ``cam:``
+  section, then the object's. So a package cutting twenty parts from one sheet sets the tool once and the one
+  part that needs a smaller cutter says so for itself. The conversion above happens at every layer -- a
+  ``mm/min`` written by the package is understood as surely as one written on the object.
+
+  The route is written to ``<object>.<extension>`` -- ``panel.nc`` -- beside the package, or wherever ``-O``
+  says. ``--json`` prints what was produced as the array it is: the file, the implementation that wrote it,
+  and whatever that implementation counted about the route. ``pc cam`` exits non-zero if any object it was
+  asked about produced no route, and reports every one of them rather than stopping at the first: a route is
+  a file, and an object whose section is wrong must not cost the other nineteen theirs.
+
+  Who produces it is ``<package>:<file type>``. Unlike an analysis, PartCAD **ships one** -- a route is
+  arithmetic on the object's own outline rather than somebody else's program with a release cycle of its own,
+  which is the test ``export:`` and ``render:`` already pass -- so ``camImplementation`` defaults to
+  ``//builtin/cam:gcode`` and nothing has to be installed. A controller that wants a dialect of its own is a
+  package declaring a file type in its own ``cam:`` section exactly as an export or a render implementation is
+  declared in its own (see :ref:`output-files`), named by that option, by an ``implementation:`` in the
+  object's own ``cam:`` section, or by ``-i`` for one run -- in that order of precedence, narrowest last.
+
+  What the built-in one writes is plain RS-274 with every curve linearized to within ``tolerance:`` of the
+  true curve: an arc word is only an arc while the plane it was written in survives the post-processor, and
+  one tolerance says exactly what the approximation costs where an arc and a tolerance would say less. Nothing
+  in the file is a timestamp, a host name or a version, so the same object and the same parameters produce the
+  same bytes on any machine.
+
+  **``pc test -f cam`` is not this command.** ``pc test``'s ``cam`` check -- and the ``cam-additive``,
+  ``cam-subtractive`` and ``cam-forming`` checks below it -- ask whether an object *can* be manufactured or
+  purchased at all: whether the geometry suits the method it declares, whether what it is made from is
+  reproducible, whether a supplier could be found. ``pc cam`` asks nothing and produces the program. The two
+  share a word because they are both computer-aided manufacturing, and they share nothing else -- an object
+  with a ``cam:`` section is not thereby checked, and an object the check passes has no route unless it
+  declares one.
+
+  **The outline is a section taken at the bottom of the cut**, and that is the limit worth knowing. For a
+  prismatic object -- a panel, a plate, a gasket, anything cut out of stock of one thickness -- it is the same
+  outline at every depth. For an object whose cross-section changes over the cut there is no single right
+  answer, and the route follows the bottom and says so, as a warning naming how much the two ends differ by:
+  a route produced from an outline the user did not expect is the one failure that looks like a success all
+  the way to the machine. There is also no lead-in, no tab and no ramp -- the tool plunges at the start of
+  each contour and the part is free at the end of the last pass.
+
 ``pc convert``
   Convert parts, sketches, assemblies or scenes to another format and update their type in the package.
   Subcommands: ``part``, ``sketch``, ``assembly`` and ``scene``. An assembly converts between ``assy`` and
