@@ -476,9 +476,9 @@ def import_object(session, params):
     """Import a part, assembly or scene into a package, copying (and maybe converting) it.
 
     Served by the daemon rather than the client because the work runs through
-    sandboxed wrappers: importing an assembly drives ``wrapper_import_assy`` or
-    ``wrapper_import_urdf`` in a Python runtime, importing a scene drives
-    ``wrapper_import_world``, and ``--target-format`` converts through the same
+    sandboxed wrappers: importing an assembly or a scene drives the reader the
+    ``import:`` declaration for that format names -- one PartCAD ships, or one a
+    plugin package does -- and ``--target-format`` converts through the same
     machinery. Those runtimes belong to the daemon's environment and need not
     exist on the client side at all.
     """
@@ -521,8 +521,21 @@ def import_object(session, params):
             for key in ("ignoreCollision", "modelPaths"):
                 if params.get(key) is not None:
                     config[key] = params[key]
+            # Required, with no default. It used to default to 'world', which
+            # was the only scene format PartCAD read; every arrangement format
+            # now belongs to a simulation engine's plugin package, so a default
+            # could only ever name a type that does not resolve -- and would
+            # report that as a broken package rather than as a missing argument.
+            scene_type = params.get("scene_type")
+            if not scene_type:
+                raise JsonRpcError(
+                    USAGE_ERROR,
+                    "Importing a scene needs the format to read it as ('scene_type'): a format a package "
+                    "declares under 'import:' with 'scene' among its 'kinds', named through that package "
+                    "(for example 'sim-gazebo:world').",
+                )
             try:
-                name = import_scene_action(package_obj, params.get("scene_type", "world"), source, config)
+                name = import_scene_action(package_obj, scene_type, source, config)
             except Exception as e:  # pylint: disable=broad-except
                 pc.logging.exception("Error importing scene")
                 raise JsonRpcError(USAGE_ERROR, "Error importing scene: %s" % e) from e
@@ -775,8 +788,11 @@ def adhoc_convert(session, params):
         from partcad.shape import PART_EXTENSION_MAPPING as mapping
     elif kind == "scene":
         # The third kind of object a file can hold: an arrangement rather than a
-        # shape or a drawing. `pc open --with mujoco` is what asks for it -- a
-        # Gazebo world written out as the MJCF MuJoCo reads.
+        # shape or a drawing. Nothing asks for it today -- `pc open` refuses a
+        # scene it would have to convert, because every arrangement format
+        # belongs to a plugin package an ad-hoc context cannot reach -- and it is
+        # here because the machinery is the part conversion's. See
+        # `partcad.adhoc.convert.convert_scene_file`.
         from partcad.adhoc.convert import convert_scene_file as convert_fn
         from partcad.shape import SCENE_EXTENSION_MAPPING as mapping
     else:

@@ -262,10 +262,10 @@ at all).
   `assembly_factory_imported.py` is one factory for every such type, and the reader it runs is named by the
   declaration. Everything below the reader — sandbox, tree walk, part registration, the report of what was
   dropped — was identical in the three factories that used to exist, so only the reader knows XML and only
-  the reader is a plugin. `//builtin/import` ships `urdf`; `mjcf` and `world` belong to the two engine
-  plugins, beside the exporter and the simulator that share their knowledge of the format. The wheel still
-  carries a copy of each, which `type: world` resolves to and which is on its way out; the spelling that
-  keeps working is the full path, `type: sim-gazebo:world`.
+  the reader is a plugin. `//builtin/import` ships `urdf` and nothing else; `mjcf` and `world` belong to the
+  two engine plugins, beside the exporter, the `open:` entry and the simulator that share their knowledge of
+  the format. The wheel carries no copy of either, so `type: world` resolves to nothing and says which
+  package to name: the spelling is the full path, `type: sim-gazebo:world`.
 
   **A type named by its full path is resolved from the package that declared the object, not from the root.**
   `Context.get_project_from()`, not `get_project()`: a package's objects are created as part of loading it,

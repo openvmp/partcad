@@ -13,18 +13,19 @@ from ...service import run
 
 # What a file extension says the format is, where the caller does not say.
 #
-# 'scene_type: [file_extensions]'. '.sdf' is accepted beside '.world' because a
-# Gazebo model is written in the same format and a world often is too; what is
-# read is the same SDFormat document either way.
+# 'scene_type: [file_extensions]', and empty, because PartCAD implements no
+# scene *file* format of its own: 'assy' is its own way of saying where things
+# are and is not imported into itself, and every other arrangement format
+# belongs to a simulation engine's plugin package ('sim-gazebo:world',
+# 'sim-mujoco:mjcf'). A guess made here could only name a type that no longer
+# resolves, which is worse than asking.
 #
-# A convenience and not the list of what can be imported: the formats that read
-# an arrangement are declared by packages, so '-t' is what names one this table
-# has never heard of -- and what disambiguates an extension two formats share.
-# An extension nobody here claims is not an error either; it just means '-t' has
-# to be given.
-SUPPORTED_SCENE_FORMATS_WITH_EXT = {
-    "world": ["world", "sdf"],
-}
+# It stays as a table rather than becoming a removed feature: a package that
+# teaches PartCAD an arrangement format can be named with '-t', and if PartCAD
+# ever implements one itself this is where its extensions go. Everything below
+# already treats an unclaimed extension as "say it with -t" rather than as an
+# error, so an empty table needs no other change.
+SUPPORTED_SCENE_FORMATS_WITH_EXT = {}
 
 
 @click.command(help="Import a scene from a file, creating parts and an ASSY (Assembly YAML).")
@@ -72,10 +73,15 @@ def cli(cli_ctx, package: str, scene_file: str, scene_type: str, desc: str):
                 scene_type = supported_type
 
     if not scene_type:
+        # The tail is only worth printing when there is something in it; with
+        # nothing recognised by extension, "Recognised by extension: ." is noise
+        # in front of the sentence that actually says what to do.
+        recognised = ", ".join(sorted(SUPPORTED_SCENE_FORMATS_WITH_EXT))
         raise click.ClickException(
             f"Cannot tell from its name what format '{scene_file}' is in. "
-            f"Name it with '-t' -- a format a package reads as a scene, such as 'sim-gazebo:world'. "
-            f"Recognised by extension: {', '.join(sorted(SUPPORTED_SCENE_FORMATS_WITH_EXT))}."
+            f"Name it with '-t' -- a format a package reads as a scene, such as 'sim-gazebo:world' "
+            f"(from the package that implements it, which this workspace has to import)."
+            + (f" Recognised by extension: {recognised}." if recognised else "")
         )
 
     params = {
