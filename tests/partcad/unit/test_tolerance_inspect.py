@@ -202,6 +202,88 @@ def test_the_answer_does_not_depend_on_where_the_reads_fall(tmp_path, monkeypatc
     assert tolerance_inspect.of_step_file(path) == pytest.approx(0.05)
 
 
+def test_a_description_written_as_omitted_rather_than_empty(tmp_path):
+    """AP242 makes the description optional, and '$' is how a file says so.
+
+    Rejecting the record would lose the tolerance it states, silently.
+    """
+    path = _write(
+        tmp_path,
+        "#200=FLATNESS_TOLERANCE('flat',$,#201,#900);\n#201=LENGTH_MEASURE_WITH_UNIT(LENGTH_MEASURE(0.05),#10);",
+    )
+
+    assert tolerance_inspect.of_step_file(path) == pytest.approx(0.05)
+
+
+def test_an_omitted_name_as_well(tmp_path):
+    path = _write(
+        tmp_path,
+        "#200=FLATNESS_TOLERANCE($,$,#201,#900);\n#201=LENGTH_MEASURE_WITH_UNIT(LENGTH_MEASURE(0.05),#10);",
+    )
+
+    assert tolerance_inspect.of_step_file(path) == pytest.approx(0.05)
+
+
+def test_an_entity_that_is_not_a_geometric_tolerance_is_still_told_apart(tmp_path):
+    """What '$' buys must not cost the discrimination it was bought with.
+
+    'PLUS_MINUS_TOLERANCE' takes two references and 'MODIFIED_GEOMETRIC_
+    TOLERANCE' one enumeration; neither states a magnitude of its own, and
+    neither may be read as though it did.
+    """
+    path = _write(
+        tmp_path,
+        "#100=PLUS_MINUS_TOLERANCE(#101,#150);\n"
+        "#105=MODIFIED_GEOMETRIC_TOLERANCE(.MAXIMUM_MATERIAL_CONDITION.);\n"
+        "#106=POSITION_TOLERANCE();",
+    )
+
+    assert tolerance_inspect.of_step_file(path) is None
+
+
+def test_a_comment_holding_a_semicolon_does_not_end_a_record(tmp_path):
+    """Part 21 allows '/* ... */' wherever a separator is allowed."""
+    path = _write(
+        tmp_path,
+        "#200=FLATNESS_TOLERANCE(/* note 3; datum A */'','',#201,#900);\n"
+        "#201=LENGTH_MEASURE_WITH_UNIT(LENGTH_MEASURE(0.05),#10);",
+    )
+
+    assert tolerance_inspect.of_step_file(path) == pytest.approx(0.05)
+
+
+def test_a_tolerance_written_inside_a_comment_is_not_a_tolerance(tmp_path):
+    """It is text about the file, not a statement the file makes."""
+    path = _write(
+        tmp_path,
+        "/* was #200=FLATNESS_TOLERANCE('','',#201,#900); with\n"
+        "#201=LENGTH_MEASURE_WITH_UNIT(LENGTH_MEASURE(0.5),#10); until rev C */\n" + _flatness(210, "0.05"),
+    )
+
+    assert tolerance_inspect.of_step_file(path) == pytest.approx(0.05)
+
+
+def test_a_comment_delimiter_inside_a_string_opens_no_comment(tmp_path):
+    path = _write(
+        tmp_path,
+        "#200=FLATNESS_TOLERANCE('a /* b','c */ d',#201,#900);\n"
+        "#201=LENGTH_MEASURE_WITH_UNIT(LENGTH_MEASURE(0.05),#10);",
+    )
+
+    assert tolerance_inspect.of_step_file(path) == pytest.approx(0.05)
+
+
+@pytest.mark.parametrize("chunk", [1, 3, 9, 64])
+def test_a_comment_split_across_reads(tmp_path, monkeypatch, chunk):
+    monkeypatch.setattr(tolerance_inspect, "CHUNK", chunk)
+    path = _write(
+        tmp_path,
+        "/* a comment long enough to straddle a read; with a semicolon in it */\n" + _flatness(200, "0.05"),
+    )
+
+    assert tolerance_inspect.of_step_file(path) == pytest.approx(0.05)
+
+
 def test_a_file_that_is_not_there_states_nothing(tmp_path):
     """A 'kicad' part's STEP file does not exist until the part is built, and a
     part fetched from a URL not until it is downloaded. Neither is a tolerance,

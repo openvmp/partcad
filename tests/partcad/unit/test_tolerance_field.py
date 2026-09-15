@@ -22,6 +22,7 @@ type and not something each caller should work out again.
 
 import asyncio
 import math
+import pathlib
 
 import pytest
 import yaml
@@ -146,6 +147,46 @@ def test_a_non_numeric_tolerance_is_reported_and_treated_as_absent(tmp_path):
     assert _tolerance(part) == 0.0
 
 
+@pytest.mark.parametrize(
+    "declared",
+    [".nan", ".inf", "-.inf", "-5"],
+    ids=["nan", "infinity", "negative-infinity", "negative"],
+)
+def test_a_declared_tolerance_that_is_not_a_length_is_refused(tmp_path, declared):
+    """None of these is a tolerance anybody can be asked to hold.
+
+    YAML spells all four and 'float()' takes all four, so without a check a part
+    could declare its way past the manufacturability test: NaN is the answer
+    that means "tolerated feature by feature", which 'pc test' accepts, and an
+    infinite or negative value is neither zero nor NaN and so reads as a real
+    tolerance. Reported and treated as absent, like any other bad declaration.
+    """
+    pc.logging.reset_errors()
+    (tmp_path / "partcad.yaml").write_text("parts:\n  body:\n    type: step\n    tolerance: %s\n" % declared)
+    (tmp_path / "body.step").write_text(_step())
+
+    part = pc.Context(str(tmp_path)).get_part("//:body")
+
+    assert pc.logging.had_errors is True
+    assert _tolerance(part) == 0.0
+
+
+def test_a_declared_tolerance_of_zero_is_still_a_declaration(tmp_path):
+    """The check refuses what is not a length, not what is not useful.
+
+    0.0 is what "nobody said" reads as, and the CAM test is what has an opinion
+    about it; it is not this reader's to throw away.
+    """
+    pc.logging.reset_errors()
+    ctx = _write_package(tmp_path, {"body": _part("step", tolerance=0.0)}, contents={"body": _step(0.05)})
+
+    part = ctx.get_part("//:body")
+
+    assert pc.logging.had_errors is False
+    # Declared, so it outranks the 0.05 the file states.
+    assert _tolerance(part) == 0.0
+
+
 def test_a_step_part_that_says_nothing_anywhere_reads_back_as_nobody_said(tmp_path):
     """0.0, not None: this part could have said and did not."""
     ctx = _write_package(tmp_path, {"body": _part("step")}, contents={"body": _step()})
@@ -169,6 +210,44 @@ def test_the_declaration_outranks_the_file(tmp_path):
     ctx = _write_package(tmp_path, {"body": _part("step", tolerance=0.3)}, contents={"body": _step(0.05)})
 
     assert _tolerance(ctx.get_part("//:body")) == 0.3
+
+
+def test_the_file_is_prepared_before_it_is_read(tmp_path):
+    """A STEP file fetched from a URL is not on disk until it is downloaded.
+
+    'Shape.prepare_async()' is where the factory hangs that download - it is
+    "everything that has to happen before this shape's cache key means
+    anything" - so reading the file before it has run would report that a file
+    nobody had fetched yet states nothing, and have 'pc test' cache that answer
+    against the hash of a file that was never there.
+    """
+    ctx = _write_package(tmp_path, {"body": _part("step")})
+    part = ctx.get_part("//:body")
+    source = pathlib.Path(part.path)
+    source.unlink()
+
+    async def download(_self):
+        source.write_text(_step(0.05))
+
+    part._prepare = download
+    part._prepared = False
+
+    assert _tolerance(part) == 0.05
+
+
+def test_a_preparation_that_fails_leaves_the_file_stating_nothing(tmp_path):
+    """Not this reader's to report: whatever needs the file next says so."""
+    ctx = _write_package(tmp_path, {"body": _part("step")})
+    part = ctx.get_part("//:body")
+    pathlib.Path(part.path).unlink()
+
+    async def unreachable(_self):
+        raise RuntimeError("404")
+
+    part._prepare = unreachable
+    part._prepared = False
+
+    assert _tolerance(part) == 0.0
 
 
 def test_the_file_is_read_once(tmp_path, monkeypatch):

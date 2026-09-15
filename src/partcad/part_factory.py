@@ -7,6 +7,7 @@
 # Licensed under Apache License, Version 2.0.
 #
 
+import math
 import typing
 
 from . import factory
@@ -176,10 +177,20 @@ class PartFactory(ShapeFactory):
         """The 'tolerance:' the declaration carried, as a number, or None.
 
         None means nothing was declared, which is what leaves the file - and
-        after it the type's own default - to answer. A value that will not
-        coerce is reported and treated as absent, the way
+        after it the type's own default - to answer. A value that is not one is
+        reported and treated as absent, the way
         'ShapeConfiguration.get_object_type_parameter()' treats a non-numeric
         parameter: the declaration is wrong, not the part.
+
+        What counts as one is what the schema says: a finite number, not
+        negative. YAML spells NaN and the infinities ('.nan', '.inf'), and
+        'float()' takes all three, so without this a part could declare its way
+        past the manufacturability check - NaN is the answer that means "the
+        file tolerances this feature by feature", which 'pc test' accepts, and
+        an infinite or negative tolerance is neither zero nor NaN and so passes
+        as though it were a real one. None of the three is a tolerance anybody
+        can be asked to hold. NaN is 'tolerance_inspect.reduce()'s to produce,
+        and nothing else may.
         """
         if not isinstance(config, dict):
             return None
@@ -187,10 +198,14 @@ class PartFactory(ShapeFactory):
         if value is None:
             return None
         try:
-            return float(value)
+            tolerance = float(value)
         except (TypeError, ValueError):
             pc_logging.error("Part '%s' has a non-numeric 'tolerance': %r" % (config.get("name"), value))
             return None
+        if not math.isfinite(tolerance) or tolerance < 0.0:
+            pc_logging.error("Part '%s' has a 'tolerance' that is not a length: %r" % (config.get("name"), value))
+            return None
+        return tolerance
 
     def object_type_parameter_names(self) -> list:
         """The object-type parameter names this part's type contributes.

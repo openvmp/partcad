@@ -238,6 +238,12 @@ def _boundary(buffer):
     half of the doubled quote that stands for one inside it, and there is no way
     to tell until the next block arrives - so this stops rather than guessing,
     and the same bytes are looked at again with more of them to hand.
+
+    Comments are stepped over for the same reason a string is: Part 21 allows
+    '/* ... */' wherever a separator is allowed, and the ';' one may hold ends
+    nothing. Which of the three comes first is what decides how the next stretch
+    is read - a quote inside a comment is not a string, and a '/*' inside a
+    string is not a comment.
     """
     cut = 0
     i = 0
@@ -245,16 +251,66 @@ def _boundary(buffer):
     while i < length:
         quote = buffer.find(b"'", i)
         semicolon = buffer.find(b";", i)
+        comment = buffer.find(b"/*", i)
         if semicolon < 0:
             break
-        if quote < 0 or semicolon < quote:
-            cut = semicolon + 1
-            i = semicolon + 1
+        if 0 <= quote < semicolon and (comment < 0 or quote < comment):
+            i = _end_of_string(buffer, quote)
+            if i < 0:
+                break
             continue
-        i = _end_of_string(buffer, quote)
-        if i < 0:
-            break
+        if 0 <= comment < semicolon:
+            end = buffer.find(b"*/", comment + 2)
+            if end < 0:
+                # The comment has not closed in what has arrived.
+                break
+            i = end + 2
+            continue
+        cut = semicolon + 1
+        i = semicolon + 1
     return cut
+
+
+def _without_comments(block):
+    """'block' with its Part 21 comments taken out.
+
+    What is inside one means nothing, and every regular expression below would
+    read it as though it did: a comment may hold a semicolon, or text shaped
+    like an entity. Removing them once is cheaper than teaching each pattern to
+    ignore them, and the common case costs a single scan - a block with no '/*'
+    in it is handed straight back.
+
+    A '/*' inside a quoted string opens nothing, which is why this walks the
+    strings rather than looking only for the delimiters.
+    """
+    if block.find(b"/*") < 0:
+        return block
+
+    kept = []
+    start = 0
+    i = 0
+    length = len(block)
+    while i < length:
+        quote = block.find(b"'", i)
+        comment = block.find(b"/*", i)
+        if comment < 0:
+            break
+        if 0 <= quote < comment:
+            end = _end_of_string(block, quote)
+            if end < 0:
+                break
+            i = end
+            continue
+        kept.append(block[start:comment])
+        end = block.find(b"*/", comment + 2)
+        if end < 0:
+            # Unterminated, so the rest of the block is inside it.
+            start = length
+            break
+        start = end + 2
+        i = start
+    kept.append(block[start:])
+    return b"".join(kept)
 
 
 def _end_of_string(buffer, start):
@@ -274,9 +330,17 @@ def _end_of_string(buffer, start):
 
 
 def _read_block(block, measures, units, tolerance_values, magnitudes):
-    """Take what a block of whole records says, if it says anything at all."""
+    """Take what a block of whole records says, if it says anything at all.
+
+    The keywords are looked for before the comments are taken out, so that the
+    block a file with no GD&T in it is made of costs one scan rather than two.
+    A block that is interesting only because of what a comment says then pays
+    for a strip and finds nothing, which is the right answer arrived at the
+    slower way round.
+    """
     if not any(keyword in block for keyword in _KEYWORDS):
         return
+    block = _without_comments(block)
 
     for match in _MEASURE.finditer(block):
         try:
@@ -324,12 +388,26 @@ def _geometric_magnitude(block, start):
     arguments = _arguments(block, start)
     if arguments is None or len(arguments) < 4:
         return None
-    if not arguments[0].startswith(b"'") or not arguments[1].startswith(b"'"):
+    if not _is_text_or_omitted(arguments[0]) or not _is_text_or_omitted(arguments[1]):
         return None
     reference = _REFERENCE.match(arguments[2])
     if reference is None:
         return None
     return int(reference.group(1))
+
+
+def _is_text_or_omitted(argument):
+    """Whether an argument is a Part 21 string, or the '$' that stands for none.
+
+    A tolerance's description is optional in AP242 and a file is free to write
+    '$' for it rather than an empty string, so insisting on a quote there would
+    reject a valid record and lose the tolerance it states - silently, which is
+    the worst way to lose one. The name is allowed the same spelling: it costs
+    nothing, and what tells a geometric tolerance apart from the other entities
+    ending in 'TOLERANCE' is the rest of the shape of the list - four arguments
+    or more, with a reference third.
+    """
+    return argument == b"$" or argument.startswith(b"'")
 
 
 def _arguments(block, start):

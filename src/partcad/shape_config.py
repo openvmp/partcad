@@ -231,11 +231,36 @@ class ShapeConfiguration:
         return None
 
     async def _get_file_tolerance(self):
-        """What this object's file states about its tolerance, read once."""
+        """What this object's file states about its tolerance, read once.
+
+        The file is prepared first, where the object has a way to prepare one.
+        'Shape.prepare_async()' is "everything that has to happen before this
+        shape's cache key means anything", and a 'fileFrom' download is the
+        whole of it for a file-backed part: without this, a STEP file fetched
+        from a URL would be read before it was there, report that it states
+        nothing, and have the answer cached against a hash of a file that had
+        never been downloaded. It is idempotent and costs nothing for a file the
+        package carries.
+
+        It does not make a 'kicad' part's STEP file appear - that is generated
+        while the part is built, not while it is prepared - and it is not meant
+        to. What kicad-cli writes carries no GD&T for this to find, so the field
+        is that type's answer and the absent file is the right "nothing".
+        """
         if self.tolerance_file_format is None:
             return None
         if self._tolerance_from_file is not _NOT_READ:
             return self._tolerance_from_file
+
+        prepare = getattr(self, "prepare_async", None)
+        if prepare is not None:
+            try:
+                await prepare()
+            except Exception as e:  # pylint: disable=broad-except
+                # Not this reader's to report: a file that cannot be fetched
+                # fails the object wherever it is next needed, with the reason.
+                # Here it is simply a file that is not there.
+                pc_logging.debug("Could not prepare %s to read its tolerance: %s" % (self.name, e))
 
         path = getattr(self, "path", None)
         value = await asyncio.to_thread(tolerance_inspect.of_file, self.tolerance_file_format, path)
