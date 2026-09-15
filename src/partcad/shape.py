@@ -1427,12 +1427,30 @@ class Shape(ShapeConfiguration):
         project: Optional[Project] = None,
         filepath=None,
         options_package: Optional[str] = None,
+        options_project: Optional[Project] = None,
         output_dir=None,
         overlay=None,
         **kwargs,
     ) -> None:
+        # By keyword, every one of them. 'render_async' grew an
+        # 'options_project' parameter between 'options_package' and
+        # 'output_dir', and a positional forwarding here handed 'output_dir' to
+        # it and 'overlay' to 'output_dir' - so a caller that named
+        # 'output_dir=' got a string where '_output_getopts' reads
+        # '.config_obj' off a package. Nothing in the signature above can drift
+        # away from the one below while the names are what is passed.
         asyncio.run(
-            self.render_async(ctx, format_name, project, filepath, options_package, output_dir, overlay, **kwargs)
+            self.render_async(
+                ctx,
+                format_name,
+                project=project,
+                filepath=filepath,
+                options_package=options_package,
+                options_project=options_project,
+                output_dir=output_dir,
+                overlay=overlay,
+                **kwargs,
+            )
         )
 
     # ------------------------------------------------------------------ #
@@ -2152,7 +2170,19 @@ class Shape(ShapeConfiguration):
         **kwargs,
     ) -> dict:
         """'route_async' for a caller that has no event loop of its own."""
-        return asyncio.run(self.route_async(ctx, implementation, project, filepath, output_dir, **kwargs))
+        # By keyword, for the reason 'render' carries at length: a parameter
+        # added to the middle of 'route_async' would otherwise silently
+        # re-address every argument after it here.
+        return asyncio.run(
+            self.route_async(
+                ctx,
+                implementation=implementation,
+                project=project,
+                filepath=filepath,
+                output_dir=output_dir,
+                **kwargs,
+            )
+        )
 
     async def render_svg_somewhere_async(
         self,

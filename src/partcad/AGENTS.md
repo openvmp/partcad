@@ -136,11 +136,11 @@ at all).
   `_validate_output_format()` rejected it before resolving it. Anything else that grows such a list needs the
   same treatment — "which types can I write" is a question a path has already answered.
 
-- **Built-in packages** (`./src/partcad/builtin`): PartCAD ships five packages inside itself, reachable from
-  every context as `//builtin/export`, `//builtin/render`, `//builtin/import`, `//builtin/open` and
-  `//builtin/scene` (loaded
-  on demand by `Context.get_project`, see `output.py`). The first two declare implementations — the file
-  types `pc export` and `pc render` write — in
+- **Built-in packages** (`./src/partcad/builtin`): PartCAD ships six packages inside itself, reachable from
+  every context as `//builtin/export`, `//builtin/render`, `//builtin/import`, `//builtin/open`,
+  `//builtin/cam` and `//builtin/scene` (loaded
+  on demand by `Context.get_project`, see `output.py`). All but the last declare implementations — the file
+  types `pc export`, `pc render`, `pc import`, `pc open` and `pc cam` write — in
   exactly the form a user's package declares one: a `path` to a script, its `pythonRequirements`, and the
   parameters. So adding a
   format, changing its defaults or changing which dependencies it needs is an edit to `builtin/*/partcad.yaml`, not

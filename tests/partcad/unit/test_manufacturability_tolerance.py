@@ -181,8 +181,8 @@ def test_a_declared_tolerance_outranks_the_file(tmp_path):
     assert _failure(part) is None
 
 
-def test_the_cam_test_reports_a_missing_tolerance_against_the_part(tmp_path, monkeypatch):
-    """Reported through Test.failed(), like every other CAM failure."""
+def test_the_manufacturability_check_reports_a_missing_tolerance_against_the_part(tmp_path, monkeypatch):
+    """Reported through Test.failed(), like every other manufacturability failure."""
     recorded = _record_errors(monkeypatch)
     ctx = _package(tmp_path, {"body": _made_part()})
     part = ctx.get_part("//:body")

@@ -238,12 +238,13 @@ def test_a_tolerance_parameter_that_is_a_length_still_reads_back(tmp_path):
     assert pc.logging.had_errors is False
 
 
-def test_only_a_file_can_produce_the_nan_the_cam_test_accepts(tmp_path):
+def test_only_a_file_can_produce_the_nan_the_manufacturability_check_accepts(tmp_path):
     """The invariant the two rules above exist to protect.
 
     NaN means "the file tolerances this part feature by feature". Nothing a
-    declaration can write may mint one, on either path, or the CAM test would
-    pass a part on the strength of a sentence no file said.
+    declaration can write may mint one, on either path, or the
+    manufacturability check would pass a part on the strength of a sentence no
+    file said.
     """
     tolerated = _step(0.05, 0.2)
     ctx = _write_package(
@@ -261,8 +262,8 @@ def test_only_a_file_can_produce_the_nan_the_cam_test_accepts(tmp_path):
 def test_a_declared_tolerance_of_zero_is_still_a_declaration(tmp_path):
     """The check refuses what is not a length, not what is not useful.
 
-    0.0 is what "nobody said" reads as, and the CAM test is what has an opinion
-    about it; it is not this reader's to throw away.
+    0.0 is what "nobody said" reads as, and the manufacturability check is what
+    has an opinion about it; it is not this reader's to throw away.
     """
     pc.logging.reset_errors()
     ctx = _write_package(tmp_path, {"body": _part("step", tolerance=0.0)}, contents={"body": _step(0.05)})

@@ -313,6 +313,7 @@ OPTION_KEYS = (
     "useDockerKicad",
     "caeFeaImplementation",
     "caeCfdImplementation",
+    "camImplementation",
     "tags",
 )
 
