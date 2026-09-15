@@ -1,33 +1,39 @@
 desc: >
-  This example demonstrates a part that is made by bending a flat piece of sheet
-  metal. One drawing holds both halves of that -- the outline the blank is cut
-  to, and the lines it is bent along -- and each half is read out of it by the
-  layers the reference asks for.
+  This example demonstrates parts that are made by bending a flat piece of sheet
+  metal. One drawing holds all of it -- the outline the blank is cut to, and the
+  lines it may be bent along -- and each part reads the layers it needs out of
+  that one drawing. The same blank folded at two lines is a Z; folded at the one
+  in the middle it is an L.
 
 docs:
   usage: |
     ```shell
     pc inspect blank
     pc inspect bracket
-    pc test -f cam-sheet-metal bracket
+    pc inspect corner
+    pc test -f cam-sheet-metal
     ```
 
     The drawing's bend lines carry their angle, inner radius and direction in
-    the file's extended data (XDATA), which `pc test` reads off the sketch:
+    the file's extended data (XDATA), which `pc test` reads off the sketch. Each
+    reference is a sketch of its own, with its own geometry and its own file:
 
     ```shell
     pc inspect -s 'panel;include=BEND_UP,BEND_DOWN'
+    pc inspect -s 'panel;include=BEND_MID'
+    pc render -s -t svg 'panel;include=OUTLINE'
     ```
 
 sketches:
   panel:
     type: dxf
     desc: >
-      The drawing, on three layers. `OUTLINE` is the flat pattern; `BEND_UP` and
-      `BEND_DOWN` each hold one line, annotated in the file's extended data
-      (XDATA) with the angle, the inner radius and the direction of the bend
-      along it. Which of the three a reader gets is the `include` parameter's to
-      say, so this is one sketch and not three.
+      The drawing, on four layers. `OUTLINE` is the flat pattern; `BEND_UP`,
+      `BEND_DOWN` and `BEND_MID` each hold one line, annotated in the file's
+      extended data (XDATA) with the angle, the inner radius and the direction
+      of the bend along it -- the direction is what the annotation says, not
+      what the layer is called. Which layers a reader gets is the `include`
+      parameter's to say, so this is one sketch and not four.
 
 parts:
   blank:
@@ -47,14 +53,27 @@ parts:
   bracket:
     type: build123d
     desc: >
-      The blank, bent. `source` names what goes into the brake and
-      `instructions` the two bend lines of the same drawing, selected by their
-      layers. Nothing about the outline is restated here: it belongs to the
-      blank, and this declaration is only what the brake does to it.
+      The blank, bent at two lines into a Z. `source` names what goes into the
+      brake and `instructions` the bend lines of the same drawing, selected by
+      their layers. Nothing about the outline is restated here: it belongs to
+      the blank, and this declaration is only what the brake does to it.
     manufacturing:
       method: sheet_metal
       source: blank
       instructions: panel;include=BEND_UP,BEND_DOWN
+    parameters:
+      tolerance: 0.1
+
+  corner:
+    type: build123d
+    desc: >
+      The same blank, bent at one line into an L. It differs from `bracket` in
+      nothing but which layer its `instructions` select, which is what makes
+      one drawing worth having instead of three.
+    manufacturing:
+      method: sheet_metal
+      source: blank
+      instructions: panel;include=BEND_MID
     parameters:
       tolerance: 0.1
 

@@ -111,6 +111,7 @@ Feature: `pc inspect` command
     | package | part |
     | /produce_part_build123d_primitive | cube |
     | /produce_part_sheet_metal | bracket |
+    | /produce_part_sheet_metal | corner |
 
   @sdf
   Examples: Part: sdf
