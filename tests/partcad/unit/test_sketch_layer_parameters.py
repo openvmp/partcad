@@ -112,18 +112,18 @@ def test_each_set_of_layers_is_a_sketch_of_its_own(tmp_path):
     ctx = _package(tmp_path, {"panel": {"type": "dxf"}})
     sketches = [
         ctx.get_sketch("//test:panel"),
-        ctx.get_sketch("//test:panel;include=OUTLINE"),
+        ctx.get_sketch("//test:panel;include=BEND_UP"),
+        ctx.get_sketch("//test:panel;include=BEND_DOWN"),
         ctx.get_sketch("//test:panel;include=BEND_UP,BEND_DOWN"),
-        ctx.get_sketch("//test:panel;include=BEND_MID"),
     ]
     assert all(sketches)
     assert len({s.name for s in sketches}) == len(sketches)
     assert len({s.hash.get() for s in sketches}) == len(sketches)
     assert [_layers(s, "include") for s in sketches] == [
         [],
-        ["OUTLINE"],
+        ["BEND_UP"],
+        ["BEND_DOWN"],
         ["BEND_UP", "BEND_DOWN"],
-        ["BEND_MID"],
     ]
 
 
@@ -131,7 +131,7 @@ def test_each_set_of_layers_renders_to_a_file_of_its_own(tmp_path):
     """...and the file each is written to is its own too.
 
     The parameters are part of the object's name, so they are part of the file
-    named after it - 'panel;include=BEND_MID.svg'. Both characters are legal in
+    named after it - 'panel;include=BEND_UP.svg'. Both characters are legal in
     a filename on every platform PartCAD runs on ('/' and ':' are the ones that
     are not, and neither can appear in an object name). Without this, two
     readings of one drawing would overwrite each other's projection, and the
@@ -142,17 +142,17 @@ def test_each_set_of_layers_renders_to_a_file_of_its_own(tmp_path):
         ctx.get_sketch(ref)._output_filepath({}, str(tmp_path), ".svg")
         for ref in (
             "//test:panel",
-            "//test:panel;include=OUTLINE",
+            "//test:panel;include=BEND_UP",
+            "//test:panel;include=BEND_DOWN",
             "//test:panel;include=BEND_UP,BEND_DOWN",
-            "//test:panel;include=BEND_MID",
         )
     ]
     assert len(set(paths)) == len(paths)
     assert [os.path.basename(path) for path in paths] == [
         "panel.svg",
-        "panel;include=OUTLINE.svg",
+        "panel;include=BEND_UP.svg",
+        "panel;include=BEND_DOWN.svg",
         "panel;include=BEND_UP,BEND_DOWN.svg",
-        "panel;include=BEND_MID.svg",
     ]
 
 

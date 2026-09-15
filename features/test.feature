@@ -343,12 +343,13 @@ Feature: `pc test` command
   @success @pc-test @pc-test-sheet-metal
   Scenario: The sheet metal example passes its own check
     # End to end, over 'examples/produce_part_sheet_metal': the drawing is a DXF
-    # of a closed outline and three open bend lines, so the blank is extruded
-    # from the one layer and each part's instructions are read as the wires the
+    # of a closed outline and two open bend lines, so the blank is extruded from
+    # the outline layer and each part's instructions are read as the wires the
     # layers it selects draw; the angle, radius and direction of every bend come
     # out of the file's XDATA; and the blank is measured for being flat on top
-    # and bottom. Two parts are folded from that one blank, so this also covers
-    # two readings of one drawing being two sketches.
+    # and bottom. Three parts are folded from that one blank - at one bend line,
+    # at the other, and at both - so this covers three readings of one drawing
+    # being three sketches.
     When I run "pc --no-ansi -p $PARTCAD_ROOT/examples test --package //produce_part_sheet_metal -f cam-sheet-metal"
     Then the command should exit with a status code of "0"
     And STDERR should not contain "ERROR:"

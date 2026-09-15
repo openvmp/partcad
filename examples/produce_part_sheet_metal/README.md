@@ -1,27 +1,50 @@
 # //pub/examples/partcad/produce_part_sheet_metal
 
-This example demonstrates parts that are made by bending a flat piece of sheet metal. One drawing holds all of it -- the outline the blank is cut to, and the lines it may be bent along -- and each part reads the layers it needs out of that one drawing. The same blank folded at two lines is a Z; folded at the one in the middle it is an L.
+This example demonstrates parts that are made by bending a flat piece of sheet metal. One drawing holds all of it -- the outline the blank is cut to, and the two lines it may be bent along -- and each part says which of those lines it is folded at. Fold the blank at the first, at the second, or at both, and you have three different parts out of one blank and one drawing.
 
 ## Usage
 ```shell
 pc inspect blank
+pc inspect angle_up
+pc inspect angle_down
 pc inspect bracket
-pc inspect corner
 pc test -f cam-sheet-metal
 ```
 
-The drawing's bend lines carry their angle, inner radius and direction in
-the file's extended data (XDATA), which `pc test` reads off the sketch. Each
-reference is a sketch of its own, with its own geometry and its own file:
+Each part's `instructions` are a reading of the one drawing, and each reading
+is a sketch of its own -- its own geometry, its own cache entry, its own
+file:
 
 ```shell
+pc inspect -s 'panel;include=BEND_UP'
+pc inspect -s 'panel;include=BEND_DOWN'
 pc inspect -s 'panel;include=BEND_UP,BEND_DOWN'
-pc inspect -s 'panel;include=BEND_MID'
-pc render -s -t svg 'panel;include=OUTLINE'
 ```
 
 
 ## Parts
+
+### angle_down
+<table><tr>
+<td valign=top><a href="angle_down.py"><img src="././angle_down.svg" alt="angle_down" style="width: auto; height: auto; max-width: 200px; max-height: 200px;"></a></td>
+<td valign=top>The same blank folded at `BEND_DOWN` alone, into an L with a short leg hanging down. It differs from `angle_up` in nothing but which layer its `instructions` select.
+</td>
+<td valign=top>Parameters:<br/><ul>
+<li>tolerance: 0.1</li>
+</ul>
+</td>
+</tr></table>
+
+### angle_up
+<table><tr>
+<td valign=top><a href="angle_up.py"><img src="././angle_up.svg" alt="angle_up" style="width: auto; height: auto; max-width: 200px; max-height: 200px;"></a></td>
+<td valign=top>The blank folded at `BEND_UP` alone, into an L with a short leg standing up. `source` names what goes into the brake and `instructions` the one bend line it is folded at.
+</td>
+<td valign=top>Parameters:<br/><ul>
+<li>tolerance: 0.1</li>
+</ul>
+</td>
+</tr></table>
 
 ### blank
 <table><tr>
@@ -37,18 +60,7 @@ pc render -s -t svg 'panel;include=OUTLINE'
 ### bracket
 <table><tr>
 <td valign=top><a href="bracket.py"><img src="././bracket.svg" alt="bracket" style="width: auto; height: auto; max-width: 200px; max-height: 200px;"></a></td>
-<td valign=top>The blank, bent at two lines into a Z. `source` names what goes into the brake and `instructions` the bend lines of the same drawing, selected by their layers. Nothing about the outline is restated here: it belongs to the blank, and this declaration is only what the brake does to it.
-</td>
-<td valign=top>Parameters:<br/><ul>
-<li>tolerance: 0.1</li>
-</ul>
-</td>
-</tr></table>
-
-### corner
-<table><tr>
-<td valign=top><a href="corner.py"><img src="././corner.svg" alt="corner" style="width: auto; height: auto; max-width: 200px; max-height: 200px;"></a></td>
-<td valign=top>The same blank, bent at one line into an L. It differs from `bracket` in nothing but which layer its `instructions` select, which is what makes one drawing worth having instead of three.
+<td valign=top>The same blank again, folded at both bend lines -- up at the first and down at the second -- into a Z. Nothing about the outline is restated in any of the three: it belongs to the blank, and these declarations are only what the brake does to it.
 </td>
 <td valign=top>Parameters:<br/><ul>
 <li>tolerance: 0.1</li>
@@ -61,7 +73,7 @@ pc render -s -t svg 'panel;include=OUTLINE'
 ### panel
 <table><tr>
 <td valign=top><a href="panel.dxf"><img src="././panel.svg" alt="panel" style="width: auto; height: auto; max-width: 200px; max-height: 200px;"></a></td>
-<td valign=top>The drawing, on four layers. `OUTLINE` is the flat pattern; `BEND_UP`, `BEND_DOWN` and `BEND_MID` each hold one line, annotated in the file's extended data (XDATA) with the angle, the inner radius and the direction of the bend along it -- the direction is what the annotation says, not what the layer is called. Which layers a reader gets is the `include` parameter's to say, so this is one sketch and not four.
+<td valign=top>The drawing, on three layers. `OUTLINE` is the flat pattern the blank is cut to; `BEND_UP` and `BEND_DOWN` hold one bend line each, annotated in the file's extended data (XDATA) with the angle, the inner radius and the direction of the bend along it. Which layers a reader gets is the `include` parameter's to say, so this is one sketch and not three.
 </td>
 </tr></table>
 

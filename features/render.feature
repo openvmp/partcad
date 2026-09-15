@@ -9,24 +9,25 @@ Feature: `pc render` command
   @success @pc-render @pc-render-parametrized
   Scenario: Each reading of one drawing renders to a file of its own
     # A sketch read with particular parameter values is an object of its own -
-    # 'examples/produce_part_sheet_metal' holds one DXF and takes three readings
-    # of it, of two layers and of one layer each - and the file each is written
-    # to is named after it, parameters and all. Both ';' and '=' are legal in a
-    # filename everywhere PartCAD runs; '/' and ':' are the ones that are not,
-    # and neither can appear in an object name.
+    # 'examples/produce_part_sheet_metal' holds one DXF with two bend lines on
+    # two layers, and three parts read it: one folded at each line, and one
+    # folded at both - and the file each reading is written to is named after
+    # it, parameters and all. Both ';' and '=' are legal in a filename
+    # everywhere PartCAD runs; '/' and ':' are the ones that are not, and
+    # neither can appear in an object name.
     #
     # What this rules out is the two ways it could go wrong: a reading that
     # writes nothing, and readings that write over each other or over the
     # projection of the drawing itself.
-    When I run "pc --no-ansi -p $PARTCAD_ROOT/examples render --package //produce_part_sheet_metal -t svg -O ./ -s ':panel;include=OUTLINE'"
+    When I run "pc --no-ansi -p $PARTCAD_ROOT/examples render --package //produce_part_sheet_metal -t svg -O ./ -s ':panel;include=BEND_UP'"
+    Then the command should exit with a status code of "0"
+    When I run "pc --no-ansi -p $PARTCAD_ROOT/examples render --package //produce_part_sheet_metal -t svg -O ./ -s ':panel;include=BEND_DOWN'"
     Then the command should exit with a status code of "0"
     When I run "pc --no-ansi -p $PARTCAD_ROOT/examples render --package //produce_part_sheet_metal -t svg -O ./ -s ':panel;include=BEND_UP,BEND_DOWN'"
     Then the command should exit with a status code of "0"
-    When I run "pc --no-ansi -p $PARTCAD_ROOT/examples render --package //produce_part_sheet_metal -t svg -O ./ -s ':panel;include=BEND_MID'"
-    Then the command should exit with a status code of "0"
-    Then a file named "panel;include=OUTLINE.svg" should be created
+    Then a file named "panel;include=BEND_UP.svg" should be created
+    And a file named "panel;include=BEND_DOWN.svg" should be created
     And a file named "panel;include=BEND_UP,BEND_DOWN.svg" should be created
-    And a file named "panel;include=BEND_MID.svg" should be created
     # Nobody asked for the drawing itself, and nothing wrote it: a reading that
     # lost its parameters on the way to a filename would have landed here.
     And a file named "panel.svg" should not exist

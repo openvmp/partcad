@@ -59,12 +59,6 @@ def _drawing(tmp_path, name="bends.dxf"):
         [(1000, "angle"), (1040, 30.0), (1000, "radius"), (1040, 2.0), (1000, "direction"), (1000, "down")],
     )
 
-    # A third bend line, on a layer of its own: two of the three are what one
-    # part is folded at and the third is what another is, which is the case the
-    # layer filters exist for.
-    mid = modelspace.add_line((5, 0), (5, 5), dxfattribs={"layer": "BEND_MID"})
-    mid.set_xdata("PARTCAD", [(1000, "angle=90"), (1000, "radius=2"), (1000, "direction=up")])
-
     modelspace.add_lwpolyline([(0, -2), (10, -2), (10, 8), (0, 8)], close=True, dxfattribs={"layer": "OUTLINE"})
 
     path = str(tmp_path / name)
@@ -131,14 +125,14 @@ def test_the_layer_filters_decide_which_elements_are_described(tmp_path):
     included = dxf_metadata.read(path, include=["BEND_UP", "BEND_DOWN"])
     assert sorted(a["layer"] for a in included) == ["BEND_DOWN", "BEND_UP"]
 
-    excluded = dxf_metadata.read(path, exclude=["OUTLINE", "BEND_MID"])
+    excluded = dxf_metadata.read(path, exclude=["OUTLINE"])
     assert sorted(a["layer"] for a in excluded) == ["BEND_DOWN", "BEND_UP"]
 
-    assert len(dxf_metadata.read(path)) == 4
+    assert len(dxf_metadata.read(path)) == 3
 
 
 def test_each_selection_of_layers_describes_its_own_elements(tmp_path):
-    """Two layers in one reading, one layer in each of two others, all different.
+    """One layer, the other layer, and the two together - three different answers.
 
     The drawing is read once per reference that asks for it, and each reading
     has to answer for the elements *it* selected: a bend line the reference left
@@ -146,15 +140,15 @@ def test_each_selection_of_layers_describes_its_own_elements(tmp_path):
     """
     path = _drawing(tmp_path)
     readings = [
+        dxf_metadata.read(path, include=["BEND_UP"]),
+        dxf_metadata.read(path, include=["BEND_DOWN"]),
         dxf_metadata.read(path, include=["BEND_UP", "BEND_DOWN"]),
-        dxf_metadata.read(path, include=["BEND_MID"]),
-        dxf_metadata.read(path, include=["OUTLINE"]),
     ]
-    assert [len(reading) for reading in readings] == [2, 1, 1]
+    assert [len(reading) for reading in readings] == [1, 1, 2]
     assert [sorted(a["layer"] for a in reading) for reading in readings] == [
+        ["BEND_UP"],
+        ["BEND_DOWN"],
         ["BEND_DOWN", "BEND_UP"],
-        ["BEND_MID"],
-        ["OUTLINE"],
     ]
     # Distinct down to the handles, so no reading is another one's answer.
     handles = [tuple(sorted(a["handle"] for a in reading)) for reading in readings]

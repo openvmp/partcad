@@ -2250,11 +2250,10 @@ question for the day PartCAD bends the blank itself; until then the part is what
 its own type built, and these are the manufacturing inputs beside it.
 
 ``examples/produce_part_sheet_metal`` is the whole of the above in one package:
-one DXF holding the flat pattern and three bend lines, a blank extruded from the
-outline layer, and two parts folded from that one blank -- a Z from the pair of
-bend lines and an L from the one in the middle. They differ in nothing but which
-layers their ``instructions`` select, which is the case the layer parameters
-exist for.
+one DXF holding the flat pattern and two bend lines, a blank extruded from the
+outline layer, and three parts folded from that one blank -- at one bend line,
+at the other, and at both. They differ in nothing but which layers their
+``instructions`` select, which is the case the layer parameters exist for.
 
 .. _procurement:
 
