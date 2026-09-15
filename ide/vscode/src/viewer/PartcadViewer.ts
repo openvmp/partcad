@@ -291,6 +291,10 @@ export class PartcadViewer implements vscode.Disposable {
 							<div id="viewer" class="viewer">
 								<div id="overlay" class="overlay">Nothing to display yet.</div>
 								<div id="label" class="label"></div>
+								<div class="viewer-controls">
+									<label class="control-label"><input type="checkbox" id="animate-checkbox" checked> Animate</label>
+									<label class="control-label">Opacity: <input type="range" id="opacity-slider" min="0" max="100" value="100" class="opacity-slider"><span id="opacity-value">100%</span></label>
+								</div>
 							</div>
 						</div>
 						<div id="pane-bom" class="pane" hidden></div>
