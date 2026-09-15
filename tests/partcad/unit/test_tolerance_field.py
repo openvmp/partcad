@@ -204,9 +204,9 @@ def test_the_tolerance_parameter_is_held_to_the_same_rule_as_the_field(tmp_path,
     The same four spellings reach 'get_object_type_parameter()', whose
     coercion turns 'True' into 1.0 and passes NaN, the infinities and negatives
     straight through. NaN is the one that has to be stopped rather than merely
-    tidied: 'CamTest.tolerance_failure()' takes a NaN to mean "the file
-    tolerances this feature by feature" and passes it, so a NaN a declaration
-    produced would be reported as something no file ever said.
+    tidied: 'ManufacturabilityTest.tolerance_failure()' takes a NaN to mean "the
+    file tolerances this feature by feature" and passes it, so a NaN a
+    declaration produced would be reported as something no file ever said.
     """
     pc.logging.reset_errors()
     (tmp_path / "partcad.yaml").write_text(

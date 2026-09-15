@@ -267,11 +267,11 @@ Feature: `pc test` command
       ENDSEC;
       END-ISO-10303-21;
       """
-    When I run "pc test -f cam"
+    When I run "pc test -f manufacturability"
     Then the command should exit with a status code of "1"
-    And STDOUT should contain "//:plain: cam: No manufacturing tolerance is specified"
-    And STDOUT should contain "//:bracket: cam: No suppliers found"
-    And STDOUT should contain "//:tolerated: cam: No suppliers found"
+    And STDOUT should contain "//:plain: manufacturability: No manufacturing tolerance is specified"
+    And STDOUT should contain "//:bracket: manufacturability: No suppliers found"
+    And STDOUT should contain "//:tolerated: manufacturability: No suppliers found"
 
   @wip
   Scenario: Test with invalid configuration
