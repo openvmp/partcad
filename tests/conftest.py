@@ -16,7 +16,7 @@ from partcad_utils import container_image
 
 @pytest.fixture
 def no_image_tag_override(monkeypatch):
-    """Run this test as an installed PartCAD does: with no `PC_CONTAINER_IMAGE_TAG`.
+    """Run this test as an installed PartCAD does: with neither image override set.
 
     A test that spells out what PartCAD's own container images are *called* --
     `<image>:<release>` and nothing more -- is asserting the answer
@@ -40,5 +40,15 @@ def no_image_tag_override(monkeypatch):
     To reproduce a CI run that rebuilt the images::
 
         PC_CONTAINER_IMAGE_TAG=0.8.72-some-branch poetry run pytest tests
+
+    And a fork's run, which redirects the owner as well::
+
+        PC_CONTAINER_IMAGE_OWNER=someone poetry run pytest tests
     """
     monkeypatch.delenv(container_image.ENV_VAR, raising=False)
+    # And the owner, which is the same exposure one segment to the left: a fork
+    # that built its own images exports it, so a test spelling out
+    # "ghcr.io/partcad/..." passes here and fails there. Both go together --
+    # a test that wants "the release's image" wants the whole reference, not
+    # the tag half of it.
+    monkeypatch.delenv(container_image.ENV_VAR_OWNER, raising=False)
