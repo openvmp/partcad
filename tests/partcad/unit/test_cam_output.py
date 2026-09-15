@@ -285,3 +285,149 @@ def test_an_object_with_no_section_says_so_by_name(package):
     with pytest.raises(cam.CamConfigError) as raised:
         asyncio.run(part.route_async(package))
     assert "//cam-test:plain declares no 'cam:' section" in str(raised.value)
+
+
+# --------------------------------------------------------------------------- #
+# The `cam` check `pc test` runs                                              #
+# --------------------------------------------------------------------------- #
+#
+# `CamTest` asks one question -- produce the route, and see whether one comes
+# back -- so what is worth testing is the three ways that can end and the cache
+# key that decides when it is asked again. The route itself is
+# `test_cam_gcode.py`'s subject; here `route_async` is replaced, because what
+# this check does with an answer is the whole of it.
+
+
+def _cam_check():
+    from partcad.test.cam import CamTest
+
+    return CamTest()
+
+
+def test_the_check_is_selected_by_its_own_name():
+    """`pc test -f` filters by name prefix, and nothing else starts with `cam`.
+
+    It is the half of the rename that makes the split usable: `-f
+    manufacturability` selects that check and its three siblings, `-f cam`
+    selects this one alone.
+    """
+    from partcad.test.all import tests as all_tests
+
+    names = [test.name for test in all_tests(4)]
+    assert "cam" in names
+    assert [name for name in names if name.startswith("cam")] == ["cam"]
+    assert sorted(name for name in names if name.startswith("manufacturability")) == [
+        "manufacturability",
+        "manufacturability-additive",
+        "manufacturability-forming",
+        "manufacturability-subtractive",
+    ]
+
+
+def test_an_object_that_declares_nothing_is_not_this_check_s_business(package):
+    """Declaring `cam:` is how a user says "check this one".
+
+    Without that, `pc test -r` over a package tree would start a CAD sandbox for
+    every bolt in it, and a bolt has no outline a machine could follow.
+    """
+    check = _cam_check()
+    part = _part(package, "plain")
+    assert check._config(part) is None
+    assert asyncio.run(check.test([], package, part)) is check.TEST_PASSED
+    # Nothing was asked, so there is nothing to remember about it either.
+    assert check.cache_key_suffix(package, part) == ""
+
+
+def test_a_malformed_section_fails_the_object_rather_than_crashing(package):
+    """The object asked to be cut and got the request wrong, which is a failure
+    of the package -- said here so a user finds out without running `pc cam`."""
+    check = _cam_check()
+    part = _part(package, "broken")
+    assert asyncio.run(check.test([], package, part)) is check.TEST_FAILED
+
+
+def test_a_malformed_section_gets_a_cache_key_of_its_own(package):
+    """Correcting it has to produce a fresh run rather than the failure of what
+    it replaced."""
+    check = _cam_check()
+    broken = check.cache_key_suffix(package, _part(package, "broken"))
+    good = check.cache_key_suffix(package, _part(package, "panel"))
+    assert broken.startswith(".malformed=")
+    assert good.startswith(".cam=")
+    assert broken != good
+
+
+def test_two_different_jobs_are_two_different_questions(package):
+    """An object whose tool has just been halved must not be answered with the
+    verdict on the old one -- and the job does not move `shape.hash`."""
+    check = _cam_check()
+    panel = check.cache_key_suffix(package, _part(package, "panel"))
+    lid = check.cache_key_suffix(package, _part(package, "lid"))
+    assert panel != lid
+
+
+def test_a_route_that_was_written_is_the_one_way_to_pass(package, monkeypatch):
+    check = _cam_check()
+    part = _part(package, "panel")
+
+    async def _routed(self, ctx, **kwargs):
+        # Into a directory of the check's own, which it removes afterwards.
+        assert os.path.isdir(kwargs["output_dir"])
+        return {"filepath": os.path.join(kwargs["output_dir"], "panel.nc"), "stats": {"paths": 1}}
+
+    monkeypatch.setattr(pc.shape.Shape, "route_async", _routed)
+    assert asyncio.run(check.test([], package, part)) is check.TEST_PASSED
+
+
+def test_an_implementation_that_was_asked_and_did_not_answer_has_failed(package, monkeypatch):
+    """Not a skip: a skip says the question does not apply here, and an object
+    that declares `cam:` has asked one."""
+    check = _cam_check()
+    part = _part(package, "panel")
+
+    async def _blew_up(self, ctx, **kwargs):
+        raise Exception("the tool is bigger than the hole")
+
+    monkeypatch.setattr(pc.shape.Shape, "route_async", _blew_up)
+    test_ctx = {}
+    assert asyncio.run(check.test([], package, part, test_ctx)) is check.TEST_FAILED
+    # Nothing in the key describes the machine, so this verdict is not kept.
+    assert test_ctx[check.NOT_CACHEABLE] is True
+
+
+def test_a_sandbox_that_could_not_be_built_skips_rather_than_fails(package, monkeypatch):
+    """The one verdict that would be about this machine rather than the object:
+    there is no arrangement under which the implementation could have run."""
+    from partcad import runtime as pc_runtime
+
+    check = _cam_check()
+    part = _part(package, "panel")
+
+    async def _no_sandbox(self, ctx, **kwargs):
+        raise pc_runtime.SandboxUnavailable("no conda, no venv, no docker")
+
+    monkeypatch.setattr(pc.shape.Shape, "route_async", _no_sandbox)
+    test_ctx = {}
+    result = asyncio.run(check.test([], package, part, test_ctx))
+    assert result is not check.TEST_FAILED
+    # Not remembered: installing what the machine lacked changes no cache key,
+    # so a remembered skip would outlive its reason.
+    assert test_ctx[check.NOT_CACHEABLE] is True
+
+
+def test_the_route_a_check_produced_is_not_left_beside_the_package(package, monkeypatch):
+    """It would be indistinguishable from the one `pc cam` writes -- checked in
+    by accident, or read as current long after the part moved on."""
+    check = _cam_check()
+    part = _part(package, "panel")
+    seen = {}
+
+    async def _routed(self, ctx, **kwargs):
+        seen["output_dir"] = kwargs["output_dir"]
+        return {"filepath": os.path.join(kwargs["output_dir"], "panel.nc"), "stats": {}}
+
+    monkeypatch.setattr(pc.shape.Shape, "route_async", _routed)
+    asyncio.run(check.test([], package, part))
+
+    assert seen["output_dir"] not in (None, "")
+    assert not os.path.exists(seen["output_dir"]), "the check's temporary directory outlived it"
