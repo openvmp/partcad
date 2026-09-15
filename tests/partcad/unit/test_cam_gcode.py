@@ -37,6 +37,19 @@ import partcad as pc
 
 CAM_DIR = os.path.join(os.path.dirname(os.path.abspath(pc.__file__)), "builtin", "cam")
 
+# Executed under a name *inside* the `partcad` namespace, and that is not
+# cosmetic: CI measures coverage through pytest-cov, which passes `--cov=partcad`
+# and so sets coverage's `source` to the **module name** rather than to a path.
+# Coverage then decides what to trace from the name the frame is running under,
+# so a module executed as `partcad_test_cam_gcode` is "outside the --source
+# spec" however squarely its file sits inside `src/partcad/`. Under that name
+# this file measured 0% in CI while measuring 90% locally, where `coverage run`
+# uses the `include` path list instead.
+#
+# The name is never registered in `sys.modules`, so nothing can import it or be
+# confused by a package path that has no `__init__.py` behind it.
+MODULE_NAME = "partcad.builtin.cam.cam_gcode"
+
 
 class _WrapperCommonStub:
     """The two helpers `cam_gcode` imports from `wrapper_common`.
@@ -62,7 +75,7 @@ def gcode():
     sys.modules["wrapper_common"] = _WrapperCommonStub
     saved_path = list(sys.path)
     try:
-        spec = importlib.util.spec_from_file_location("partcad_test_cam_gcode", os.path.join(CAM_DIR, "cam_gcode.py"))
+        spec = importlib.util.spec_from_file_location(MODULE_NAME, os.path.join(CAM_DIR, "cam_gcode.py"))
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         yield module
