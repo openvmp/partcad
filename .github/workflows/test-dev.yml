@@ -106,13 +106,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      # The same scope "build-containers" declares, and it has to be: this job
-      # asks the registry what the token may do, and a GITHUB_TOKEN is scoped
-      # per job. Left at the workflow default of "contents: read", the probe
-      # would measure a token nothing else uses -- reporting "pull but not
-      # push" on this repository, where the push works fine, and failing every
-      # run that builds an image. It requests the write; whether the repository
-      # grants it is the question being asked.
+      # A job-level block REPLACES the workflow's, it does not add to it: every
+      # scope left out becomes "none". So "contents: read" is restated here, and
+      # not restating it is what CodeRabbit caught on this pull request -- with
+      # "contents" at none, "actions/checkout" cannot clone a private
+      # repository, and the job would die before reaching the check. On a
+      # private fork, which is the case this whole action exists for. Every
+      # other credentialed job in these two files pairs the two for this reason.
+      contents: read
+      # And the write this asks the registry about, because a GITHUB_TOKEN is
+      # scoped per job: left at the default, the probe would be measuring a
+      # token nothing else in the run uses. It requests the write; whether the
+      # repository grants it is the question.
       packages: write
     outputs:
       # Forwarded so that a job can ask what this run has rather than reaching
@@ -124,7 +129,14 @@ jobs:
       - id: preflight
         uses: ./.github/actions/preflight
         with:
-          needs-ghcr: ${{ needs.scope.outputs.image-push == 'true' || needs.scope.outputs.image-degraded == 'true' }}
+          # "devcontainer" too, and not only the image outputs: a change to
+          # ".devcontainer" alone sets neither of those, and the job below still
+          # runs and still pushes the dev container image ("push: always"). Left
+          # out, a fork's pull request changing only that file would be told
+          # nothing about the publish it cannot do. Caught by CodeRabbit here.
+          needs-ghcr: ${{ needs.scope.outputs.devcontainer == 'true'
+            || needs.scope.outputs.image-push == 'true'
+            || needs.scope.outputs.image-degraded == 'true' }}
           # A private repository is one whose PartCAD packages may depend on
           # repositories that are private too, and cloning one needs the key.
           # A public fork clones public dependencies over https and needs

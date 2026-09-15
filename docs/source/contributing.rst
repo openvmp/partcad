@@ -887,6 +887,8 @@ CI fans out over operating systems, and a pull request does not pay for all of t
        over-running is the safe direction. If a description has to name the marker without asking for it,
        write it split across two code spans.
 
+.. _Running CI in your own fork:
+
 Running CI in your own fork
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -950,8 +952,10 @@ fails the whole job with "The ssh-private-key argument is empty". The privacy of
 "its dependencies are private too", not a fact: if your fork is private but everything it installs is public, set
 ``needs-ssh: "false"`` on the ``Prerequisites`` job in your copy of ``test.yml`` and ``test-dev.yml``.
 
-A push to ``devel`` is the exception to all three: it runs no matrix at all unless its head commit message starts with
-``Version updated``, which is the release commit. Every push to ``devel`` is followed by one of those within minutes
+A push to ``devel`` **in this repository** is the exception to all three: it runs no matrix at all unless its head
+commit message starts with ``Version updated``, which is the release commit. (A fork is exempt -- see `Running CI in
+your own fork`_ above. The reasoning below is about the bump that follows every merge here, and a fork has no bump
+coming, so the rule would leave it with a run in which every job is skipped.) Every push to ``devel`` is followed by one of those within minutes
 and it carries the same tree, so what a merge costs is one build of that tree rather than two -- and the artifacts it
 produces are stamped with the version they will be released under rather than with the one the merge replaced.
 ``Standalone`` and ``IDE`` are gated on this too; they used to run on the merge as well, which is where the second

@@ -377,6 +377,13 @@ def test_the_check_holds_the_same_token_as_the_job_it_speaks_for(workflow, speak
     assert (jobs["preflight"].get("permissions") or {}).get("packages") == "write", workflow
     assert (jobs[speaks_for].get("permissions") or {}).get("packages") == "write", workflow
 
+    # And "contents: read" alongside it. A job-level block REPLACES the
+    # workflow's rather than adding to it, so every scope left out is "none" --
+    # and with "contents" at none, "actions/checkout" cannot clone a private
+    # repository and the job dies before the check runs. On a private fork,
+    # which is the case this action exists for.
+    assert (jobs["preflight"].get("permissions") or {}).get("contents") == "read", workflow
+
 
 @pytest.mark.parametrize("workflow,scope", [("test.yml", "set-matrix"), ("test-dev.yml", "scope")])
 def test_the_check_is_asked_about_wanting_rather_than_succeeding(workflow, scope):
@@ -391,6 +398,30 @@ def test_the_check_is_asked_about_wanting_rather_than_succeeding(workflow, scope
 
     assert "%s.outputs.image-push" % scope in needs_ghcr
     assert "%s.outputs.image-degraded" % scope in needs_ghcr
+
+
+def test_a_devcontainer_change_counts_as_needing_the_registry():
+    """It publishes an image while setting neither image output.
+
+    A change to ".devcontainer" alone leaves `image-push` and `image-degraded`
+    both false, and the `devcontainer` job still runs -- its only condition is
+    `scope.outputs.devcontainer` -- and still pushes, with `push: always`. Read
+    only the image outputs, and a fork's pull request changing that one
+    directory is told nothing about the publish it cannot do.
+    """
+    jobs = _jobs("test-dev.yml")
+    (step,) = [s for s in jobs["preflight"]["steps"] if s.get("uses") == USES]
+    needs_ghcr = " ".join(str(step["with"]["needs-ghcr"]).split())
+
+    assert "scope.outputs.devcontainer" in needs_ghcr, needs_ghcr
+
+    # The premise: that job publishes, and is gated on that output alone.
+    devcontainer = jobs["devcontainer"]
+    assert "scope.outputs.devcontainer" in str(devcontainer.get("if")), devcontainer.get("if")
+    assert any(
+        "push: always" in str(s.get("with", {})) or s.get("with", {}).get("push") == "always"
+        for s in devcontainer["steps"]
+    ), "the dev container job no longer pushes"
 
 
 @pytest.mark.parametrize("workflow", ["test.yml", "test-dev.yml"])
