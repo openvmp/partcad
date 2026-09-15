@@ -2765,10 +2765,9 @@ the same for every tool and happens once, in ``partcad_client.external``.
       sceneType: demo                    # it reads this scene type and no other
 
 ``pc open --with democad ./cell.demo`` then works, in a workspace whose packages
-import that one. PartCAD ships five of these in ``//builtin/open`` -- FreeCAD,
-KiCad, Blender, and, until the wheel stops carrying them, Gazebo and MuJoCo. A
-package's entry replaces a built-in of the same name, which is how the plugin
-for a simulation engine comes to own the application for it: both
+import that one. PartCAD ships three of these in ``//builtin/open`` -- FreeCAD,
+KiCad and Blender. A package's entry replaces a built-in of the same name, which
+is how the plugin for a simulation engine comes to own the application for it: both
 `partcad-sim-gazebo <https://github.com/partcad/partcad-sim-gazebo>`_ and
 `partcad-sim-mujoco <https://github.com/partcad/partcad-sim-mujoco>`_ declare
 theirs, so a workspace that imports either already gets the entry from there.
@@ -3766,11 +3765,10 @@ everything else, and a package that sets ``path`` replaces it.
 way to see what parameters each file type takes and what a package's own
 implementation should look like.
 
-It also carries ``world`` and ``mjcf`` for the moment, and will not for much
-longer: an engine's own scene format belongs to that engine's plugin package,
-beside the reader and the simulator that share its knowledge of the format.
-Write ``sim-gazebo:world`` and ``sim-mujoco:mjcf`` (see `Naming a file type
-elsewhere`_), which resolve through the plugin and keep working.
+It carries neither ``world`` nor ``mjcf``: an engine's own scene format belongs
+to that engine's plugin package, beside the reader and the simulator that share
+its knowledge of the format. Write ``sim-gazebo:world`` and ``sim-mujoco:mjcf``
+(see `Naming a file type elsewhere`_), which resolve through the plugin.
 
 Naming a file type elsewhere
 ----------------------------

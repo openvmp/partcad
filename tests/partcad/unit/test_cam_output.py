@@ -233,6 +233,25 @@ def test_an_implementation_in_a_package_that_is_not_there_says_so(package):
     assert "is not found" in str(raised.value)
 
 
+def test_an_unresolvable_implementation_fails_only_the_object_it_is_on(package):
+    """It reaches `route_async`'s caller as a `CamConfigError`, and that is what
+    keeps it from costing the rest of the package its routes.
+
+    A package-level run gathers every object's outcome and re-raises anything it
+    does not recognise as an answer. So while resolution happened *outside* the
+    block that gives failures their type, one object naming an implementation
+    that is not installed aborted the whole request and discarded the routes
+    already produced for every other object in the package.
+    """
+    part = _part(package, "panel")
+    with pytest.raises(pc.cam.CamConfigError) as raised:
+        asyncio.run(part.route_async(package, implementation="//nowhere:gcode"))
+    message = str(raised.value)
+    # Named against the object, so a package-wide run says which one it was.
+    assert "cam-test:panel" in message
+    assert "could not be resolved" in message
+
+
 # --------------------------------------------------------------------------- #
 # Which objects a package-level run visits                                    #
 # --------------------------------------------------------------------------- #

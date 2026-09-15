@@ -13,6 +13,7 @@ is normalized to named JSON-RPC params. Operations that require a loaded context
 silently no-op when none is loaded, exactly as the legacy server did.
 """
 
+import contextlib
 import hashlib
 import math
 import os
@@ -2152,6 +2153,28 @@ def cae_defaults(session, params):
     return {analysis: config.cae_implementation(analysis) for analysis in pc.cae.ANALYSES}
 
 
+@contextlib.contextmanager
+def _creating_dirs(ctx, enabled):
+    """Turn `ctx.option_create_dirs` on for one request, and put it back.
+
+    The daemon holds a context per workspace and keeps it warm, so anything set
+    on it outlives the request that set it. `-p` on one `pc cam` would
+    therefore go on creating directories for every later request served by that
+    context -- including `pc export`, which never sets this at all and would
+    quietly start making the directories it used to refuse to.
+
+    A context manager rather than three `try:`/`finally:` blocks, because there
+    are three requests that take this flag and the bug is not noticing that a
+    fourth reads it.
+    """
+    previous = ctx.option_create_dirs
+    ctx.option_create_dirs = bool(enabled)
+    try:
+        yield
+    finally:
+        ctx.option_create_dirs = previous
+
+
 def cae_analyze(session, params):
     """Run a CAE analysis on a part and return the model it wrote and its findings.
 
@@ -2200,8 +2223,10 @@ def cae_analyze(session, params):
         # nothing about which of its members carries it.
         raise JsonRpcError(USAGE_ERROR, "Part %s is not found" % path)
 
-    with pc.logging.Process(analysis.upper(), package, object_name):
-        ctx.option_create_dirs = bool(params.get("create_dirs", False))
+    with (
+        pc.logging.Process(analysis.upper(), package, object_name),
+        _creating_dirs(ctx, params.get("create_dirs", False)),
+    ):
         try:
             result = asyncio.run(
                 shape.analyze_async(
@@ -2302,8 +2327,7 @@ def cam_route(session, params):
     else:
         packages = [package]
 
-    with pc.logging.Process("CAM", package):
-        ctx.option_create_dirs = bool(params.get("create_dirs", False))
+    with pc.logging.Process("CAM", package), _creating_dirs(ctx, params.get("create_dirs", False)):
         results, failures = asyncio.run(
             _route_packages_async(
                 pc,
@@ -2385,6 +2409,13 @@ async def _route_packages_async(pc, ctx, packages, object_name, sketch, implemen
         prj = ctx.get_project(target)
         if prj is None:
             pc.logging.error("Package %s is not found" % target)
+            if obj:
+                # The same rule as the `not named` case below, one step
+                # earlier: naming an object is asking about it, so failing to
+                # find the *package* it named is as much a failure as failing
+                # to find the object in a package that exists. Without this,
+                # `pc cam //missing:panel` logged the error and exited 0.
+                unresolved.append("%s:%s" % (target, obj))
             continue
         if obj is None:
             # The whole package: every sketch and part of it that declares a
@@ -2818,8 +2849,10 @@ def render_objects(session, params):
         all=params.get("with_all", False),
     )
 
-    with pc.logging.Process(params.get("label", "Render"), package):
-        ctx.option_create_dirs = params.get("create_dirs", False)
+    with (
+        pc.logging.Process(params.get("label", "Render"), package),
+        _creating_dirs(ctx, params.get("create_dirs", False)),
+    ):
         try:
             _render_objects(
                 pc,

@@ -2024,7 +2024,23 @@ class Shape(ShapeConfiguration):
         # is a statement about the object -- the post-processor its numbers were
         # written for -- and the two things that outrank it are the two that are
         # about this run and this machine.
-        options_project, format_name = self._route_implementation(ctx, implementation, declared=config.implementation)
+        try:
+            options_project, format_name = self._route_implementation(
+                ctx, implementation, declared=config.implementation
+            )
+        except pc_cam.CamConfigError as e:
+            raise self._cam_config_error(e) from e
+        except Exception as e:
+            # Naming who should produce the route is configuration, so failing
+            # to resolve that name is a 'CamConfigError' and not a plain one.
+            # The type is what decides the blast radius: a package-wide run
+            # gathers these, and '_route_packages_async' re-raises anything it
+            # does not recognise -- so an unresolvable implementation used to
+            # abort the whole request and discard the routes already produced
+            # for every other object in the package.
+            raise self._cam_config_error(
+                pc_cam.CamConfigError("the 'cam' implementation could not be resolved: %s" % e)
+            ) from e
 
         try:
             return await self._route_run_async(
