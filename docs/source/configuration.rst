@@ -3907,12 +3907,15 @@ different from ``cae:``:
 The file it writes is named after the object alone -- ``panel.nc`` -- because an
 object has one route at a time and the extension already says what the file is.
 
-**Every parameter of the file type that describes the cut is also a key an
-object may set for itself** -- the tool, the depth, the feed and the rest of the
-job, though not the parameters describing the file, which the paragraph after
-the example comes back to. That shared half is what makes this section and the
-object's own ``cam:`` section three layers of one namespace rather than two
-different things:
+**The parameters PartCAD knows by name -- the job: the tool, the depth, the feed
+and the rest of the closed list below -- are also keys an object may set for
+itself.** Nothing else is: not the parameters that describe the file rather than
+the cut, and not a parameter a third-party implementation invented, however
+squarely it describes the cut. PartCAD cannot check a name it has never heard of
+against a list, which is why the list is closed and why the two paragraphs after
+the example spell out what is on it. That shared job half is what makes this
+section and the object's own ``cam:`` section three layers of one namespace
+rather than two different things:
 
 .. code-block:: yaml
 
