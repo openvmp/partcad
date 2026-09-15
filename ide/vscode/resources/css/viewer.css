@@ -574,3 +574,48 @@ a {
     color: var(--vscode-descriptionForeground);
     font-family: var(--vscode-editor-font-family, monospace);
 }
+
+/* Opacity slider controls in the 3D viewer */
+.viewer-controls {
+    position: absolute;
+    bottom: 1rem;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    pointer-events: auto;
+}
+
+.control-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--vscode-foreground);
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    white-space: nowrap;
+    padding: 0.5rem 0.75rem;
+    background: var(--vscode-editor-background);
+    border: 1px solid var(--vscode-panel-border, transparent);
+    border-radius: 4px;
+}
+
+.opacity-slider {
+    width: 150px;
+    cursor: pointer;
+    accent-color: #00ffff;
+}
+
+.control-value {
+    color: var(--vscode-descriptionForeground);
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    white-space: nowrap;
+    min-width: 3rem;
+    text-align: right;
+}

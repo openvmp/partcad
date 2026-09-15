@@ -42,7 +42,7 @@ import {
     TabId,
     isAnalysisTab,
 } from './messages';
-import { clearGeometry, resizeCanvas, showGeometry } from './scene';
+import { clearGeometry, resizeCanvas, showGeometry, setOpacity, setAutoRotate } from './scene';
 import { SupplyView } from './supply';
 import { TabSpec, Tabs } from './tabs';
 
@@ -69,8 +69,31 @@ for (const tab of ANALYSIS_TABS) {
 }
 const tabs = new Tabs(byId('tabs'), onTabSelected);
 
+// Initialize animation checkbox
+const animateCheckbox = document.getElementById('animate-checkbox') as HTMLInputElement;
+if (animateCheckbox) {
+    animateCheckbox.addEventListener('change', (event) => {
+        setAutoRotate((event.target as HTMLInputElement).checked);
+    });
+}
+
+// Initialize opacity slider
+const opacitySlider = document.getElementById('opacity-slider') as HTMLInputElement;
+const opacityValue = document.getElementById('opacity-value') as HTMLSpanElement;
+if (opacitySlider && opacityValue) {
+    opacitySlider.addEventListener('input', (event) => {
+        const value = parseInt((event.target as HTMLInputElement).value, 10);
+        const opacity = value / 100;
+        setOpacity(opacity);
+        opacityValue.textContent = `${value}%`;
+    });
+}
+
 /** What the panel is showing, or undefined when it is empty. */
 let shown: ShowMessage | undefined;
+
+/** Which show call is current. Prevents stale geometry loads from overwriting newer tab state. */
+let generation = 0;
 
 /**
  * Which request each tab is waiting for, and the counter the tokens come from.
@@ -157,7 +180,8 @@ function tabsFor(message: ShowMessage): TabSpec[] {
     return specs;
 }
 
-function show(message: ShowMessage): void {
+async function show(message: ShowMessage): Promise<void> {
+    const mine = (generation += 1);
     shown = message;
     // Nothing in flight belongs to this object, whatever it was asked for.
     awaiting.clear();
@@ -170,13 +194,23 @@ function show(message: ShowMessage): void {
         caeViews[tab]?.setBusy('Select this tab to run the analysis.');
     }
 
-    void showGeometry(message);
+    await showGeometry(message);
+    // Newer show arrived while this one was loading; abandon it.
+    if (generation !== mine) {
+        return;
+    }
+    // Apply current opacity slider value to newly loaded geometry
+    if (opacitySlider) {
+        const opacity = parseInt(opacitySlider.value, 10) / 100;
+        setOpacity(opacity);
+    }
     // Rebuilt on every show, which also re-asks for whatever tab the user is on:
     // the object may be the same one after an edit, and its answers may not be.
     tabs.setTabs(tabsFor(message));
 }
 
 function clear(): void {
+    generation += 1;
     shown = undefined;
     awaiting.clear();
     requested.clear();
