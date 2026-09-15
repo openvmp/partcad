@@ -85,7 +85,7 @@ class CamTest(Test):
             return None
         return "It is not reproducible: %s" % failure
 
-    def cache_key_suffix(self, ctx, shape) -> str:
+    async def cache_key_suffix(self, ctx, shape) -> str:
         """What this test reads beyond the shape itself, folded into the cache key.
 
         A shape's cache key covers what the shape is built from, and the
