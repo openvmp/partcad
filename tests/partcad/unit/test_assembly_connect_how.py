@@ -659,6 +659,47 @@ def test_assy_connect_comment_and_how():
     assert info["how"]["threadStep"] == 0.35
 
 
+def test_assy_node_description_reaches_the_children():
+    """'description' survives the ASSY file all the way to the children
+
+    Unlike 'comment' it belongs to the node rather than to a connection, so an
+    item placed without connecting to anything carries one too.
+    """
+    ctx = pc.init(CONNECT_HOW_PACKAGE)
+    assembly = ctx._get_assembly(":connect_how")
+    assert assembly is not None
+
+    children = _get_children(assembly)
+
+    assert children["plate"].description.startswith("The plate the screws are driven into.")
+    assert children["screw-tl"].description == "The screw in the top left hole."
+    # A node that says nothing about itself carries nothing.
+    assert children["screw-tr"].description is None
+
+
+def test_assy_file_description_describes_the_assembly():
+    """The root container's 'description' is what the file says it is building
+
+    A package that declares the assembly and describes it says it better, so its
+    'desc' wins; the file's own description is what is left for a declaration
+    that carries none.
+    """
+    ctx = pc.init(CONNECT_HOW_PACKAGE)
+
+    declared = ctx._get_assembly(":connect_how")
+    asyncio.run(declared.do_instantiate())
+    assert declared.desc == "Two screws connected to a plate, with assembly instructions"
+
+    # The very same file, declared by a package that says nothing about it.
+    undescribed = ctx._get_assembly(":connect_how_undescribed")
+    asyncio.run(undescribed.do_instantiate())
+    assert undescribed.desc.startswith("Two screws driven into a plate, described by the file itself.")
+
+    # Either way the container node the file's root becomes carries it, which is
+    # what describes a sub-assembly declared inline in a nested "links:".
+    assert declared.children[0].item.desc == undescribed.desc
+
+
 def test_assy_connect_how_defaults_from_the_part_definition():
     """The parts' own 'hold'/'holdInstance' are the defaults for 'how'"""
     ctx = pc.init(CONNECT_HOW_PACKAGE)
