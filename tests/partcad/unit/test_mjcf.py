@@ -303,6 +303,51 @@ def test_an_include_is_spliced_in_rather_than_counted_as_dropped(tmp_path, no_oc
     assert not result["dropped"].get("include")
 
 
+def test_an_include_cycle_refuses_rather_than_including_it_again(tmp_path, no_occt):
+    """ "Refusing to include" has to mean it, and it did not.
+
+    The second pass returned the already-included file's parsed root, and the
+    caller splices whatever comes back into the parent -- so the file was
+    included again, under a warning saying it was not. Its own '<include>' had
+    not been stripped yet either, so a stale one rode along.
+
+    Two files naming each other used to yield 'from_a' three times and 'from_b'
+    twice, out of one body each.
+    """
+    (tmp_path / "a.xml").write_text(
+        '<mujoco model="a"><include file="b.xml"/>'
+        '<worldbody><body name="from_a"><geom type="sphere" size="0.01"/></body></worldbody></mujoco>',
+        encoding="utf-8",
+    )
+    (tmp_path / "b.xml").write_text(
+        '<mujoco model="b"><include file="a.xml"/>'
+        '<worldbody><body name="from_b"><geom type="sphere" size="0.01"/></body></worldbody></mujoco>',
+        encoding="utf-8",
+    )
+
+    result = read(tmp_path / "a.xml", output_folder=str(tmp_path))
+
+    assert sorted(node["name"] for node in result["root"]["links"]) == ["from_a", "from_b"]
+    assert sum("a second time" in warning for warning in result["warnings"]) == 1
+
+
+def test_the_same_file_included_twice_is_included_once(tmp_path, no_occt):
+    """Which is what MuJoCo itself does with a repeated include, and is not a cycle."""
+    (tmp_path / "parts.xml").write_text(
+        '<mujoco><worldbody><body name="brick"><geom type="sphere" size="0.01"/></body></worldbody></mujoco>',
+        encoding="utf-8",
+    )
+    path = tmp_path / "model.xml"
+    path.write_text(
+        '<mujoco model="m"><include file="parts.xml"/><include file="parts.xml"/></mujoco>',
+        encoding="utf-8",
+    )
+
+    result = read(path, output_folder=str(tmp_path))
+
+    assert [node["name"] for node in result["root"]["links"]] == ["brick"]
+
+
 def test_an_include_that_cannot_be_resolved_is_reported(tmp_path, no_occt):
     path = tmp_path / "model.xml"
     path.write_text(

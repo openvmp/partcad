@@ -245,9 +245,12 @@ Object commands
 ``pc import``
   Import an existing object into a package. Subcommands: ``part`` (import an existing part and optionally
   convert its format), ``assembly`` (import an assembly from a file, creating the parts and an Assembly
-  YAML file), and ``scene`` (import a Gazebo world, creating the parts and an Assembly YAML scene).
+  YAML file), and ``scene`` (import an arrangement file -- a Gazebo world, an MJCF model -- creating the
+  parts and an Assembly YAML scene). ``pc import scene -t`` names the format where the file's extension does
+  not say, or says the wrong thing, and is how a format a *package* reads is named: ``sim-gazebo:world``,
+  ``sim-mujoco:mjcf``.
   ``pc import`` is a one-shot conversion; to keep reading the source file itself,
-  declare it as an assembly of the ``step`` type or a scene of the ``world`` type instead (see
+  declare it as an assembly of the ``step`` type or a scene of that reader's type instead (see
   :ref:`assembly_step` and :ref:`scenes`).
 
 ``pc test``
@@ -307,7 +310,9 @@ Object commands
   sandbox that installs whatever it needs.
 
   PartCAD implements no simulator: a package imports one and names it in ``simulation:``
-  (`partcad-sim-mujoco <https://github.com/partcad/partcad-sim-mujoco>`_ is the MuJoCo one). The *scene* does
+  (`partcad-sim-mujoco <https://github.com/partcad/partcad-sim-mujoco>`_ is the MuJoCo one and
+  `partcad-sim-gazebo <https://github.com/partcad/partcad-sim-gazebo>`_ the Gazebo one; each also declares
+  the reader, the writer and the ``pc open`` entry for that engine's own scene format). The *scene* does
   have a built-in default -- an empty world holding the object -- so a simulation of a part standing on its
   own is a few lines. See :doc:`simulation` and ``examples/feature_simulate``.
 
@@ -531,9 +536,12 @@ Object commands
   Subcommands: ``part``, ``sketch``, ``assembly`` and ``scene``. An assembly converts between ``assy`` and
   ``urdf``: to URDF it writes the ``.urdf`` file and the meshes it references; to ASSY it writes an ``stl``
   part for every URDF link, an interface pair for every joint, and an ``.assy`` that places the parts with
-  ``connect:``. A scene converts between ``assy`` and ``world``: to a Gazebo world it writes the ``.world``
-  file and the meshes it references; to ASSY it copies every shape the world places into the package as a
-  part of its own and writes an ``.assy`` that places them.
+  ``connect:``. A scene converts between ``assy`` and any file format the package graph reads as a scene --
+  ``sim-gazebo:world`` and ``sim-mujoco:mjcf`` are the two today, each from its engine's plugin package. To
+  such a format it writes the file and the meshes it references; to ASSY it copies every shape the file
+  places into the package as a part of its own and writes an ``.assy`` that places them. Which formats those
+  are is not a fixed list -- it is whatever the graph declares under ``import:`` with ``scene`` among its
+  ``kinds`` -- so a package that teaches PartCAD an arrangement format converts to and from it too.
 
 ``pc export``
   Export a 3D view of parts, assemblies, or scenes. Use ``-a`` for an assembly and ``-S`` for a scene.
@@ -543,9 +551,15 @@ Object commands
   file type a package implements itself (see :ref:`output-files`). Use ``-O`` to set the output directory and
   ``-r`` to export recursively. ``urdf`` writes a ``.urdf`` file plus a directory of the mesh files it
   references, and ``world`` (a Gazebo ``.world``, SDFormat) and ``mjcf`` (a MuJoCo model) write theirs the
-  same way -- those are the formats a scene has. ``-e``
+  same way -- those are the formats a scene has.
+
+  ``-t`` also takes a full path, ``-t sim-gazebo:world``, which names the package the implementation lives
+  in. That is how a format PartCAD ships no implementation of is reached: an engine's own scene format
+  belongs to that engine's plugin package, so ``world`` and ``mjcf`` are on their way out of the wheel and
+  the qualified spelling is the one that keeps working. ``-e``
   names a further package whose ``export:`` options and implementations are used, which is how one package's
-  exporter is applied to another package's objects.
+  exporter is applied to another package's objects -- the same answer for every file type at once, where
+  ``-t <package>:<type>`` is the answer for one.
 
 ``pc render``
   Render a 2D projection of parts, assemblies, or scenes onto a plane. Choose the format with ``-t``:

@@ -71,7 +71,7 @@ import subprocess
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Tuple
 
-from partcad_utils.container_image import image_tag
+from partcad_utils.container_image import image_name, image_tag
 from partcad_utils.workspace import determine_root_path, socket_path
 
 from . import __version__, object_types
@@ -328,7 +328,20 @@ def tool_from_declaration(name: str, config: dict) -> Tool:
             # `image_tag()`, not the bare version: a CI run that rebuilt the
             # images has to reach *those* rather than the ones the last release
             # published, and that is the one variable which says so.
-            value = str(value).replace("{version}", image_tag(__version__))
+            #
+            # And `image_name()` for the owner, which is the same redirection
+            # one segment to the left. `container-kicad.yml` publishes
+            # `<this repository>-container-kicad`, so in a fork the image is the
+            # fork's -- and `partcad.part_factory_kicad` already follows it. Two
+            # readers of one image, one following the owner and one not, is the
+            # asymmetry that leaves `pc open --with kicad` reaching for a tag
+            # nobody published. Raised by CodeRabbit on #646.
+            #
+            # `image_name()` only ever rewrites images in PartCAD's own
+            # namespace, which is what makes this safe here: this function also
+            # builds tools a *user* declared, and their image is not CI's to
+            # move.
+            value = image_name(str(value).replace("{version}", image_tag(__version__)))
         values[field_name] = value
     return Tool(**values)
 

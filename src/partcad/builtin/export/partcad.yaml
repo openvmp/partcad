@@ -31,6 +31,13 @@ desc: |
   that `pc export` writes. A package replaces any of them, or adds one of its
   own, by declaring that file type in its own `export:` section.
 
+# Two of the file types below are here only until the wheel stops carrying them:
+# `world` is declared identically by `partcad/partcad-sim-gazebo` and `mjcf` by
+# `partcad/partcad-sim-mujoco`, beside the reader and the simulator that share
+# their knowledge of the format, and `pc export -t sim-gazebo:world` already
+# writes through the plugin. See the note in `//builtin/import` for what is left
+# before they can go.
+
 export:
   step:
     desc: ISO 10303-21 (STEP), the CAD interchange format.

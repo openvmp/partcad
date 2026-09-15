@@ -92,9 +92,15 @@ def load(path, seen=None):
     """
     seen = set() if seen is None else seen
     real = os.path.realpath(path)
-    root = ElementTree.parse(path).getroot()
     if real in seen:
-        return root, ["Refusing to include '%s' a second time" % path]
+        # Before parsing, and an empty element rather than what the file holds.
+        # The caller splices whatever comes back into the parent, so handing it
+        # the already-included file's root includes it a second time -- which is
+        # the thing being refused. It also arrives before this function has
+        # stripped that root's own '<include>', so a stale one rode along into
+        # the spliced subtree.
+        return ElementTree.Element("mujoco"), ["Refusing to include '%s' a second time" % path]
+    root = ElementTree.parse(path).getroot()
     seen.add(real)
 
     warnings = []
