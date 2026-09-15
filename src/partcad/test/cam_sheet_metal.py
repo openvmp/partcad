@@ -174,7 +174,18 @@ class CamSheetMetalTest(Test):
         right, contributes its reference and an empty key. That is a verdict
         this test is about to fail anyway, and failing it is cheaper than
         deciding here what an unresolvable reference should key as.
+
+        Asked of parts only, exactly as 'test()' below is. An assembly's
+        'manufacturing:' is a different vocabulary in the same spelling - every
+        'type: assy' assembly is given 'method: assy' by AssemblyConfiguration -
+        and reading one with 'PartConfiguration.get_manufacturing_data' reports
+        the assembly's own method as an unknown *part* method. That is an error
+        rather than a warning, so it does not merely read oddly: it fails
+        'pc test' for every package that contains an assembly.
         """
+        if not isinstance(shape, Part):
+            return ""
+
         manufacturing_data = PartConfiguration.get_manufacturing_data(shape)
         if manufacturing_data.method != METHOD_SHEET_METAL:
             # Nothing is read, so nothing is added: a part made some other way

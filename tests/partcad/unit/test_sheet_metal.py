@@ -245,6 +245,10 @@ PACKAGE = {
         },
     },
     "sketches": {"bends": {"type": "dxf"}},
+    # An assembly, because 'pc test' runs over those too and they carry a
+    # 'manufacturing:' of their own in the same spelling: AssemblyConfiguration
+    # gives every 'type: assy' assembly 'method: assy'.
+    "assemblies": {"rig": {"type": "assy"}},
 }
 
 
@@ -254,6 +258,7 @@ def ctx(tmp_path):
     for name in PACKAGE["parts"]:
         (tmp_path / (name + ".stl")).write_text("")
     (tmp_path / "bends.dxf").write_text("")
+    (tmp_path / "rig.assy").write_text("links:\n  - part: blank\n")
     return pc.Context(str(tmp_path))
 
 
@@ -353,6 +358,26 @@ def test_a_missing_reference_is_reported_by_the_check_and_not_by_the_resolver(ct
     assert "instructions sketch 'gone;include=BEND_UP' is not found" in caplog.text
     assert "Base object" not in caplog.text
     assert "not found in" not in caplog.text
+
+
+def test_an_assembly_is_not_read_as_though_it_were_a_part(ctx, caplog):
+    """'manufacturing:' means something else on an assembly, and this may not read it.
+
+    'pc test' runs every check over assemblies as well as parts, and an
+    assembly's method vocabulary is its own: AssemblyConfiguration gives every
+    'type: assy' assembly 'method: assy', which is not a way of making a *part*
+    and is not in the part method map. Reading it with
+    'PartConfiguration.get_manufacturing_data' therefore reports an unknown
+    method - and reports it as an error, so it does not merely read oddly. It
+    fails 'pc test' outright for every package that contains an assembly, which
+    is most of them.
+
+    'test()' has always asked this question first. The key had to ask it too.
+    """
+    assembly = ctx.get_assembly("//test:rig")
+    with caplog.at_level("ERROR"):
+        assert asyncio.run(CamSheetMetalTest().cache_key_suffix(ctx, assembly)) == ""
+    assert "Unknown manufacturing method" not in caplog.text
 
 
 def test_both_questions_are_asked_even_when_the_first_one_fails(ctx, monkeypatch, caplog):
