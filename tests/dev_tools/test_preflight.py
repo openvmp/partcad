@@ -115,12 +115,14 @@ def preflight(
     summary = tmp_path / "summary"
     summary.touch()
 
+    if path is None:
+        answer = _jwt(list(granted)) if granted is not None else None
+        path = _curl_stub(tmp_path, answer)
+
     done = subprocess.run(
         ["bash", "-c", _check_script()],
         env={
-            "PATH": path
-            if path is not None
-            else _curl_stub(tmp_path, _jwt(list(granted)) if granted is not None else None),
+            "PATH": path,
             "NEEDS_GHCR": needs_ghcr,
             "NEEDS_SSH": needs_ssh,
             "SSH_KEY": ssh_key,
