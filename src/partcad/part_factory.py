@@ -183,19 +183,32 @@ class PartFactory(ShapeFactory):
         parameter: the declaration is wrong, not the part.
 
         What counts as one is what the schema says: a finite number, not
-        negative. YAML spells NaN and the infinities ('.nan', '.inf'), and
-        'float()' takes all three, so without this a part could declare its way
-        past the manufacturability check - NaN is the answer that means "the
-        file tolerances this feature by feature", which 'pc test' accepts, and
-        an infinite or negative tolerance is neither zero nor NaN and so passes
-        as though it were a real one. None of the three is a tolerance anybody
-        can be asked to hold. NaN is 'tolerance_inspect.reduce()'s to produce,
-        and nothing else may.
+        negative. 'float()' is wider than that in four ways YAML can reach, and
+        each of them would declare its way past the manufacturability check:
+
+        * '.nan' is the answer that means "the file tolerances this feature by
+          feature", which 'pc test' accepts. NaN is
+          'tolerance_inspect.reduce()'s to produce, and nothing else's.
+        * '.inf' and '-.inf' are neither zero nor NaN, so they pass as though
+          they were a real tolerance.
+        * A negative number is the same, and the schema has said 'minimum: 0'
+          all along - it is simply not enforced while a package is loaded.
+        * 'true' is an int in Python and reads back as one millimetre. YAML
+          makes that one easy to write by accident, because 'yes' is 'True'
+          rather than the word, and a millimetre is plausible enough to go
+          unnoticed while quietly outranking what the file states.
+
+        None of the four is a tolerance anybody can be asked to hold.
         """
         if not isinstance(config, dict):
             return None
         value = config.get("tolerance")
         if value is None:
+            return None
+        if isinstance(value, bool):
+            # Tested before 'float()' rather than after, because by then it is
+            # an ordinary 1.0 and indistinguishable from a declared one.
+            pc_logging.error("Part '%s' has a 'tolerance' that is not a length: %r" % (config.get("name"), value))
             return None
         try:
             tolerance = float(value)

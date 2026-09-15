@@ -149,17 +149,21 @@ def test_a_non_numeric_tolerance_is_reported_and_treated_as_absent(tmp_path):
 
 @pytest.mark.parametrize(
     "declared",
-    [".nan", ".inf", "-.inf", "-5"],
-    ids=["nan", "infinity", "negative-infinity", "negative"],
+    [".nan", ".inf", "-.inf", "-5", "true", "yes", "false"],
+    ids=["nan", "infinity", "negative-infinity", "negative", "true", "yes", "false"],
 )
 def test_a_declared_tolerance_that_is_not_a_length_is_refused(tmp_path, declared):
     """None of these is a tolerance anybody can be asked to hold.
 
-    YAML spells all four and 'float()' takes all four, so without a check a part
-    could declare its way past the manufacturability test: NaN is the answer
-    that means "tolerated feature by feature", which 'pc test' accepts, and an
-    infinite or negative value is neither zero nor NaN and so reads as a real
-    tolerance. Reported and treated as absent, like any other bad declaration.
+    YAML spells every one of them and 'float()' takes every one, so without a
+    check a part could declare its way past the manufacturability test: NaN is
+    the answer that means "tolerated feature by feature", which 'pc test'
+    accepts; an infinite or negative value is neither zero nor NaN and so reads
+    as a real tolerance; and a boolean is an int in Python, so 'true' reads back
+    as one millimetre. 'yes' is in here because YAML makes that the easiest of
+    them to write by accident - it is 'True', not the word.
+
+    Reported and treated as absent, like any other bad declaration.
     """
     pc.logging.reset_errors()
     (tmp_path / "partcad.yaml").write_text("parts:\n  body:\n    type: step\n    tolerance: %s\n" % declared)
@@ -169,6 +173,24 @@ def test_a_declared_tolerance_that_is_not_a_length_is_refused(tmp_path, declared
 
     assert pc.logging.had_errors is True
     assert _tolerance(part) == 0.0
+
+
+def test_a_boolean_is_refused_rather_than_read_as_one_millimetre(tmp_path):
+    """The file's own answer must survive a declaration that is not one.
+
+    'float(True)' is 1.0, which is finite, not negative, and so passes every
+    other guard - and then outranks the file, silently, with a tolerance a
+    millimetre wide that nobody wrote.
+    """
+    pc.logging.reset_errors()
+    (tmp_path / "partcad.yaml").write_text("parts:\n  body:\n    type: step\n    tolerance: yes\n")
+    (tmp_path / "body.step").write_text(_step(0.05))
+
+    part = pc.Context(str(tmp_path)).get_part("//:body")
+
+    assert pc.logging.had_errors is True
+    # The file, not 1.0 and not 0.0.
+    assert _tolerance(part) == 0.05
 
 
 def test_a_declared_tolerance_of_zero_is_still_a_declaration(tmp_path):
