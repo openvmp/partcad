@@ -226,6 +226,18 @@ PACKAGE = {
             },
             "parameters": {"tolerance": 0.1},
         },
+        "elsewhere": {
+            "type": "stl",
+            "manufacturing": {
+                "method": "sheet_metal",
+                "source": "blank",
+                # Parameterized, and pointing at nothing: the resolver reaches
+                # this through its "base object" branch rather than its plain
+                # lookup, and those were two different answers to 'quiet'.
+                "instructions": "gone;include=BEND_UP",
+            },
+            "parameters": {"tolerance": 0.1},
+        },
         "machined": {
             "type": "stl",
             "manufacturing": {"method": "subtractive"},
@@ -319,6 +331,28 @@ def test_a_reference_that_resolves_to_nothing_fails(ctx, monkeypatch, caplog):
     with caplog.at_level("ERROR"):
         assert _verdict(ctx, "nowhere") is CamSheetMetalTest.TEST_FAILED
     assert "source part 'missing' is not found" in caplog.text
+
+
+def test_a_missing_reference_is_reported_by_the_check_and_not_by_the_resolver(ctx, monkeypatch, caplog):
+    """Once, and in the words of the thing that asked.
+
+    The check resolves its references twice - once to key the verdict, once to
+    reach the annotations - so a resolver that reported a miss of its own would
+    say it twice over, ahead of the one message that names the part and what is
+    wrong with its declaration. Worse, it was the resolver's wording that 'pc'
+    then gave as its reason for exiting.
+
+    The parameterized spelling is the one under test because it is the one the
+    filters produce, and because 'quiet' used to stop at the plain lookup: the
+    branch that resolves a base name logged regardless, so 'gone' was silent
+    and 'gone;include=BEND_UP' was not.
+    """
+    _arrange(monkeypatch)
+    with caplog.at_level("ERROR"):
+        assert _verdict(ctx, "elsewhere") is CamSheetMetalTest.TEST_FAILED
+    assert "instructions sketch 'gone;include=BEND_UP' is not found" in caplog.text
+    assert "Base object" not in caplog.text
+    assert "not found in" not in caplog.text
 
 
 def test_both_questions_are_asked_even_when_the_first_one_fails(ctx, monkeypatch, caplog):

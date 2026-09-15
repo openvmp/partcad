@@ -245,7 +245,7 @@ class CamSheetMetalTest(Test):
             pc_logging.debug("Package '%s' not found" % project_name)
             return None
         if kind == "sketch":
-            return project.get_sketch(object_name)
+            return project.get_sketch(object_name, quiet=True)
         return project.get_part(object_name, quiet=True)
 
     async def blank_is_flat(self, ctx, shape, reference: str) -> bool:

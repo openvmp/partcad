@@ -1419,7 +1419,17 @@ class Project(project_config.Configuration):
                 except Exception as e:
                     self.record_broken_object(factory_name, alias, e)
 
-    def get_sketch(self, sketch_name, func_params=None) -> Optional[sketch.Sketch]:
+    def get_sketch(self, sketch_name, func_params=None, quiet=False) -> Optional[sketch.Sketch]:
+        """The declared sketch, or None.
+
+        'quiet' suppresses the "not found" reporting for a caller that asks
+        after a sketch which may legitimately not be there and says so itself -
+        the sheet metal check resolves its 'instructions' reference twice, once
+        to key its verdict and once to reach the annotations, and a reference
+        that resolves to nothing should be reported once, by the check, and not
+        three times by the resolver underneath it. It is the same flag, for the
+        same reason, that 'get_part' already takes.
+        """
         return self.get_object(
             "sketch",
             Project.SketchLock,
@@ -1430,6 +1440,7 @@ class Project(project_config.Configuration):
             sfa.SketchFactoryAlias,
             sketch_name,
             func_params,
+            quiet=quiet,
         )
 
     def _part_object(self, part_name, func_params=None, quiet=False) -> Optional[Part]:
@@ -1865,11 +1876,19 @@ class Project(project_config.Configuration):
                             clause,
                         )
                     return None
-                pc_logging.error(
-                    "Base object '%s' not found in '%s'",
-                    base_object_name,
-                    self.name,
-                )
+                # Guarded like the 'unless' report just above it, and for the
+                # same reason: a caller that passed 'quiet' has said it will
+                # report a missing object itself. Without this, 'quiet' held
+                # only for an unparameterized name - so 'gone' was silent and
+                # 'gone;width=5' was not, which is the opposite of the rule
+                # this branch exists to keep ("'gone;width=5' has to read the
+                # same way as 'gone'").
+                if not quiet:
+                    pc_logging.error(
+                        "Base object '%s' not found in '%s'",
+                        base_object_name,
+                        self.name,
+                    )
                 return None
             pc_logging.debug("Found the base object: %s" % base_object_name)
 
