@@ -16,6 +16,8 @@ import time
 import urllib.parse
 from typing import Any, Optional
 
+from partcad_utils import process_role
+
 from . import consts
 from . import logging as pc_logging
 from . import output
@@ -58,6 +60,37 @@ def _is_within(name: str, parent_name: Optional[str]) -> bool:
     if parent_name is None:
         return True
     return name == parent_name or name.startswith(parent_name.rstrip("/") + "/")
+
+
+# How long the probe waits before concluding that there is no network.
+#
+# The two answers do not cost the same, which is what sets this. Waiting a
+# second longer than necessary costs a second, once, on a command that is about
+# to fetch something over that very network anyway. Concluding "offline" wrongly
+# costs the clone that `is_connected()` gates in `project_factory_git` -- which
+# is not attempted at all, so the package resolves to whatever is on disk and a
+# package that was never fetched is reported as a missing configuration file
+# rather than as a network problem -- and it costs it for the next 300 seconds,
+# which is how long `is_connected()` caches a negative answer.
+#
+# So it is worth waiting. Three seconds was short enough that a macOS CI runner
+# whose HTTPS worked twenty seconds earlier and five minutes later was declared
+# offline in between, taking six behave scenarios and a bundle's example sweep
+# with it.
+PROBE_TIMEOUT = 5.0
+
+# And longer still in a daemon, where every term of that is bigger: it is one
+# process serving every client of the workspace rather than one command
+# answering one person, it re-probes every 60 seconds while online so a slow
+# answer is amortised rather than paid per command, and the 300 seconds it would
+# spend wrongly offline are 300 seconds of every request that needs the network.
+# Nobody is watching a prompt for it either.
+DAEMON_PROBE_TIMEOUT = 10.0
+
+
+def probe_timeout() -> float:
+    """How long this process waits on the probe: see the two constants above."""
+    return DAEMON_PROBE_TIMEOUT if process_role.is_daemon() else PROBE_TIMEOUT
 
 
 def connectivity_probe():
@@ -232,7 +265,7 @@ class Context:
         try:
             # Closed rather than left to the garbage collector: this runs every
             # 60 seconds while online, from a long-lived process.
-            with socket.create_connection((host, port), timeout=3.0):
+            with socket.create_connection((host, port), timeout=probe_timeout()):
                 return True
         except OSError:
             pc_logging.warning("No internet connection. Running in offline mode")
