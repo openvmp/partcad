@@ -583,7 +583,11 @@ is one simulation, and states four things:
    The simulation plugin that runs it, by full path. There is no default:
    PartCAD implements no simulator, so a package imports one and says which.
    `partcad-sim-mujoco <https://github.com/partcad/partcad-sim-mujoco>`_ is the
-   MuJoCo one.
+   MuJoCo one and
+   `partcad-sim-gazebo <https://github.com/partcad/partcad-sim-gazebo>`_ the
+   Gazebo one. Each also declares the reader, the writer and the ``open:`` entry
+   for that engine's own scene format, because those are one piece of knowledge
+   and the simulator is what decides what the file has to say.
 
 ``validation:``
    A Python expression over ``before`` and ``after`` that says whether what
@@ -652,10 +656,28 @@ A simulator is somebody's program with a release cycle of its own; shipping one
 inside the wheel would make every PartCAD release a statement about which
 version of it you get, and would pin a large dependency on every user who never
 simulates anything. So PartCAD ships the concept -- the section, the sandbox
-wrapper, the runner, the MJCF export -- and a package supplies the physics, the
-same way ``//pub/feature/render/draftwright`` supplies technical drawings. The
-MuJoCo plugin is
-`partcad-sim-mujoco <https://github.com/partcad/partcad-sim-mujoco>`_.
+wrapper, the runner -- and a package supplies the physics, the same way
+``//pub/feature/render/draftwright`` supplies technical drawings.
+
+``format:`` resolves in the plugin's own package first, which is what lets a
+plugin name the format it implements itself. An engine's scene format is
+exactly that: MJCF is MuJoCo's and SDFormat is Gazebo's, so each plugin declares
+the ``export:`` that writes it beside the ``simulation:`` that reads it.
+
+There are two, and they are deliberately alike:
+`partcad-sim-mujoco <https://github.com/partcad/partcad-sim-mujoco>`_ and
+`partcad-sim-gazebo <https://github.com/partcad/partcad-sim-gazebo>`_. Each
+declares four things about one format -- ``import:`` to read it, ``export:`` to
+write it, ``simulation:`` to run it and ``open:`` to look at it -- so a world
+somebody else wrote is a scene you can place parts in, and a scene you built out
+of parts is a model the engine can run.
+
+Where the simulator comes from is the one way they differ, and it is not a
+difference in the section. MuJoCo is a wheel, so the plugin lists it under
+``pythonRequirements`` and a machine with no MuJoCo simulates just the same.
+Gazebo is not a wheel and there is none, so that plugin names an image under
+``dockerImage`` and looks for a local ``gz`` first -- the same two places
+``pc open --with gazebo`` looks.
 
 ``before`` and ``after`` are all PartCAD knows about a result. What is *inside*
 them, and anything else beside them, is the plugin's own vocabulary -- the

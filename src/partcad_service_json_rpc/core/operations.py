@@ -1580,7 +1580,7 @@ def activate(session, params):
     """Load PartCAD, verify version, run health checks, and signal readiness."""
     try:
         session.load_partcad()
-        if session.partcad.__version__ not in SpecifierSet(">=0.8.84"):
+        if session.partcad.__version__ not in SpecifierSet(">=0.8.88"):
             session.emitter.error("Failed to activate PartCAD: PartCAD Python module is not up-to-date.")
             session.emitter.signal(events.ACTIVATE_FAILED)
             return None
@@ -2513,9 +2513,37 @@ def _validate_output_format(pc, ctx, fmt, packages):
     The set is not fixed: on top of what `//builtin/export` and `//builtin/render`
     implement, a package may declare a file type of its own in its `export:` or
     `render:` section, and that has to be nameable on the command line.
+
+    A file type may also be named by its full path, `sim-gazebo:world`, which is
+    how one that no package *here* declares is reached -- an engine's own scene
+    format lives in that engine's plugin package, and the object being exported
+    belongs to somebody else's. That is checked against the package it names
+    rather than against this set: the set answers "which types can I write", and
+    a path is already an answer to it.
     """
     if fmt is None:
         return
+
+    bare, package_path = pc.output.split_format(ctx.name, fmt)
+    if package_path is not None:
+        package_obj = ctx.get_project(package_path)
+        if package_obj is None:
+            raise JsonRpcError(
+                USAGE_ERROR,
+                "The package implementing the '%s' file type is not found: %s. "
+                "Is it imported by this workspace?" % (bare, package_path),
+            )
+        declared = set()
+        for section in pc.output.SECTIONS:
+            declared.update(pc.output.format_names(package_obj.config_obj.get(section)))
+        if bare not in declared:
+            raise JsonRpcError(
+                USAGE_ERROR,
+                "The package '%s' declares no '%s' file type. It declares: %s"
+                % (package_path, bare, ", ".join(sorted(declared)) or "none"),
+            )
+        return
+
     known = set(pc.output.all_formats(ctx)) | pc.output.NON_WRAPPER_FORMATS
     for package in packages:
         package_obj = ctx.get_project(package)

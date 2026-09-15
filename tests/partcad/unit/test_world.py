@@ -455,12 +455,26 @@ def test_convert_to_assy_copies_every_shape_in_and_writes_the_scene(world_scene)
     assert document["links"][0]["links"][0]["part"] == ":warehouse/pallet/deck"
 
 
-def test_a_scene_only_converts_between_the_two_formats_that_express_one(world_scene):
+def test_a_scene_does_not_convert_to_a_format_that_describes_one_product(world_scene):
+    """A URDF is read as an assembly and says so, so it is not a scene format.
+
+    Which formats a scene converts between is not a list anybody keeps: it is
+    'assy' and whatever the graph declares under 'import:' with 'scene' among
+    its 'kinds'. A URDF declares 'assembly' and is refused on that ground.
+    """
     from partcad.actions.scene import convert_scene_action
 
     project, _scene = world_scene
-    with pytest.raises(ValueError, match="assy and world"):
+    with pytest.raises(ValueError, match="not a scene format"):
         convert_scene_action(project, "warehouse", "urdf")
+
+
+def test_a_format_nothing_declares_says_to_name_the_package_that_does(world_scene):
+    from partcad.actions.scene import convert_scene_action
+
+    project, _scene = world_scene
+    with pytest.raises(ValueError, match="nothing in this package graph declares"):
+        convert_scene_action(project, "warehouse", "no-such-format")
 
 
 def test_converting_a_scene_that_is_already_that_format_does_nothing(world_scene):
@@ -478,11 +492,11 @@ def test_import_scene_refuses_to_overwrite_an_existing_scene(world_scene):
         import_scene_action(project, "world", os.path.join(project.config_dir, "warehouse.world"), {})
 
 
-def test_only_world_files_are_imported_as_scenes(world_scene):
+def test_only_a_format_read_as_a_scene_is_imported_as_one(world_scene):
     from partcad.actions.scene import import_scene_action
 
     project, _scene = world_scene
-    with pytest.raises(ValueError, match="'urdf' is not one"):
+    with pytest.raises(ValueError, match="not a scene format"):
         import_scene_action(project, "urdf", os.path.join(project.config_dir, "warehouse.world"), {})
 
 
