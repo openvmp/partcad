@@ -156,21 +156,27 @@ def test_a_run_that_needs_nothing_passes_with_nothing(tmp_path):
     assert "not needed" in summary
 
 
-def test_a_missing_write_that_can_be_fixed_stops_the_run(tmp_path):
-    """A fork running its own CI, with packages write not granted.
+def test_a_withheld_push_does_not_stop_the_run(tmp_path):
+    """The registry's negative answer is not evidence, so it cannot be a gate.
 
-    Fixable in two clicks, and the alternative is a run that builds images,
-    fails to push them, and then tests the upstream release's while its summary
-    says it rebuilt them.
+    On `partcad/partcad` -- the repository whose workflows publish every one of
+    these images, with `packages: write` and the same `GITHUB_TOKEN` -- the
+    token endpoint answers `pull` and no `push`. The release tags on ghcr are
+    the evidence that the push works anyway, so a gate stopping on that answer
+    would stop this repository from building its own images, and the person it
+    stopped would have nothing to fix.
+
+    Found by reading the `Prerequisites` output on this PR's own run rather
+    than by any test failing: the check was green because the run did not need
+    the write. The cost is real and is stated where the code is -- a fork with
+    read-only workflow permissions is no longer caught before its push.
     """
     outputs, rc, summary, out = preflight(tmp_path, needs_ghcr="true", granted=["pull"])
 
-    assert rc == 1
-    assert outputs["ghcr-write"] == "false"
-    assert "::error" in out
-    # The remedy, not just the diagnosis.
-    assert "Workflow permissions" in summary
-    assert "Read and write" in summary
+    assert rc == 0
+    assert outputs["ghcr-write"] == "true"
+    assert "::error" not in out
+    assert "assumed writable" in summary
 
 
 def test_a_fork_is_told_where_to_get_the_coverage_not_failed(tmp_path):
@@ -192,22 +198,6 @@ def test_a_fork_is_told_where_to_get_the_coverage_not_failed(tmp_path):
     assert "your own fork" in summary
 
 
-def test_pull_without_push_is_caught_here_and_not_at_the_push(tmp_path):
-    """The case a `docker login` check would have missed, and the likeliest one.
-
-    "Workflow permissions: read-only" is a fork's default, and a read-only
-    token logs in to the registry perfectly well -- so a login probe reports a
-    writable registry and the run fails half an hour later, uploading an image.
-    Asking what the registry *grants* is the difference, and it costs one
-    request.
-    """
-    outputs, rc, summary, _ = preflight(tmp_path, needs_ghcr="true", granted=["pull"])
-
-    assert rc == 1
-    assert outputs["ghcr-write"] == "false"
-    assert "not push" in summary
-
-
 def test_a_granted_push_reports_the_write(tmp_path):
     outputs, rc, summary, _ = preflight(tmp_path, needs_ghcr="true", granted=["pull", "push"])
 
@@ -226,11 +216,15 @@ def test_whitespace_in_the_registry_answer_does_not_defeat_the_probe(tmp_path):
     and carries on. So the probe reported success for every answer it could not
     read, which is the one failure mode a check like this must not have.
     """
-    path = _curl_stub(tmp_path, _jwt(["pull"], spacing=True))
+    path = _curl_stub(tmp_path, _jwt(["pull", "push"], spacing=True))
     outputs, rc, summary, _ = preflight(tmp_path, needs_ghcr="true", path=path)
 
-    assert rc == 1, "a spaced-out answer was read as unreadable, not as 'pull only'"
-    assert "not push" in summary
+    # "is writable" is only reachable by actually decoding the claims; "could
+    # not be asked" is what an unreadable answer falls through to. Both end at
+    # writable now, so the detail is the only thing that tells them apart --
+    # which is exactly why it is asserted rather than the exit code.
+    assert rc == 0
+    assert "is writable" in summary, "a spaced-out answer was not parsed"
     assert "could not be asked" not in summary
 
 

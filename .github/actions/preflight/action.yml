@@ -125,16 +125,31 @@ runs:
           ghcr_write=false
           ghcr_why="no token was passed to this action"
         else
-          # Ask the registry what this token may actually do, rather than
-          # whether it can log in. A `docker login` is not the question: a
-          # read-only token logs in perfectly well, so a repository whose
-          # "Workflow permissions" are set to read-only -- a fork's default, and
-          # the likeliest thing wrong with one -- would pass a login check and
-          # then fail at the push. That is precisely the failure this job exists
-          # to move to the front of the run, so it cannot be the one it misses.
+          # Ask the registry what it grants this token, on the image this run
+          # would publish, and read back the granted actions.
           #
-          # The registry's own token endpoint answers it: ask for `pull,push` on
-          # the image this run would publish, and read back what was granted.
+          # **It confirms and it never refutes.** A granted `push` is proof the
+          # write works. A withheld one is not proof of the opposite, and that
+          # is measured rather than cautious: on `partcad/partcad` itself -- the
+          # repository whose workflows publish every one of these images, with
+          # `packages: write` and this same `GITHUB_TOKEN` -- this endpoint
+          # answers `pull` and no `push`. The release tags on ghcr are the
+          # evidence that the push works anyway.
+          #
+          # So the endpoint's negative answer says something about the endpoint
+          # and not about the run, and a gate that stopped on it would stop this
+          # repository from building its own images. A check that blocks a run
+          # which would have worked is worse than no check: the person it stops
+          # has nothing to fix.
+          #
+          # What that costs is the case this probe was added for -- a fork whose
+          # "Workflow permissions" are read-only, caught before the push rather
+          # than at it. Nothing cheap distinguishes that from the false negative
+          # above. The only definitive test is pushing something small and
+          # seeing what happens, which is a real image, a real tag and a tag to
+          # clean up afterwards; worth doing if the case turns out to bite, and
+          # not worth guessing at before then.
+          #
           # Pure shell on purpose -- `base64` is coreutils and is everywhere,
           # and a probe that needed a language runtime would be a probe that
           # silently stopped running the day one was missing.
@@ -163,20 +178,19 @@ runs:
           # `"push"` quoted, so that a repository whose *name* held the word
           # could not answer for the permission. The granted actions are the
           # only place it appears quoted like this.
+          #
+          # Both of the other branches land on writable, for the two different
+          # reasons above: the probe could not be run, or it answered and its
+          # answer does not settle the question. Neither is a reason to stop a
+          # run, and the push itself says so loudly if the write really is
+          # missing.
+          ghcr_write=true
           if [ -z "${claims}" ]; then
-            # The probe did not run: no route to the registry, no `base64`, a
-            # response in a shape this cannot read. Fall back to what can be
-            # derived rather than calling a run broken because a check could not
-            # be made -- the token is writable in principle here, and the push
-            # will say so if it is not.
-            ghcr_write=true
             ghcr_why="assumed writable: ${REGISTRY} could not be asked"
           elif case "${claims}" in *'"push"'*) true ;; *) false ;; esac; then
-            ghcr_write=true
             ghcr_why="${REGISTRY}/${REPO}-container-* is writable"
           else
-            ghcr_write=false
-            ghcr_why="${REGISTRY} grants this token pull but not push on ${REPO}-container-*"
+            ghcr_why="assumed writable: ${REGISTRY} reported pull only, which it also does where the push works"
           fi
         fi
 

@@ -915,6 +915,14 @@ The ``Prerequisites`` job now says so before the run instead, and says where to 
    | packages: write    | unavailable here | read-only, because GitHub gives a fork's pull    |
    |                    |                  | request a read-only token                        |
 
+.. note::
+
+   That job asks the registry what it grants the token, and it treats the answer as confirmation only. A granted
+   ``push`` proves the write works; a withheld one proves nothing, because ghcr answers ``pull`` and no ``push`` on
+   ``partcad/partcad`` itself -- the repository that publishes every one of these images. So the job never stops a run
+   over that answer. What it costs is the case it was added for: a fork whose **Workflow permissions** are read-only
+   is not caught before its push, only at it.
+
 **Run CI in your fork to get that coverage.** Push the branch to your fork and start *CI* from its **Actions** tab
 with "Run workflow". There the token writes to ``ghcr.io/<you>/partcad-container-*``, the run builds your images, and
 its test jobs pull what it built rather than upstream's -- ``PC_CONTAINER_IMAGE_OWNER`` is what redirects them,
