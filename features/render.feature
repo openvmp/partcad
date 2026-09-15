@@ -19,11 +19,28 @@ Feature: `pc render` command
     # What this rules out is the two ways it could go wrong: a reading that
     # writes nothing, and readings that write over each other or over the
     # projection of the drawing itself.
-    When I run "pc --no-ansi -p $PARTCAD_ROOT/examples render --package //produce_part_sheet_metal -t svg -O ./ -s ':panel;include=BEND_UP'"
+    # Written with the multi-line form and *double* quotes on purpose. A
+    # parameterized name holds ';', which a POSIX shell reads as a command
+    # separator, so it has to be quoted -- and these commands run through
+    # 'subprocess.run(shell=True)', which is 'cmd.exe' on Windows, where "'"
+    # quotes nothing and would be passed through as part of the name. The
+    # object would then begin "'" rather than ':', 'resolve_resource_path'
+    # would cut the package at the ':' after it, and the render would be asked
+    # for a package named "'".
+    When I run command
+      """
+      pc --no-ansi -p $PARTCAD_ROOT/examples render --package //produce_part_sheet_metal -t svg -O ./ -s ":panel;include=BEND_UP"
+      """
     Then the command should exit with a status code of "0"
-    When I run "pc --no-ansi -p $PARTCAD_ROOT/examples render --package //produce_part_sheet_metal -t svg -O ./ -s ':panel;include=BEND_DOWN'"
+    When I run command
+      """
+      pc --no-ansi -p $PARTCAD_ROOT/examples render --package //produce_part_sheet_metal -t svg -O ./ -s ":panel;include=BEND_DOWN"
+      """
     Then the command should exit with a status code of "0"
-    When I run "pc --no-ansi -p $PARTCAD_ROOT/examples render --package //produce_part_sheet_metal -t svg -O ./ -s ':panel;include=BEND_UP,BEND_DOWN'"
+    When I run command
+      """
+      pc --no-ansi -p $PARTCAD_ROOT/examples render --package //produce_part_sheet_metal -t svg -O ./ -s ":panel;include=BEND_UP,BEND_DOWN"
+      """
     Then the command should exit with a status code of "0"
     Then a file named "panel;include=BEND_UP.svg" should be created
     And a file named "panel;include=BEND_DOWN.svg" should be created
