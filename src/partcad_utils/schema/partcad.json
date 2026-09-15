@@ -1176,7 +1176,7 @@
                 "type": {
                   "type": "string",
                   "enum": ["assy", "step", "urdf", "mjcf", "alias", "enrich"],
-                  "description": "'assy' is an Assembly YAML file, 'step' a STEP assembly, 'urdf' a URDF robot description, 'mjcf' a MuJoCo model"
+                  "description": "'assy' is an Assembly YAML file, 'step' a STEP assembly, 'urdf' a URDF robot description, 'mjcf' a MuJoCo model. MJCF belongs to the MuJoCo plugin package and is named through it - 'sim-mujoco:mjcf' - which is the spelling to use and the one that keeps working"
                 },
                 "desc": { "type": "string", "maxLength": 1000 },
                 "path": { "type": "string", "minLength": 1 },
@@ -1296,7 +1296,7 @@
                 "type": {
                   "type": "string",
                   "enum": ["assy", "world", "mjcf", "alias", "enrich"],
-                  "description": "'assy' is an Assembly YAML file read as a scene, which is the same format without the 'how' sections; 'world' is a Gazebo world (SDFormat) file; 'mjcf' is a MuJoCo model, which is declared as an assembly or as a scene depending on what it holds"
+                  "description": "'assy' is an Assembly YAML file read as a scene, which is the same format without the 'how' sections; 'world' is a Gazebo world (SDFormat) file; 'mjcf' is a MuJoCo model, which is declared as an assembly or as a scene depending on what it holds. An engine's own scene format belongs to that engine's plugin package and is named through it - 'sim-gazebo:world', 'sim-mujoco:mjcf' - which is the spelling to use and the one that keeps working"
                 },
                 "desc": { "type": "string", "maxLength": 1000 },
                 "path": { "type": "string", "minLength": 1 },

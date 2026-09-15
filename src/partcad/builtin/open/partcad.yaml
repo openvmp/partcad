@@ -152,10 +152,16 @@ open:
         else:
             print('PartCAD: this Blender has no importer for ' + (extension or path))
 
-  # The two below are here only until the packages that own them are published:
-  # `gazebo` belongs to `partcad/partcad-sim-gazebo` and `mujoco` to
-  # `partcad/partcad-sim-mujoco`, beside the exporter, the reader and the
-  # simulator for that engine's own scene format.
+  # The two below are here only until the wheel stops carrying them. Both are
+  # declared, identically, by the package that owns the engine --
+  # `partcad/partcad-sim-gazebo` and `partcad/partcad-sim-mujoco` -- beside the
+  # exporter, the reader and the simulator for that engine's own scene format.
+  # A workspace that imports either already gets the entry from there.
+  #
+  # What is left before these can go is the conversion: an application that
+  # reads one scene format is handed another as `pc export -t <format>`, and
+  # that runs ad-hoc, in a throwaway package with no dependency on the plugin
+  # that implements the format. See the note in `//builtin/import`.
 
   gazebo:
     displayName: Gazebo

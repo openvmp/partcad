@@ -306,6 +306,64 @@ def test_options_package_applies_to_another_packages_objects(ctx):
     assert impl.config["package"] == options_project.name
 
 
+def test_a_format_may_name_the_package_that_implements_it(ctx):
+    """'pc export -t <package>:<type>' is how an implementation elsewhere is reached.
+
+    The same answer '--options-package' gives, asked for in the file type itself.
+    It exists because there are file types no package can reach any other way:
+    nothing in '//builtin/export' writes MJCF or SDFormat, so a scene asked for
+    one has nothing to resolve unless the plugin that implements it is named.
+    """
+    project, part = _part(ctx, "//produce_part_step", "bolt")
+
+    impl, _ = part.output_getopts(ctx, CUSTOM_EXAMPLE + ":stl", project)
+    assert impl.script == "export_stl_commented.py"
+    assert impl.config["package"] == ctx.get_project(CUSTOM_EXAMPLE).name
+    assert impl.parameters["comment"].startswith("Produced by")
+
+
+def test_naming_a_package_leaves_the_file_named_after_the_bare_type(ctx):
+    """The package path says where to resolve; it is not part of the file type."""
+    project, part = _part(ctx, "//produce_part_step", "bolt")
+
+    impl, filepath = part.output_getopts(ctx, CUSTOM_EXAMPLE + ":stl", project)
+    assert impl.format_name == "stl"
+    assert os.path.basename(filepath) == "bolt.stl"
+
+
+def test_a_named_package_is_still_re_tuned_by_the_caller(ctx):
+    """Naming somebody else's exporter does not hand it their parameters as well.
+
+    The named package is a layer above the built-in one and below the caller,
+    which is what keeps a parameter the caller sets -- and, for the same reason,
+    where the file goes -- the caller's to decide.
+    """
+    project, part = _part(ctx, "//produce_part_step", "bolt")
+    part.config["export"] = {"stl": {"comment": "from the shape"}}
+    try:
+        impl, _ = part.output_getopts(ctx, CUSTOM_EXAMPLE + ":stl", project)
+        assert impl.script == "export_stl_commented.py"
+        assert impl.parameters["comment"] == "from the shape"
+    finally:
+        del part.config["export"]
+
+
+def test_a_format_naming_a_package_that_is_not_there_says_which_package(ctx):
+    project, part = _part(ctx, "//produce_part_step", "bolt")
+    with pytest.raises(Exception) as caught:
+        part.output_getopts(ctx, "//no_such_package:stl", project)
+    assert "//no_such_package" in str(caught.value)
+
+
+def test_splitting_a_format_leaves_a_bare_name_alone():
+    """Every file type that names no package, which is nearly all of them."""
+    assert output.split_format("//here", "stl") == ("stl", None)
+    assert output.split_format("//here", None) == (None, None)
+    assert output.split_format("//here", "//there:stl") == ("stl", "//there")
+    # Relative to the package that asked, the way every other resource path is.
+    assert output.split_format("//here", "sibling:stl") == ("stl", "//here/sibling")
+
+
 def test_a_shape_overrides_its_package(ctx):
     project, part = _part(ctx, CUSTOM_EXAMPLE, "cube")
     part.config["export"] = {"step": {"comment": "from the shape"}}
@@ -766,6 +824,36 @@ def test_step_export_carries_the_configured_comment(tmp_path):
     # A STEP string escapes a single quote by doubling it, so the comment the
     # example configures is in the file in that form rather than verbatim.
     assert comment.replace("'", "''") in open(path).read()
+
+
+@pytest.mark.slow
+def test_a_package_renders_a_file_type_named_in_another_package(tmp_path):
+    """A bulk render honours a 'package:format' name (needs the sandbox).
+
+    The list of file types a package renders is what that package and the
+    built-in ones declare, and a type named by its full path is in neither -
+    being somewhere else is the whole reason for spelling it that way. Filtered
+    against that list, 'pc export -t <package>:<type>' reported success and
+    wrote nothing at all.
+    """
+    context = pc.Context(EXAMPLES)
+    project = context.get_project("//produce_part_step")
+    named = ctx_relative_format(context)
+    try:
+        asyncio.run(project.render_async(parts=["bolt"], format=named, output_dir=str(tmp_path)))
+    except Exception as e:
+        pytest.skip("Sandbox unavailable: %s" % e)
+
+    written = str(tmp_path / "bolt.stl")
+    assert os.path.exists(written), "nothing was written for '%s'" % named
+    # The other package's implementation, not the built-in one: ASCII, and named
+    # after that package's comment.
+    assert open(written).readline().startswith("solid Produced by the PartCAD")
+
+
+def ctx_relative_format(context):
+    """'<package>:stl', spelled the way a package's own configuration would."""
+    return "%s:stl" % context.get_project(CUSTOM_EXAMPLE).name
 
 
 @pytest.mark.slow

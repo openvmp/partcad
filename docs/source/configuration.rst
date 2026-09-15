@@ -2716,6 +2716,12 @@ respectively, beside the exporter and the simulator that share their knowledge
 of the format: reading a format and writing it are one piece of knowledge, and
 this is what lets the pair travel together and be versioned together.
 
+Both of those packages declare the reader, the writer, the simulator and the
+``open:`` entry for their format, so ``type: sim-gazebo:world`` and
+``type: sim-mujoco:mjcf`` read through the plugin today. The wheel still carries
+a copy of each reader, which is what the bare ``type: world`` resolves to and
+which is on its way out; write the full path.
+
 .. _open-section:
 
 ============
@@ -2744,9 +2750,12 @@ the same for every tool and happens once, in ``partcad_client.external``.
 
 ``pc open --with democad ./cell.demo`` then works, in a workspace whose packages
 import that one. PartCAD ships five of these in ``//builtin/open`` -- FreeCAD,
-KiCad, Blender, and (until the packages that own them are published) Gazebo and
-MuJoCo. A package's entry replaces a built-in of the same name, which is how the
-plugin for a simulation engine comes to own the application for it.
+KiCad, Blender, and, until the wheel stops carrying them, Gazebo and MuJoCo. A
+package's entry replaces a built-in of the same name, which is how the plugin
+for a simulation engine comes to own the application for it: both
+`partcad-sim-gazebo <https://github.com/partcad/partcad-sim-gazebo>`_ and
+`partcad-sim-mujoco <https://github.com/partcad/partcad-sim-mujoco>`_ declare
+theirs, so a workspace that imports either already gets the entry from there.
 
 Three fields are worth dwelling on, because they are how an application that
 cannot read what it was handed still gets to open something. ``companions:``
@@ -3740,6 +3749,44 @@ everything else, and a package that sets ``path`` replaces it.
 ``svg``, ``png``, ``jpeg`` and ``dxf``. Reading their ``partcad.yaml`` is the most direct
 way to see what parameters each file type takes and what a package's own
 implementation should look like.
+
+It also carries ``world`` and ``mjcf`` for the moment, and will not for much
+longer: an engine's own scene format belongs to that engine's plugin package,
+beside the reader and the simulator that share its knowledge of the format.
+Write ``sim-gazebo:world`` and ``sim-mujoco:mjcf`` (see `Naming a file type
+elsewhere`_), which resolve through the plugin and keep working.
+
+Naming a file type elsewhere
+----------------------------
+
+A file type is ordinarily a bare name -- ``step``, ``png`` -- and every package
+with an opinion about it is layered on top of the built-in one. It may also be
+written as a full resource path, which names the package the implementation
+lives in:
+
+.. code-block:: shell
+
+  pc export -t sim-gazebo:world -S warehouse
+
+.. code-block:: yaml
+
+  scenes:
+    warehouse:
+      type: sim-gazebo:world     # the same spelling, for the reader
+      path: warehouse.world
+
+That is the spelling every other section resolved this way already takes --
+``import:``, ``simulation:``, ``pc cae --implementation`` -- and it is here for
+the same reason: a format PartCAD ships no implementation of has no other way to
+be reached. Nothing in ``//builtin/export`` is going to write MJCF or SDFormat,
+so ``pc export -t mjcf`` on a package that never mentioned MJCF has nothing to
+resolve, and ``pc export -t sim-mujoco:mjcf`` has.
+
+The named package goes in as a layer directly above the built-in one rather than
+replacing the lot, because this section also decides where the file goes:
+``output_dir`` and ``prefix`` are the caller's business whoever writes the file.
+So a package that asks for somebody else's exporter still says where the result
+lands, and still re-tunes any parameter it wants to.
 
 ``readme``, ``pdf`` and ``html`` are the outputs ``render:`` accepts that no
 implementation writes: PartCAD assembles them itself out of what the package
