@@ -6,12 +6,20 @@
 # section a package declares these in: `cam:` rather than `export:`/`render:`.
 #
 # Every field below that is not `path`, `extension` or `pythonRequirements` is a
-# parameter of the file type, and every one of them is also a key an *object*
-# may set in its own `cam:` section (see `partcad.cam`). That is deliberate and
-# it is the whole layering: what is written here is what this machine shop does
-# by default, what a package writes in its own `cam:` section is what that
-# package's parts are cut with, and what an object writes in its own `cam:`
-# section is what that object is cut with. The object is the topmost layer.
+# parameter of the file type. That is the layering: what is written here is what
+# this machine shop does by default, and what a package writes in its own `cam:`
+# section is what that package's parts are cut with.
+#
+# The **job** half of them is also a key an *object* may set in its own `cam:`
+# section, and the object is the topmost layer -- `partcad.cam.KEYS` is the list,
+# and it is closed, which is what lets a typo there be a sentence rather than a
+# route cut to a default. The rest of what is below describes the *file* rather
+# than the cut (`units`, `precision`, `tolerance`, `comments`) and is set here or
+# by a package, not by an object. The line between them is not tidiness: this is
+# one implementation of many, an object's section has to be checkable against a
+# list PartCAD knows, and PartCAD cannot know the parameters of an
+# implementation somebody else writes. `direction` is on the job side because
+# which way round a contour is cut is a property of how the object is made.
 #
 # There is no default `tool:`, and there must not be. Every other parameter has
 # a defensible default -- a feed that is slow, a pass that is shallow, a

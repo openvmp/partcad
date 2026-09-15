@@ -102,3 +102,12 @@ def cli(cli_ctx, package, implementation, output_dir, create_dirs, recursive, sk
         import json
 
         click.echo(json.dumps((result or {}).get("routes") or [], indent=2))
+
+    # Printed first, then failed. An object whose section is wrong must not cost
+    # the other nineteen their record: the files are on disk either way, and a
+    # caller piping `--json` has as much use for the routes that were produced
+    # as for the news that one was not. The daemon has already reported each
+    # failure against the object it belongs to.
+    failed = (result or {}).get("failed") or []
+    if failed:
+        raise click.ClickException("No route was produced for %s" % ", ".join(failed))

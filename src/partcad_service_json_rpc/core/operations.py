@@ -2317,14 +2317,17 @@ def cam_route(session, params):
             # package that may be full of them.
             pc.logging.info("Nothing in %s declares a 'cam:' section, so no route was produced" % package)
 
-    if failures:
-        # One error naming every object that failed. The individual reports are
-        # already in the log above, where each was produced.
-        raise JsonRpcError(
-            ANALYSIS_FAILED,
-            "No route was produced for %s" % ", ".join(sorted(name for name, _ in failures)),
-        )
-    return {"routes": results}
+    # The routes that were produced are returned whether or not others failed,
+    # and the failure travels beside them as a name rather than as an exception.
+    # Raising here discarded them at the RPC boundary: `pc cam --json` over a
+    # package where one object of twenty is misconfigured printed nothing at
+    # all, and the nineteen files on disk had no machine-readable record. What
+    # the caller does with the pair is the caller's -- the CLI prints the array
+    # and then exits non-zero, which is the behaviour this always documented.
+    return {
+        "routes": results,
+        "failed": sorted(name for name, _ in failures),
+    }
 
 
 async def _route_packages_async(pc, ctx, packages, object_name, sketch, implementation, output_dir):
@@ -2349,6 +2352,7 @@ async def _route_packages_async(pc, ctx, packages, object_name, sketch, implemen
     pc.output.all_formats(ctx)
 
     shapes = []
+    unresolved = []
     seen = set()
     for package in packages:
         target, obj = package, object_name
@@ -2370,10 +2374,21 @@ async def _route_packages_async(pc, ctx, packages, object_name, sketch, implemen
             # The whole package: every sketch and part of it that declares a
             # 'cam:' section.
             shapes.extend(await prj.routable_shapes_async())
-        elif sketch:
-            shapes.extend(await prj.routable_shapes_async(sketches=[obj]))
+            continue
+
+        if sketch:
+            named = await prj.routable_shapes_async(sketches=[obj])
         else:
-            shapes.extend(await prj.routable_shapes_async(parts=[obj]))
+            named = await prj.routable_shapes_async(parts=[obj])
+        if not named:
+            # The getter has already said which object it could not find, and
+            # in which package. What this adds is the failure itself: without
+            # it a typo came back as an empty *success*, and a caller reading
+            # the result rather than the log -- the IDE, or anything piping
+            # `--json` -- saw a package where nothing needed routing.
+            unresolved.append("%s:%s" % (target, obj))
+            continue
+        shapes.extend(named)
 
     at_once = asyncio.Semaphore(max(1, process_slots.count))
 
@@ -2383,7 +2398,7 @@ async def _route_packages_async(pc, ctx, packages, object_name, sketch, implemen
 
     produced = await asyncio.gather(*[route(shape) for shape in shapes], return_exceptions=True)
 
-    results, failures = [], []
+    results, failures = [], [(name, None) for name in unresolved]
     for shape, result in zip(shapes, produced):
         name = "%s:%s" % (shape.project_name, shape.name)
         if not isinstance(result, BaseException):

@@ -261,3 +261,65 @@ def test_normalizing_is_idempotent():
     """The object's own values are already numbers by the time they get here."""
     once = cam.normalize_job({"tool": "6 mm", "feed": "20 mm/s"})
     assert cam.normalize_job(once) == once
+
+
+# --------------------------------------------------------------------------- #
+# What a review of #649 turned up                                             #
+# --------------------------------------------------------------------------- #
+
+
+def test_the_stepover_bound_holds_at_every_layer():
+    """A package's layer can write the same mistake an object's is refused for.
+
+    `CamConfig` refuses a stepover above 1 because it leaves a ridge of uncut
+    material between passes. Written one layer down -- under the package's own
+    `cam: <file type>:` -- it reached the implementation unchecked and produced
+    the very route that check exists to prevent, because `normalize_job` only
+    parsed the number.
+    """
+    with pytest.raises(cam.CamConfigError) as raised:
+        cam.normalize_job({"tool": 6, "stepover": 1.5})
+    assert "cannot exceed 1" in str(raised.value)
+    # The bound, not the parse: 1 is the largest stepover that means anything.
+    assert cam.normalize_job({"tool": 6, "stepover": 1})["stepover"] == pytest.approx(1.0)
+
+
+def test_direction_is_a_job_key_and_not_a_file_setting():
+    """Which way round a contour is cut is a property of how the object is made.
+
+    It decides which side of the tool the chip comes off and which of the two
+    edges is the finished one, so it belongs with the tool and the depth rather
+    than with `units:` and `precision:`, which describe the file.
+    """
+    assert "direction" in cam.KEYS
+    config = cam.CamConfig({"tool": 6, "direction": "Conventional"})
+    assert config.direction == cam.CONVENTIONAL
+    assert config.to_data()["direction"] == "conventional"
+    # And at every layer, like the operation beside it.
+    assert cam.normalize_job({"direction": "CLIMB"})["direction"] == cam.CLIMB
+
+
+def test_a_direction_nobody_mills_in_is_refused_at_every_layer():
+    for section in (
+        lambda: cam.CamConfig({"tool": 6, "direction": "sideways"}),
+        lambda: cam.normalize_job({"direction": "sideways"}),
+    ):
+        with pytest.raises(cam.CamConfigError) as raised:
+            section()
+        assert "climb" in str(raised.value)
+
+
+def test_what_describes_the_file_is_not_an_object_key():
+    """`units:` and its siblings stay with the file type, and the refusal says so.
+
+    An object's section is checked against a list, and a list can only hold what
+    PartCAD knows the name of -- so the closed set covers the cut and not the
+    parameters of an implementation PartCAD has never seen. A package sets those.
+    """
+    for key in ("units", "precision", "tolerance", "comments"):
+        assert key not in cam.KEYS
+        with pytest.raises(cam.CamConfigError):
+            cam.CamConfig({"tool": 6, key: "whatever"})
+        # They still reach the implementation untouched from the layers that may
+        # set them -- `normalize_job` converts what it knows and carries the rest.
+        assert cam.normalize_job({key: "whatever"})[key] == "whatever"

@@ -27,6 +27,11 @@
           "enum": ["profile", "pocket", "engrave"],
           "description": "Which side of the outline the tool runs on: around the outside of it ('profile'), clearing what is inside it ('pocket'), or along it ('engrave')"
         },
+        "direction": {
+          "type": "string",
+          "enum": ["climb", "conventional"],
+          "description": "Which way round each contour is cut. 'climb' puts the material on the tool's right, which leaves the better edge; 'conventional' reverses every path"
+        },
         "tool": { "$ref": "#/definitions/cam-length", "description": "The cutter's diameter" },
         "depth": {
           "$ref": "#/definitions/cam-length",

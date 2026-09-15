@@ -592,9 +592,9 @@ materials that names it worthless.
 
 .. code-block:: text
 
-  Test failed: //robot:bracket: cam: It is not reproducible: it is fetched with
-  'fileFrom: url', declares no 'fileHash', and names no vendor and SKU to order
-  it by, so nothing says which one it is
+  Test failed: //robot:bracket: manufacturability: It is not reproducible: it is
+  fetched with 'fileFrom: url', declares no 'fileHash', and names no vendor and
+  SKU to order it by, so nothing says which one it is
 
 The rule is about being *identified*, not about being available -- the file may
 download perfectly well and still be a different file than it was last month.
@@ -3923,13 +3923,21 @@ part and the mesh size belongs to whoever solves it -- and here the tool, the
 depth and the feed are the same thing said at a different scope.
 
 What keeps the two readings of the word unambiguous is that an object's ``cam:``
-takes a **closed** set of keys -- ``operation``, ``tool``, ``depth``,
-``depth_per_pass``, ``safe_z``, ``feed``, ``plunge``, ``speed``, ``stepover``,
-plus ``implementation`` and ``desc`` -- so it can never be read as the file-type
-declaration a package's ``cam:`` section holds. Anything else in it is refused
-with a sentence, which is what turns a typo into an error rather than a route
-cut to a default. See :ref:`pc cam <cam>` for what each key means, which units
-it may be written in, and why ``tool:`` has no default.
+takes a **closed** set of keys -- ``operation``, ``direction``, ``tool``,
+``depth``, ``depth_per_pass``, ``safe_z``, ``feed``, ``plunge``, ``speed``,
+``stepover``, plus ``implementation`` and ``desc`` -- so it can never be read as
+the file-type declaration a package's ``cam:`` section holds. Anything else in it
+is refused with a sentence, which is what turns a typo into an error rather than
+a route cut to a default. See :ref:`pc cam <cam>` for what each key means, which
+units it may be written in, and why ``tool:`` has no default.
+
+Those are the keys that describe the **cut**. A file type's other parameters
+describe the **file** -- ``//builtin/cam``'s ``units``, ``precision``,
+``tolerance`` and ``comments`` -- and are set here or by a package rather than by
+an object. The line is not tidiness: an object's section is checked against a
+list, a list can only hold what PartCAD knows the name of, and PartCAD cannot
+know the parameters of an implementation somebody else writes. So a package sets
+those for its objects, and the closed set is what buys the error message.
 
 Drawing the ports and the interfaces
 ------------------------------------

@@ -394,21 +394,29 @@ class Program:
     def plunge(self, z, feed):
         self.code("G1 Z%s F%s" % (self.number(z), self.feed(feed)))
 
-    def cut_to(self, point, feed=None):
-        """One cutting move, dropped if it goes nowhere.
+    def cut_to(self, point, feed=None) -> bool:
+        """One cutting move, dropped if it goes nowhere. True when one was written.
 
         A contour offset from a wire with several edges meeting at a tangent
         carries points a micron apart, and a move to where the tool already is
         is a line in the file and a dwell on the machine.
+
+        The answer matters because of what carries the feed. A pass writes 'F'
+        on its first cutting move and on none of the others, so a caller that
+        counts a dropped move as that first one writes no 'F' at all -- and the
+        controller keeps the feed from the 'G1 Z' that plunged into the work,
+        cutting the whole contour at the plunge rate. Whether the move happened
+        is the only thing that can settle it, and only this knows.
         """
         if self._where is not None:
             distance = _distance(self._where, point)
             if distance <= TOLERANCE:
-                return
+                return False
             self.cut_length += distance
         word = "" if feed is None else " F%s" % self.feed(feed)
         self.code("G1 X%s Y%s%s" % (self.number(point[0]), self.number(point[1]), word))
         self._where = point
+        return True
 
     def text(self):
         # A trailing newline, and Unix line endings: a G-code file is read by
@@ -559,8 +567,10 @@ def process(path, request):
                 program.plunge(z, plunge)
                 first = True
                 for point in points[1:]:
-                    program.cut_to(point, feed if first else None)
-                    first = False
+                    # Still 'first' until a move is actually written: a dropped
+                    # one must not consume the pass's feed word (see 'cut_to').
+                    if program.cut_to(point, feed if first else None):
+                        first = False
                 # Back at the start of the contour, which is where the next
                 # pass plunges from - so there is nothing to move before it.
             program.rapid_z(safe_height)

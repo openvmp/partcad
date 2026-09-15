@@ -47,13 +47,20 @@ Why the object's section is called `cam:` too, when CAE splits the two names
 (`cae:` for the implementations, `fea:`/`cfd:` for what the part declares): for
 CAE the two are different kinds of thing, because boundary conditions belong to
 the part and the mesh size and the material model belong to whoever solves it.
-Here they are the same kind of thing. The tool, the depth and the feed are the
-implementation's parameters *and* the part's statement about itself, and which
-layer they come from is a question of scope rather than of kind -- a package
-cutting twenty parts from one sheet sets the tool once, under the file type in
-its own `cam:` section, and a part that needs a smaller one says so in its own.
-So they are one namespace with the ordinary layering over it, and the object's
-section is the topmost layer.
+Here the *job* half of them is the same kind of thing. The tool, the depth and
+the feed are the implementation's parameters *and* the part's statement about
+itself, and which layer they come from is a question of scope rather than of
+kind -- a package cutting twenty parts from one sheet sets the tool once, under
+the file type in its own `cam:` section, and a part that needs a smaller one says
+so in its own. So they are one namespace with the ordinary layering over it, and
+the object's section is the topmost layer.
+
+What an object may *not* set is the half that describes the file rather than the
+cut -- `//builtin/cam`'s `units`, `precision`, `tolerance` and `comments`, and
+whatever an implementation PartCAD has never seen calls its own. Those stay with
+the file type. The reason is `KEYS` below: an object's section is checked against
+a list, and a list can only hold what PartCAD knows the name of, so the closed
+set is what buys the error message. A package sets those for its objects.
 
 What keeps that from being ambiguous is that the keys below are a **closed set**:
 an object's `cam:` may hold a job parameter and nothing else, so it can never be
@@ -96,6 +103,14 @@ POCKET = "pocket"
 ENGRAVE = "engrave"
 OPERATIONS = (PROFILE, POCKET, ENGRAVE)
 
+# Which way round a contour is cut. It decides which side of the tool the chip
+# comes off and which of the two edges is the finished one, so it is a property
+# of how this object is made rather than of the file it is written to -- which
+# is why it is a job key and `units:` is not.
+CLIMB = "climb"
+CONVENTIONAL = "conventional"
+DIRECTIONS = (CLIMB, CONVENTIONAL)
+
 # Every key an object's `cam:` section may hold, and what kind of value each is.
 # Everything in here reaches the implementation as a parameter; what is not in
 # here is refused (see the module docstring for why this set is closed).
@@ -108,7 +123,7 @@ OPERATIONS = (PROFILE, POCKET, ENGRAVE)
 LENGTH_KEYS = ("tool", "depth", "depth_per_pass", "safe_z")
 FEED_KEYS = ("feed", "plunge")
 NUMBER_KEYS = ("speed", "stepover")
-KEYS = LENGTH_KEYS + FEED_KEYS + NUMBER_KEYS + ("operation", "implementation", "desc")
+KEYS = LENGTH_KEYS + FEED_KEYS + NUMBER_KEYS + ("operation", "direction", "implementation", "desc")
 
 # Millimetres per unit, lowercased and singular, for every spelling a length may
 # carry. Millimetres are the base because that is what CAD works in here and
@@ -334,6 +349,7 @@ class CamConfig:
                 object it belongs to.
         """
         self.operation: Optional[str] = None
+        self.direction: Optional[str] = None
         self.values: dict[str, float] = {}
         self.implementation: Optional[str] = None
         self.desc: Optional[str] = None
@@ -357,6 +373,7 @@ class CamConfig:
             raise CamConfigError("'cam:' declares no job; it needs at least a 'tool:'")
 
         self._parse_operation(config.get("operation"))
+        self._parse_direction(config.get("direction"))
         self._parse_implementation(config.get("implementation"))
 
         for key in LENGTH_KEYS:
@@ -395,6 +412,16 @@ class CamConfig:
             )
         self.operation = operation.strip().lower()
 
+    def _parse_direction(self, direction) -> None:
+        """Read `direction:`, which says which way round each contour is cut."""
+        if direction is None:
+            return
+        if not isinstance(direction, str) or direction.strip().lower() not in DIRECTIONS:
+            raise CamConfigError(
+                "'cam: direction:' is not one of %s: %r" % (", ".join("'%s'" % one for one in DIRECTIONS), direction)
+            )
+        self.direction = direction.strip().lower()
+
     def _parse_implementation(self, implementation) -> None:
         """Read `implementation:`, which names who produces this route.
 
@@ -425,6 +452,8 @@ class CamConfig:
         data = dict(self.values)
         if self.operation is not None:
             data["operation"] = self.operation
+        if self.direction is not None:
+            data["direction"] = self.direction
         return data
 
     def __repr__(self) -> str:
@@ -473,6 +502,26 @@ def normalize_job(parameters: dict) -> dict:
     for key in NUMBER_KEYS:
         if normalized.get(key) is not None:
             normalized[key] = parse_number(normalized[key], "'cam: %s:'" % key)
+
+    # The same bound `CamConfig` puts on the object's own layer. It belongs at
+    # both: a stepover above 1 leaves a ridge of uncut material between passes,
+    # and the mistake is as easy to write one layer down -- under the package's
+    # own `cam: <file type>:` -- where it would otherwise reach the
+    # implementation unchecked and produce the very route the object-level
+    # check exists to prevent.
+    stepover = normalized.get("stepover")
+    if stepover is not None and stepover > 1:
+        raise CamConfigError(
+            "'cam: stepover:' is a fraction of the tool diameter, so it cannot exceed 1: %r" % stepover
+        )
+
+    direction = normalized.get("direction")
+    if direction is not None:
+        if not isinstance(direction, str) or direction.strip().lower() not in DIRECTIONS:
+            raise CamConfigError(
+                "'cam: direction:' is not one of %s: %r" % (", ".join("'%s'" % one for one in DIRECTIONS), direction)
+            )
+        normalized["direction"] = direction.strip().lower()
 
     operation = normalized.get("operation")
     if operation is not None:

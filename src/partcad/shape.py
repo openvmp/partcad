@@ -2085,12 +2085,22 @@ class Shape(ShapeConfiguration):
                     raise Exception("Cannot route '%s': shape is empty" % self.name)
 
                 script = await self._materialize_output_script(ctx, impl)
-                request = await self._output_request(ctx, obj, impl, kwargs)
+                # Handed no kwargs, deliberately: '_output_request' applies them
+                # before the object's own section is merged in, and the object
+                # would then overwrite the very values this call was given.
+                # 'route_async' promises the opposite -- an explicit parameter
+                # is the most specific thing anybody said -- so they go on top,
+                # below.
+                request = await self._output_request(ctx, obj, impl, {})
                 # The object's own job, on top of the file type's parameters:
                 # only what the object actually declared, so that a package that
                 # set a tool for all of its parts still answers for the ones
                 # that did not name one (see 'partcad.cam.CamConfig.to_data').
                 request.update(config.to_data())
+                # And last, what this call was told: 'pc cam' passes none today,
+                # but 'route_async(tool=...)' is the documented way to route one
+                # object against another cutter without editing its section.
+                request.update({key: value for key, value in kwargs.items() if value is not None})
                 # And then every layer of it converted together. The object's
                 # own values are already numbers; the ones the package and
                 # '//builtin/cam' contributed have never been near a parser, and

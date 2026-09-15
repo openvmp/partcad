@@ -77,9 +77,18 @@ Feature: `pc cam` command
     And STDOUT should contain '"operation": "profile"'
     # Naming an object that declares nothing is an error, because naming one is
     # asking about it -- unlike the silence it earns in a whole-package run.
-    When I run "pc --no-ansi cam :spacer"
+    When I run "pc --no-ansi cam --json :spacer"
     Then the command should exit with a status code of "1"
     And STDERR should contain "declares no 'cam:' section"
+    # And the array is printed even so. A failure must not swallow the record of
+    # what *was* produced -- here there is nothing, but the same path carries
+    # the nineteen routes that worked when the twentieth object is misconfigured.
+    And STDOUT should contain "[]"
+    # A name nothing resolves to is a failure of the object the user typed, not
+    # an empty success: the array prints, and the command still exits non-zero.
+    When I run "pc --no-ansi cam :nosuchpart"
+    Then the command should exit with a status code of "1"
+    And STDERR should contain "No route was produced for"
 
   # ------------------------------------------------------------------------ #
   # Everything below is settled by the declaration alone                      #
