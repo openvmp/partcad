@@ -574,7 +574,7 @@ Reproducibility and manufacturability
 Manufacturing is repetition: the run after this one has to produce the same
 thing, so everything that goes into a product has to be gettable a second time
 and be the same thing. There are three ways an object can promise that, and the
-``cam`` check of ``pc test`` fails one that offers none of them:
+``manufacturability`` check of ``pc test`` fails one that offers none of them:
 
 - **It is bought.** A ``vendor`` and an ``sku`` name a thing to order, and
   ordering it again is what "the same again" means for it -- whatever file the
@@ -3064,7 +3064,7 @@ Manufacturability
 -----------------
 
 A board nobody can flash is not a board anybody can make. So the manufacturing
-test (``pc test``, the ``cam`` check) asks the same question of a part's
+test (``pc test``, the ``manufacturability`` check) asks the same question of a part's
 ``software`` that it asks of everything else the part needs, and the part fails
 unless all of it holds:
 

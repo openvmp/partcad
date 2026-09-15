@@ -20,7 +20,7 @@ import asyncio
 import yaml
 
 import partcad as pc
-from partcad.test.cam import CamTest
+from partcad.test.manufacturability import ManufacturabilityTest
 
 
 def _record_errors(monkeypatch):
@@ -55,7 +55,7 @@ def test_a_part_with_no_tolerance_fails(tmp_path):
     ctx = _package(tmp_path, {"body": _made_part()})
     part = ctx.get_part("//:body")
 
-    failure = CamTest().tolerance_failure(part)
+    failure = ManufacturabilityTest().tolerance_failure(part)
 
     assert failure is not None
     assert "tolerance" in failure
@@ -66,14 +66,14 @@ def test_a_part_with_a_tolerance_of_zero_fails_the_same_way(tmp_path):
     ctx = _package(tmp_path, {"body": _made_part(tolerance=0.0)})
     part = ctx.get_part("//:body")
 
-    assert CamTest().tolerance_failure(part) is not None
+    assert ManufacturabilityTest().tolerance_failure(part) is not None
 
 
 def test_a_part_with_a_tolerance_passes(tmp_path):
     ctx = _package(tmp_path, {"body": _made_part(tolerance=0.1)})
     part = ctx.get_part("//:body")
 
-    assert CamTest().tolerance_failure(part) is None
+    assert ManufacturabilityTest().tolerance_failure(part) is None
 
 
 def test_a_type_that_cannot_carry_a_tolerance_says_so(tmp_path):
@@ -90,7 +90,7 @@ def test_a_type_that_cannot_carry_a_tolerance_says_so(tmp_path):
     (tmp_path / "body.step").write_text("")
     part = pc.Context(str(tmp_path)).get_part("//:body")
 
-    failure = CamTest().tolerance_failure(part)
+    failure = ManufacturabilityTest().tolerance_failure(part)
 
     assert failure is not None
     assert "step" in failure
@@ -102,8 +102,8 @@ def test_the_cam_test_reports_a_missing_tolerance_against_the_part(tmp_path, mon
     ctx = _package(tmp_path, {"body": _made_part()})
     part = ctx.get_part("//:body")
 
-    cam = CamTest()
-    assert asyncio.run(cam.test([cam], ctx, part)) == CamTest.TEST_FAILED
+    cam = ManufacturabilityTest()
+    assert asyncio.run(cam.test([cam], ctx, part)) == ManufacturabilityTest.TEST_FAILED
     assert any("body" in message and "tolerance" in message for message in recorded), recorded
 
 
@@ -127,7 +127,7 @@ def test_a_purchased_part_is_not_asked_for_a_tolerance(tmp_path, monkeypatch):
     ctx = pc.Context(str(tmp_path))
     part = ctx.get_part("//:body")
 
-    cam = CamTest()
+    cam = ManufacturabilityTest()
     asyncio.run(cam.test([cam], ctx, part))
 
     assert not any("tolerance" in message for message in recorded), recorded
@@ -158,8 +158,8 @@ def test_an_assembly_whose_part_has_no_tolerance_fails(tmp_path, monkeypatch):
     recorded = _record_errors(monkeypatch)
     ctx, assembly = _assembly_of(tmp_path, monkeypatch, _made_part())
 
-    cam = CamTest()
-    assert asyncio.run(cam.test([cam], ctx, assembly)) == CamTest.TEST_FAILED
+    cam = ManufacturabilityTest()
+    assert asyncio.run(cam.test([cam], ctx, assembly)) == ManufacturabilityTest.TEST_FAILED
 
     # Once against the part that has no tolerance...
     assert any("body" in message and "tolerance" in message for message in recorded), recorded
@@ -171,7 +171,7 @@ def test_an_assembly_whose_part_has_a_tolerance_is_not_failed_for_it(tmp_path, m
     recorded = _record_errors(monkeypatch)
     ctx, assembly = _assembly_of(tmp_path, monkeypatch, _made_part(tolerance=0.1))
 
-    cam = CamTest()
+    cam = ManufacturabilityTest()
     asyncio.run(cam.test([cam], ctx, assembly))
 
     assert not any("tolerance" in message for message in recorded), recorded

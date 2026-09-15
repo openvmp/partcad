@@ -252,6 +252,22 @@ follows the bottom and says so as a warning naming how much the two ends differ
 by. A route produced from an outline nobody expected is the one failure that
 looks like a success all the way to the machine.
 
+``pc test`` runs the same thing as its ``cam`` check -- it produces the route
+and passes the object only if one came back -- and applies it to an object that
+declares the section and to nothing else, so a package of bolts pays nothing for
+it. Unlike the analyses it does not keep what it produced: a route a check wrote
+would be indistinguishable from the one ``pc cam`` writes, so it routes into a
+temporary directory and deletes it.
+
+The check that used to be called ``cam`` is ``manufacturability``. It asks
+whether an object can be made or bought *at all* -- whether its geometry suits
+the method it declares, whether what it is made from is reproducible, whether a
+supplier could be found -- which is a different question from whether a
+post-processor can produce a program for it. One word answered both until
+``pc cam`` existed. ``-f`` filters by name prefix, so ``-f manufacturability``
+selects that check and its three method-specific siblings and ``-f cam`` selects
+the route check alone.
+
 ``examples/feature_cam`` is the three operations on three objects, and a fourth
 that declares no section and is passed over. See :ref:`pc cam <cam>` for the
 command and the units it accepts.

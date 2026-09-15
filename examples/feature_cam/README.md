@@ -247,17 +247,38 @@ daemon already running, anything you set in the environment to steer a run is
 silently ignored. `pc daemon stop` first. The same warning `feature_cae`'s
 README gives, for the same reason.
 
-## `pc test -f cam` is a different thing
+## `pc test -f cam` is the same thing, as a check
 
-`pc test`'s `cam` check — and the `cam-additive`, `cam-subtractive` and
-`cam-forming` checks below it — ask whether an object *can* be manufactured or
-purchased at all: whether the geometry suits the method it declares, whether
-what it is made from is reproducible, whether a supplier could be found.
-`pc cam` asks nothing and produces the program.
+```shell
+pc test -f cam
+```
 
-They share a word because they are both computer-aided manufacturing, and they
-share nothing else. An object with a `cam:` section is not thereby checked, and
-an object the check passes has no route unless it declares one.
+The check produces the route and passes the object only if one came back. It is
+the same code this command runs, so the two cannot disagree about an object, and
+it applies to an object that declares a `cam:` section and to nothing else — so
+`spacer` is not applicable and a package of bolts pays nothing for it.
+
+There is one way to pass: a route was written. A malformed section fails, an
+implementation that cannot be resolved fails, and an implementation that
+resolved and produced nothing fails — a tool bigger than the hole it was asked
+to cut, an outline the offset consumed. A machine that cannot provision a
+sandbox at all is the one thing it does not hold against the object: nothing was
+ever asked there, so it skips, loudly, and does not remember the skip.
+
+**It does not keep what it produced.** An analysis writes its model beside the
+package because the model is the answer somebody asked for; a route produced by
+a check is a by-product, and one left here would be indistinguishable from the
+`.nc` files above — read as current long after the part moved on. So the check
+routes into a temporary directory and deletes it.
+
+**The check that used to be called `cam` is `manufacturability` now.** It asks
+whether an object *can* be made or bought at all — whether the geometry suits
+the method it declares, whether what it is made from is reproducible, whether a
+supplier could be found — which is a different question from whether a
+post-processor can produce a program for it. Both are computer-aided
+manufacturing, which is why one word answered for both until `pc cam` existed.
+`-f` filters by name prefix, so `-f manufacturability` selects that check and
+its three method-specific siblings, and `-f cam` selects this one alone.
 
 ## See also
 

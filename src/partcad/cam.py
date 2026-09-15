@@ -61,14 +61,13 @@ read as the file-type declaration a package's `cam:` section holds. A key that i
 neither is refused rather than passed through, which is what turns a typo into a
 sentence instead of a route cut to a default.
 
-`partcad.test.cam` is **not** this, despite the name. That one is the `pc test`
-check that asks whether an object can be manufactured or purchased at all --
-whether its geometry suits the method it declares, whether what it is made from
-is reproducible, whether a supplier could be found. This produces the program a
-machine runs. The two share a word because both are computer-aided
-manufacturing, and they share nothing else: an object with a `cam:` section is
-not thereby checked, and an object that check passes has no route unless it
-declares one.
+`partcad.test.manufacturability` is the neighbouring idea and not this one: it
+is the `pc test` check that asks whether an object can be made or bought at all
+-- whether its geometry suits the method it declares, whether what it is made
+from is reproducible, whether a supplier could be found. This says how to make
+it. Both are computer-aided manufacturing, which is why that check was called
+`cam` until `pc cam` existed and the one word had to answer two questions;
+`partcad.test.cam` is now the check that this module backs.
 
 Nothing here imports a CAD library or touches geometry. It reads the
 configuration, converts the units, and hands the result to an implementation that
