@@ -2817,6 +2817,28 @@ class Project(project_config.Configuration):
                         lines += columns
                     lines += [""]
 
+        def declared(objects: dict) -> list:
+            """The names of the objects the package declares, in order.
+
+            'self.parts' and the dictionaries beside it hold the parametrized
+            *instances* too: asking for 'panel;include=OUTLINE' creates one and
+            registers it, so a package that declares one sketch can hold three.
+            An instance is not a declaration - it exists because something
+            referred to the base with particular parameter values, and the base
+            is in the README already, with its parameters listed - and nothing
+            renders an image for one, so listing them produced a section with
+            no image and a warning naming a file nobody was going to write.
+
+            Told apart by 'orig_name', which is the name of the declaration an
+            object came from and is its own name for everything the package
+            wrote down (see 'Configuration.normalize' and
+            'Project.get_object'). Asked of the object itself rather than of
+            what it resolves to: an alias reports the source's configuration
+            below, where its 'orig_name' is the source's name and not the
+            alias's.
+            """
+            return sorted(name for name in objects if objects[name].config.get("orig_name", name) == name)
+
         def add_section(name, display_name, shape, render_cfg):
             config = shape.config
 
@@ -2927,7 +2949,7 @@ class Project(project_config.Configuration):
         if self.assemblies and "assemblies" not in exclude:
             lines += ["## Assemblies"]
             lines += [""]
-            shape_names = sorted(self.assemblies.keys())
+            shape_names = declared(self.assemblies)
             for name in shape_names:
                 shape = self.assemblies[name]
                 if shape.config["type"] == "alias":
@@ -2944,7 +2966,7 @@ class Project(project_config.Configuration):
             # where that is true of every part would otherwise get a "## Parts"
             # heading with nothing under it.
             part_lines = []
-            shape_names = sorted(self.parts.keys())
+            shape_names = declared(self.parts)
             for name in shape_names:
                 shape = self.parts[name]
                 if shape.config["type"] == "alias":
@@ -2961,7 +2983,7 @@ class Project(project_config.Configuration):
         if self.interfaces and "interfaces" not in exclude:
             lines += ["## Interfaces"]
             lines += [""]
-            shape_names = sorted(self.interfaces.keys())
+            shape_names = declared(self.interfaces)
             for name in shape_names:
                 shape = self.interfaces[name]
                 lines += add_section(name, name, shape, render_cfg)
@@ -2969,7 +2991,7 @@ class Project(project_config.Configuration):
         if self.sketches and "sketches" not in exclude:
             lines += ["## Sketches"]
             lines += [""]
-            shape_names = sorted(self.sketches.keys())
+            shape_names = declared(self.sketches)
             for name in shape_names:
                 shape = self.sketches[name]
                 lines += add_section(name, name, shape, render_cfg)

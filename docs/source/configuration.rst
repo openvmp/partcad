@@ -2249,6 +2249,10 @@ Whether bending the blank as described produces the shape the part declares is a
 question for the day PartCAD bends the blank itself; until then the part is what
 its own type built, and these are the manufacturing inputs beside it.
 
+``examples/produce_part_sheet_metal`` is the whole of the above in one package:
+one DXF holding the flat pattern and the two bend lines, the blank extruded from
+the outline layer, and the bracket declared from the other two.
+
 .. _procurement:
 
 Procurement

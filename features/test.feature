@@ -341,120 +341,15 @@ Feature: `pc test` command
     And STDOUT should contain "source part 'blank' is not found"
 
   @success @pc-test @pc-test-sheet-metal
-  Scenario: A sheet metal part whose blank is flat and whose bends are stated
-    # End to end: the drawing is a DXF of two open lines, which is what bend
-    # instructions are, so it is imported as the wires it draws; the angle, the
-    # radius and the direction of each bend are read out of its XDATA and
-    # carried on the sketch; and the blank is measured for being flat on top and
-    # bottom.
-    Given a file named "partcad.yaml" with content:
-      """
-      manufacturable: true
-
-      sketches:
-        bends:
-          type: dxf
-
-      parts:
-        blank:
-          type: cadquery
-          desc: The flat piece, cut to shape before it is bent
-          manufacturing:
-            method: subtractive
-          parameters:
-            tolerance: 0.1
-        bracket:
-          type: cadquery
-          manufacturing:
-            method: sheet_metal
-            source: blank
-            instructions: bends;include=BEND_UP,BEND_DOWN
-          parameters:
-            tolerance: 0.1
-      """
-    And a file named "blank.py" with content:
-      """
-      import cadquery as cq
-
-      show_object(cq.Workplane("XY").box(60, 30, 2))
-      """
-    And a file named "bracket.py" with content:
-      """
-      import cadquery as cq
-
-      show_object(cq.Workplane("XY").box(60, 30, 2))
-      """
-    And a file named "bends.dxf" with content:
-      """
-      0
-      SECTION
-      2
-      TABLES
-      0
-      TABLE
-      2
-      APPID
-      0
-      APPID
-      2
-      PARTCAD
-      70
-      0
-      0
-      ENDTAB
-      0
-      ENDSEC
-      0
-      SECTION
-      2
-      ENTITIES
-      0
-      LINE
-      8
-      BEND_UP
-      10
-      0.0
-      20
-      0.0
-      11
-      0.0
-      21
-      30.0
-      1001
-      PARTCAD
-      1000
-      angle=90
-      1000
-      radius=1.5
-      1000
-      direction=up
-      0
-      LINE
-      8
-      BEND_DOWN
-      10
-      40.0
-      20
-      0.0
-      11
-      40.0
-      21
-      30.0
-      1001
-      PARTCAD
-      1000
-      angle=30
-      1000
-      radius=2.0
-      1000
-      direction=down
-      0
-      ENDSEC
-      0
-      EOF
-      """
-    When I run "pc test -f cam-sheet-metal bracket"
+  Scenario: The sheet metal example passes its own check
+    # End to end, over 'examples/produce_part_sheet_metal': the drawing is a DXF
+    # of a closed outline and two open bend lines, so the blank is extruded from
+    # the one layer and the instructions are read as the wires the other two
+    # draw; the angle, radius and direction of each bend come out of the file's
+    # XDATA; and the blank is measured for being flat on top and bottom.
+    When I run "pc --no-ansi -p $PARTCAD_ROOT/examples test --package //produce_part_sheet_metal -f cam-sheet-metal"
     Then the command should exit with a status code of "0"
+    And STDERR should not contain "ERROR:"
 
   @success @pc-test @pc-test-sheet-metal
   Scenario: A sheet metal part whose blank is not a flat piece

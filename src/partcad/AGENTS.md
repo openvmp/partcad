@@ -197,6 +197,9 @@ at all).
   keys a shape's hash deliberately leaves out, and so is the drawing the instructions come from -- which is
   why that hook is a coroutine.
 
+  `examples/produce_part_sheet_metal` is the whole of it in one package, and is what the end-to-end
+  `@pc-test-sheet-metal` scenario in `features/test.feature` runs against.
+
 - **A sketch says what its drawing said** (`Sketch.get_annotations`, `Shape.CACHED_SIDE_DATA`,
   `wrappers/dxf_metadata.py`): BREP has nowhere to put an angle written against a line, and a DXF says exactly
   that in XDATA. So the import reads it and the sketch carries it: one record per element -- its type, layer,
