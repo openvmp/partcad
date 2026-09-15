@@ -64,10 +64,20 @@ def test_an_unknown_field_does_not_break_a_declaration():
     assert tools["democad"].display_name == "DemoCAD"
 
 
-def test_the_version_placeholder_pins_an_image_partcad_publishes():
-    """So the release number is not written down twice."""
-    assert external.TOOLS["kicad"].image.endswith(":" + external.__version__)
-    assert "{version}" not in external.TOOLS["kicad"].image
+def test_the_version_placeholder_pins_an_image_partcad_publishes(external_at_release):
+    """So the release number is not written down twice.
+
+    Asserted of an installed PartCAD, where nothing overrides the tag, which is
+    what the fixture re-imports the module for: a run that rebuilt PartCAD's
+    images exports `PC_CONTAINER_IMAGE_TAG`, and the table this reads is built
+    as the module is imported, so without it the assertion below is comparing
+    the release against a branch tag on exactly those runs. The nightly is one
+    of them.
+    """
+    image = external_at_release.TOOLS["kicad"].image
+
+    assert image.endswith(":" + external.__version__)
+    assert "{version}" not in image
 
 
 def test_an_applications_own_file_is_opened_and_anything_else_imported():
