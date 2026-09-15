@@ -308,9 +308,22 @@ class Tool:
         The declared type is compared by its last segment, so that the `mjcf` a
         plugin's `open:` entry names and the `sim-mujoco:mjcf` the object
         declaring it is written as are the one format they are.
+
+        A declared type that names *another* format ends it there, and does not
+        fall through to the extension: two scene formats can share one, and a
+        Gazebo world in a `.xml` is exactly the file this application cannot
+        read. What may fall through is a declared type that says nothing about
+        the file -- an `alias`, a part type, a type this release has never heard
+        of -- which is how `readable_scene_type` treats one too.
         """
-        if object_type and _bare_type(object_type) == _bare_type(self.scene_type):
-            return True
+        if object_type:
+            if _bare_type(object_type) == _bare_type(self.scene_type):
+                return True
+            # Whether the declaration named a *format* at all. A qualified name
+            # did by construction: some package declared it. A bare one did when
+            # PartCAD itself has it, which today means 'assy'.
+            if ":" in object_type or object_type.lower() in object_types.SCENE_TYPE_EXTENSION:
+                return False
         if _extension_of(path) in self.scene_extensions:
             return True
         # A format PartCAD itself has -- today that is 'assy', which no tool

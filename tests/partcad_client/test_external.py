@@ -994,6 +994,67 @@ def test_a_file_that_is_no_scene_at_all_says_so(monkeypatch, part, converter, en
     assert converter.calls == []
 
 
+def test_another_engines_format_is_refused_even_in_this_one_s_extension(monkeypatch, tmp_path, converter, engines):
+    """The declared type wins over the file name, and has to.
+
+    Two scene formats can be stored in one extension -- SDFormat and MJCF are
+    both XML -- so a '.xml' says nothing on its own. Reading the extension first
+    would hand MuJoCo a Gazebo world and let it say something of its own, which
+    is the exact failure `_transcode_scene` exists to prevent. Found by
+    CodeRabbit on this PR; the '.sdf' case below did not cover it, because that
+    extension collides with nothing.
+    """
+    (tmp_path / "partcad.yaml").write_text("name: test\n")
+    path = tmp_path / "warehouse.xml"
+    path.write_text('<sdf version="1.9"><world name="warehouse"/></sdf>\n')
+    monkeypatch.setattr(external.shutil, "which", lambda name: "/usr/bin/simulate" if name == "simulate" else None)
+
+    with pytest.raises(external.ExternalToolError) as error:
+        external.open_file(str(path), tool="mujoco", object_type="sim-gazebo:world", transcode=converter)
+
+    assert "MJCF" in str(error.value)
+    assert converter.calls == []
+
+
+def test_an_assy_in_this_engine_s_extension_is_refused_as_an_assy(monkeypatch, tmp_path, converter, engines):
+    """The same rule for the one scene format PartCAD itself has.
+
+    'assy' is not qualified, so it is not "some package declared it" -- it is in
+    `object_types.SCENE_TYPE_EXTENSION`, which is how a bare name is known to
+    name a format at all. It is also package-only, so the refusal is the ASSY
+    one rather than the general one.
+    """
+    (tmp_path / "partcad.yaml").write_text("name: test\n")
+    path = tmp_path / "bench.xml"
+    path.write_text("links: []\n")
+    monkeypatch.setattr(external.shutil, "which", lambda name: "/usr/bin/simulate" if name == "simulate" else None)
+
+    with pytest.raises(external.ExternalToolError) as error:
+        external.open_file(str(path), tool="mujoco", object_type="assy", transcode=converter)
+
+    assert "only means anything inside a package" in str(error.value)
+    assert converter.calls == []
+
+
+def test_a_type_that_names_no_format_still_defers_to_the_file(monkeypatch, spawned, tmp_path, converter, engines):
+    """What must NOT be refused: a declared type that says nothing about the file.
+
+    An 'alias' is a reference, not a format, so it cannot contradict the name --
+    the same rule `readable_scene_type` applies. Getting this wrong in the other
+    direction would refuse a file the application reads perfectly well.
+    """
+    (tmp_path / "partcad.yaml").write_text("name: test\n")
+    path = tmp_path / "stack.xml"
+    path.write_text('<mujoco model="stack"><worldbody/></mujoco>\n')
+    monkeypatch.setattr(external.shutil, "which", lambda name: "/usr/bin/simulate" if name == "simulate" else None)
+
+    result = external.open_file(str(path), tool="mujoco", object_type="alias", transcode=converter)
+
+    assert result.method == "native"
+    assert spawned == [["/usr/bin/simulate", str(path)]]
+    assert converter.calls == []
+
+
 def test_a_declared_type_for_another_engine_is_still_refused(monkeypatch, tmp_path, converter, engines):
     """Saying what the file is does not make it something MuJoCo reads."""
     (tmp_path / "partcad.yaml").write_text("name: test\n")
