@@ -59,6 +59,13 @@ def image_tag(release: str) -> str:
 # and like the tag above, nothing but CI is expected to set it.
 ENV_VAR_OWNER = "PC_CONTAINER_IMAGE_OWNER"
 
+# The owner PartCAD's own images are published under, and the only one
+# `image_name` will redirect away from. A declaration may name any image at all
+# -- `//builtin/open` is data, and a user may add a tool of their own with a
+# tool of their own to run it in -- and rewriting the owner of somebody else's
+# image would point a run at a repository that has nothing to do with it.
+PARTCAD_OWNER = "partcad"
+
 
 def image_name(default: str) -> str:
     """The image to address, given the name PartCAD ships with.
@@ -83,12 +90,18 @@ def image_name(default: str) -> str:
     is a name this cannot parse -- fewer than three segments is not one of
     PartCAD's images, and rewriting a segment of it would invent a reference
     rather than redirect one.
+
+    And so is an image belonging to anyone but `PARTCAD_OWNER`. This redirects
+    PartCAD's own images at the copy this run built, and that is the whole of
+    its domain: `//builtin/open` is data, a user may declare a tool of their own
+    with an image of their own, and moving *that* to a fork's namespace would
+    point the run at a repository with nothing to do with it.
     """
     owner = (os.environ.get(ENV_VAR_OWNER) or "").strip().lower()
     if not owner:
         return default
     parts = default.split("/")
-    if len(parts) != 3:
+    if len(parts) != 3 or parts[1] != PARTCAD_OWNER:
         return default
     parts[1] = owner
     return "/".join(parts)

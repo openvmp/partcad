@@ -124,6 +124,10 @@ def test_the_tag_it_publishes_is_the_tag_the_runtime_pulls():
     client = (REPO_ROOT / "src/partcad_client/external.py").read_text()
     assert "image_tag(" in client
     assert '"{version}"' in client
+    # And the owner, for the same reason as the factory above: two readers of
+    # one image, one following the owner and one not, is a `pc open` reaching
+    # for a tag nobody published.
+    assert "image_name(" in client
 
 
 def test_whether_it_publishes_is_the_callers_answer_and_not_a_second_one():

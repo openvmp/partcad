@@ -165,6 +165,44 @@ def test_a_name_this_cannot_parse_is_left_alone(monkeypatch, name):
     assert container_image.image_name(name) == name
 
 
+@pytest.mark.parametrize(
+    "name",
+    ["ghcr.io/someone-else/their-image", "docker.io/library/alpine", "quay.io/acme/thing"],
+)
+def test_an_image_that_is_not_partcads_is_left_alone(monkeypatch, name):
+    """This redirects PartCAD's own images and nothing else.
+
+    `//builtin/open` is data: a user may declare a tool of their own with an
+    image of their own, and `partcad_client.external` runs every declaration
+    through here. Moving somebody else's image into a fork's namespace would
+    point the run at a repository with nothing to do with it -- and would fail
+    to pull, which is the better of the two outcomes.
+    """
+    monkeypatch.setenv(container_image.ENV_VAR_OWNER, "seekbirdy")
+    assert container_image.image_name(name) == name
+
+
+def test_the_image_pc_open_starts_follows_the_owner(monkeypatch):
+    """The second reader of the image `container-kicad.yml` publishes.
+
+    That workflow publishes `<this repository>-container-kicad`, so in a fork
+    the image is the fork's. `partcad.part_factory_kicad` follows the owner;
+    this path is the other consumer, and one following while the other does not
+    is how `pc open --with kicad` ends up reaching for a tag nobody published.
+    """
+    import importlib
+
+    import partcad_client.external as external
+
+    monkeypatch.setenv(container_image.ENV_VAR_OWNER, "seekbirdy")
+    reloaded = importlib.reload(external)
+    try:
+        assert reloaded.TOOLS["kicad"].image.startswith("ghcr.io/seekbirdy/")
+    finally:
+        monkeypatch.undo()
+        importlib.reload(external)
+
+
 def test_the_python_sandbox_image_follows_the_owner(monkeypatch):
     from partcad import runtime_python_docker
 
