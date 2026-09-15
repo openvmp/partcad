@@ -484,6 +484,66 @@ def test_connect_how_thread_step_mismatch_is_a_problem():
     assert how.thread_step == DEFAULT_THREAD_STEP
 
 
+class _FakeMating:
+    def __init__(self, self_screw=False):
+        self.self_screw = self_screw
+
+
+class _FakeContext:
+    """Just enough of a context to answer 'which mating governs this pair'."""
+
+    def __init__(self, mating=None):
+        self._mating = mating
+
+    def get_mate(self, source_name, target_name):
+        return self._mating
+
+
+class _FakeProject:
+    def __init__(self, ctx):
+        self.ctx = ctx
+
+
+def _interface_pair(mating, source_step, target_step):
+    ctx = _FakeContext(mating)
+    source = _FakeInterface(source_step)
+    target = _FakeInterface(target_step)
+    for interface, name in ((source, "//:screw"), (target, "//:hole")):
+        interface.project = _FakeProject(ctx)
+        interface.full_name = name
+        interface.compatible_with = set()
+    return source, target
+
+
+def test_connect_how_thread_step_mismatch_allowed_by_a_self_screwing_mating():
+    """A connection may declare that it cuts its thread rather than matches one.
+
+    'selfScrew' on either interface says the *part* never matches a thread.
+    On the mating it says this pairing does not: a screw driven into a pilot
+    hole cuts the thread it then holds, and the same screw through a clearance
+    hole cuts nothing, so the two cannot be told apart on the screw.
+    """
+    source, target = _interface_pair(_FakeMating(self_screw=True), 0.5, 0.35)
+    how = ConnectHow({}).resolve(source_interface=source, target_interface=target)
+    assert how.problems == []
+    assert how.thread_step == 0.5
+
+
+def test_connect_how_thread_step_mismatch_still_a_problem_without_it():
+    """The same pair, with a mating that says nothing, is still a mismatch."""
+    source, target = _interface_pair(_FakeMating(), 0.5, 0.35)
+    how = ConnectHow({}).resolve(source_interface=source, target_interface=target)
+    assert len(how.problems) == 1
+    assert "threadStep" in how.problems[0]
+
+
+def test_connect_how_thread_step_survives_interfaces_with_no_context():
+    """The stand-ins a caller may hand it have no project, and that is not a failure."""
+    how = ConnectHow({}).resolve(source_interface=_FakeInterface(0.5), target_interface=_FakeInterface(0.5))
+    assert how.thread_step == 0.5
+    assert how.problems == []
+
+
 def test_connect_how_thread_step_mismatch_allowed_by_self_screw():
     """A hole that takes a self-tapping screw does not have to match its thread"""
     how = ConnectHow({}).resolve(
