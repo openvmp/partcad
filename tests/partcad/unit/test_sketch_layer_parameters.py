@@ -27,7 +27,9 @@ import yaml
 
 import partcad as pc
 from partcad.factory import ObjectTypeParameterException
+from partcad.project import declare_object_type_parameters
 from partcad.shape_config import NO_DEFAULT, as_list, object_type_parameter
+from partcad.sketch_factory import SketchFactory
 from partcad.sketch_factory_dxf import SketchFactoryDxf
 from partcad.utils import format_parameterized_name, parse_parameterized_name
 
@@ -410,3 +412,86 @@ def test_a_numeric_parameter_refuses_what_is_not_a_number(caplog):
         object_type_parameter({"parameters": {"tolerance": {"default": "0.5"}}}, accepted, "tolerance", "part", "b")
         == 0.5
     )
+
+
+#
+# What a reference is allowed to declare on the object's behalf
+#
+
+
+def test_a_declaration_the_object_already_made_is_left_alone():
+    """The object's own declaration is the one that carries its author's intent.
+
+    A reference setting a value is not a reason to replace the 'desc', the
+    'enum' and the default somebody wrote down; it is a reason to supply one
+    where there is none. So a name the object already declares is skipped, and
+    what was declared stays exactly as it was.
+    """
+    mine = {"type": "float", "default": 1.0, "desc": "written by the package"}
+    config = {"type": "dxf", "parameters": {"include": dict(mine)}}
+    declare_object_type_parameters("sketch", config, {"include": "BEND_UP"})
+    assert config["parameters"]["include"] == mine
+
+
+def test_a_reference_declares_what_the_object_left_unsaid():
+    """Which is the whole point: 'panel;include=BEND_UP' on a bare sketch."""
+    config = {"type": "dxf"}
+    declare_object_type_parameters("sketch", config, {"include": "BEND_UP"})
+    assert "include" in config["parameters"]
+
+
+def test_a_parameters_section_that_is_not_a_section_is_not_read_as_one():
+    """'parameters: BEND_UP' is malformed, and the schema is what says so.
+
+    It reaches the validator anyway - loading a package does not stop at the
+    first thing the schema would have rejected - and a reader that assumed a
+    mapping here would raise an AttributeError naming neither the sketch nor
+    the mistake. The class stands in for an instance because the guard runs
+    before anything instance-specific is touched.
+    """
+    assert SketchFactory._validate_object_type_parameters(SketchFactory, {"parameters": "BEND_UP"}) is None
+
+
+def test_a_parametrized_instance_is_not_one_of_the_declarations(tmp_path):
+    """'self.sketches' holds instances too, and a README describes a package.
+
+    Asking for 'panel;include=BEND_UP' creates an object and registers it
+    beside the declared 'panel', so a package that declares one sketch can be
+    holding several by the time a README is written. Each extra one used to get
+    a section of its own, find no image - nothing renders one for an instance -
+    and warn about a file nobody was going to write.
+
+    'orig_name' is what tells them apart: it is the name of the declaration an
+    object came from, so it is an object's own name exactly when the object is
+    a declaration. Both halves are checked here - the property the filter reads,
+    and the README that reads the filter. (The sections come out empty for a
+    package this bare; what matters is which names reach them.)
+    """
+    (tmp_path / "partcad.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "name": "//test",
+                "render": {"readme": {}},
+                "sketches": {"panel": {"type": "dxf"}},
+                "interfaces": {"m3": {"desc": "Abstract 3mm circular interface", "abstract": True}},
+            }
+        )
+    )
+    (tmp_path / "panel.dxf").write_text("")
+
+    ctx = pc.Context(str(tmp_path))
+    project = ctx.get_project("//test")
+    assert ctx.get_sketch("//test:panel;include=BEND_UP") is not None
+
+    assert set(project.sketches) == {"panel", "panel;include=BEND_UP"}
+    # The declaration each of them came from. The instance names the base.
+    assert project.sketches["panel"].config.get("orig_name") == "panel"
+    assert project.sketches["panel;include=BEND_UP"].config.get("orig_name") == "panel"
+
+    out = tmp_path / "out"
+    out.mkdir()
+    project.render_readme_async({}, str(out))
+    readme = (out / "README.md").read_text(encoding="utf-8")
+    assert "## Sketches" in readme
+    assert "## Interfaces" in readme
+    assert "include=BEND_UP" not in readme
