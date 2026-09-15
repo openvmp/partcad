@@ -27,7 +27,7 @@ pc inspect -s 'panel;include=BEND_UP,BEND_DOWN'
 ### angle_down
 <table><tr>
 <td valign=top><a href="angle_down.py"><img src="././angle_down.svg" alt="angle_down" style="width: auto; height: auto; max-width: 200px; max-height: 200px;"></a></td>
-<td valign=top>The same blank folded at `BEND_DOWN` alone, into an L with a short leg hanging down. It differs from `angle_up` in nothing but which layer its `instructions` select.
+<td valign=top>The same blank folded at `BEND_DOWN` alone, into an L with a short leg hanging down. Its declaration differs from `angle_up`'s in nothing but which layer its `instructions` select; the two bend lines are in different places, so the parts do not come out alike.
 </td>
 <td valign=top>Parameters:<br/><ul>
 <li>tolerance: 0.1</li>

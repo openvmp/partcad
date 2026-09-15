@@ -67,8 +67,9 @@ parts:
     type: build123d
     desc: >
       The same blank folded at `BEND_DOWN` alone, into an L with a short leg
-      hanging down. It differs from `angle_up` in nothing but which layer its
-      `instructions` select.
+      hanging down. Its declaration differs from `angle_up`'s in nothing but
+      which layer its `instructions` select; the two bend lines are in
+      different places, so the parts do not come out alike.
     manufacturing:
       method: sheet_metal
       source: blank

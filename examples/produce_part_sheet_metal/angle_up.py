@@ -24,10 +24,10 @@ with bd.BuildPart() as result:
     with bd.BuildLine(bd.Plane.XZ) as centreline:
         # Along, then up: 'direction: up' turns the metal towards +Z.
         bd.Polyline((0, 0), (FOOT, 0), (FOOT, LEG))
-        # The bend, named by where it is. The two vertices of the upright share
-        # an X, so sorting on that would pick between them by whatever order
-        # they came out in - and one of the two is the free end of the strip,
-        # which is not a bend.
+        # The bend, named by where it is. The two vertices of the turned leg
+        # share an X, so sorting on that would pick between them by whatever
+        # order they came out in - and one of the two is the free end of the
+        # strip, which is not a bend.
         bd.fillet([centreline.vertices().sort_by_distance(bd.Vector(FOOT, 0, 0))[0]], radius=NEUTRAL)
     with bd.BuildSketch(bd.Plane.YZ):
         bd.Rectangle(WIDTH, THICKNESS)
