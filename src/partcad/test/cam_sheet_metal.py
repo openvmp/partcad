@@ -201,7 +201,7 @@ class CamSheetMetalTest(Test):
             if not reference:
                 declared.append("%s@" % kind)
                 continue
-            object = self._resolve(ctx, shape, reference, kind)
+            object = await self._resolve(ctx, shape, reference, kind)
             key = None
             if object is not None:
                 try:
@@ -241,7 +241,7 @@ class CamSheetMetalTest(Test):
             return self.TEST_FAILED
         return self.passed(shape)
 
-    def _resolve(self, ctx, shape, reference: str, kind: str):
+    async def _resolve(self, ctx, shape, reference: str, kind: str):
         """The object a 'manufacturing:' reference names, or None.
 
         Resolved against the package the part is declared in, like every other
@@ -257,7 +257,17 @@ class CamSheetMetalTest(Test):
             return None
         if kind == "sketch":
             return project.get_sketch(object_name, quiet=True)
-        return project.get_part(object_name, quiet=True)
+        # The asynchronous accessor, because every caller of this is a
+        # coroutine and 'get_part()' says so in as many words: materializing a
+        # *derived* part - one an assembly produces rather than the package
+        # declaring it, a STEP component or a URDF link - instantiates that
+        # assembly, which is asynchronous, and the synchronous accessor drives
+        # it with 'asyncio.run()'. On a thread that already has a loop that
+        # raises rather than building, so a sheet metal part whose blank is
+        # derived would fail the check with a RuntimeError about the loop
+        # instead of being measured. A declared part resolves the same either
+        # way; this costs nothing and covers the case that does not.
+        return await project.get_part_async(object_name, quiet=True)
 
     async def blank_is_flat(self, ctx, shape, reference: str) -> bool:
         """Whether what goes into the brake is a flat piece of sheet.
@@ -266,7 +276,7 @@ class CamSheetMetalTest(Test):
         under test is the bent result, and a bent part is not flat - that is
         what bending it did.
         """
-        source = self._resolve(ctx, shape, reference, "part")
+        source = await self._resolve(ctx, shape, reference, "part")
         if source is None:
             return self.failed(shape, "The sheet metal source part '%s' is not found", reference)
 
@@ -296,7 +306,7 @@ class CamSheetMetalTest(Test):
         'CamTest.software_failure' gives: a drawing that left the angle off two
         lines should say so about both in one run.
         """
-        instructions = self._resolve(ctx, shape, reference, "sketch")
+        instructions = await self._resolve(ctx, shape, reference, "sketch")
         if instructions is None:
             return self.failed(shape, "The sheet metal instructions sketch '%s' is not found", reference)
 

@@ -2181,13 +2181,13 @@ flat piece was put through a brake, so it names two things instead:
   read as bends alone with ``;include=BEND_UP,BEND_DOWN``, which is what the
   DXF layer parameters are for.
 
-The blank comes from a subtractive process
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The outline belongs to the blank
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The outline of the part, its holes, its slots and its cut-outs are **not** the
 sheet metal process's to make, and must not be described as part of it. They
-belong to the blank, which is cut flat -- laser, waterjet, punch, router -- and
-so is an ordinary ``subtractive`` part:
+belong to the blank, which is usually cut flat -- laser, waterjet, punch,
+router -- and so is usually an ordinary ``subtractive`` part:
 
 .. code-block:: yaml
 
@@ -2214,6 +2214,13 @@ and scheduled separately, and the flat pattern is a thing that exists -- it is
 what arrives at the brake. Describing a hole as part of the bending step would
 put it on the process that cannot make it, and would leave the part with no
 declaration of the process that can.
+
+``subtractive`` is the usual answer rather than a required one: what has to be
+true of a ``source`` is that it is flat, which is what ``pc test`` asks of it. A
+blank that is bought in rather than made has no manufacturing method to declare,
+one sheared or punched to outline is ``forming``, and an ``alias`` or an
+``enrich`` of a part declared elsewhere carries whatever that one says. All of
+them are blanks, and the check takes them.
 
 What ``pc test`` checks
 ^^^^^^^^^^^^^^^^^^^^^^^

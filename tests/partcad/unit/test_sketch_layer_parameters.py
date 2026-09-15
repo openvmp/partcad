@@ -22,11 +22,13 @@ left holding, which is settled while the package is loaded.
 
 import os
 
+import jsonschema
 import pytest
 import yaml
 
 import partcad as pc
 from partcad.factory import ObjectTypeParameterException
+from partcad.lint.all import get_partcad_schema
 from partcad.project import declare_object_type_parameters
 from partcad.shape_config import NO_DEFAULT, as_list, object_type_parameter
 from partcad.sketch_factory import SketchFactory
@@ -495,3 +497,30 @@ def test_a_parametrized_instance_is_not_one_of_the_declarations(tmp_path):
     assert "## Sketches" in readme
     assert "## Interfaces" in readme
     assert "include=BEND_UP" not in readme
+
+
+#
+# What the schema will take
+#
+
+
+def _validate(config):
+    jsonschema.validate(instance=config, schema=get_partcad_schema())
+
+
+def test_the_schema_takes_either_filter_on_its_own():
+    _validate({"sketches": {"a": {"type": "dxf", "include": ["BEND_UP"]}}})
+    _validate({"sketches": {"b": {"type": "dxf", "exclude": "OUTLINE"}}})
+    _validate({"sketches": {"c": {"type": "dxf"}}})
+
+
+def test_the_schema_refuses_both_filters_on_one_sketch():
+    """The DXF importer's own rule, said once in the schema rather than twice.
+
+    The two descriptions in the schema have always stated it, and the
+    documentation says it too, but nothing enforced it -- so a drawing
+    declaring both was taken by the loader and refused much later, by the
+    importer, in its own words. Held here, where the declaration is read.
+    """
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        _validate({"sketches": {"a": {"type": "dxf", "include": ["BEND_UP"], "exclude": ["OUTLINE"]}}})

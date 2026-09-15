@@ -451,6 +451,33 @@ def test_the_check_itself_passes_over_an_assembly(ctx):
     )
 
 
+def test_the_blank_is_resolved_with_the_accessor_a_coroutine_may_use(ctx, monkeypatch):
+    """A blank an assembly produces, rather than one the package declares.
+
+    'Project.get_part()' says it in as many words: a coroutine must use
+    'get_part_async()'. Materializing a *derived* part - a STEP component or a
+    URDF link, which the assembly's own source file declares rather than
+    'partcad.yaml' - instantiates that assembly, and the synchronous accessor
+    drives that with 'asyncio.run()', which raises on a thread that already has
+    a loop. Every caller of '_resolve' here is a coroutine, so a sheet metal
+    part whose blank was derived would have failed with a RuntimeError about
+    the event loop rather than being measured.
+
+    The synchronous accessor is made to raise the way it would for a derived
+    part, so that reaching for it at all is what the test catches.
+    """
+    _arrange(monkeypatch)
+    # Resolved before the accessor is made to refuse: it is the check's own
+    # lookup of the blank that is under test, not this one.
+    part = ctx.get_part("//test:bracket")
+
+    def refuse(self, part_name, func_params=None, quiet=False):
+        raise RuntimeError("asyncio.run() cannot be called from a running event loop")
+
+    monkeypatch.setattr(pc.project.Project, "get_part", refuse)
+    assert asyncio.run(CamSheetMetalTest().test([], ctx, part)) is CamSheetMetalTest.TEST_PASSED
+
+
 def test_an_assembly_is_not_read_as_though_it_were_a_part(ctx, caplog):
     """'manufacturing:' means something else on an assembly, and this may not read it.
 
