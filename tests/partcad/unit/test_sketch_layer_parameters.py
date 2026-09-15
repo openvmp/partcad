@@ -27,6 +27,7 @@ import yaml
 
 import partcad as pc
 from partcad.factory import ObjectTypeParameterException
+from partcad.shape_config import NO_DEFAULT, as_list, object_type_parameter
 from partcad.sketch_factory_dxf import SketchFactoryDxf
 from partcad.utils import format_parameterized_name, parse_parameterized_name
 
@@ -318,3 +319,94 @@ def test_a_part_type_that_rejects_the_parameter_still_rejects_it(tmp_path, caplo
     with caplog.at_level("ERROR"):
         assert ctx.get_part("//test:bracket;material=steel") is None
     assert "parametrize" in caplog.text
+
+
+#
+# How a list-valued parameter is read, whatever it was written as
+#
+
+
+def test_a_list_declared_as_a_list_is_taken_as_one():
+    """The YAML spelling. A reference has only text, but a declaration has YAML.
+
+    Both reach the same reader, so the one that is already a list must not be
+    split on commas again - a layer whose name contains one would come apart.
+    """
+    declared = object_type_parameter(
+        {"parameters": {"include": {"default": ["BEND_UP", "BEND_DOWN"]}}},
+        {"include": []},
+        "include",
+        "sketch",
+        "panel",
+    )
+    assert declared == ["BEND_UP", "BEND_DOWN"]
+
+
+def test_an_empty_entry_is_not_a_layer_called_nothing():
+    """A trailing comma is a typo; '' is not a layer anybody drew on."""
+    assert as_list(["A", "", None, "B"]) == ["A", "B"]
+    assert as_list(("A", "B")) == ["A", "B"]
+    assert as_list("A, ,B,") == ["A", "B"]
+    assert as_list(None) == []
+    # Anything else is the one value it is, rather than being iterated: a number
+    # is not a list of digits.
+    assert as_list(7) == [7]
+
+
+def test_a_name_the_type_does_not_contribute_is_not_read():
+    """A parameter of the object's own is nobody else's to interpret."""
+    assert (
+        object_type_parameter({"parameters": {"width": {"default": 5}}}, {"include": []}, "width", "sketch", "s")
+        is None
+    )
+
+
+def test_a_type_parameter_that_is_not_declared_falls_back_to_its_default():
+    assert object_type_parameter({}, {"include": []}, "include", "sketch", "panel") == []
+    assert object_type_parameter({}, {"include": NO_DEFAULT}, "include", "sketch", "panel") is None
+
+
+def test_a_parameter_that_is_neither_a_number_nor_a_list_is_taken_as_written():
+    """Not every object-type parameter is a list; the reader is shared.
+
+    A default that is a plain value says the parameter is a plain value, so
+    what the declaration wrote is what it means - no coercion, no splitting.
+    """
+    assert (
+        object_type_parameter(
+            {"parameters": {"material": {"default": "steel"}}},
+            {"material": "aluminium"},
+            "material",
+            "part",
+            "bracket",
+        )
+        == "steel"
+    )
+
+
+def test_a_numeric_parameter_refuses_what_is_not_a_number(caplog):
+    """And says so, rather than carrying a surprise into the geometry.
+
+    A boolean is caught before 'float()' sees it, because by then 'True' is an
+    ordinary 1.0 and nothing can tell it from a number somebody wrote. Either
+    way the declared default stands, which is what a type parameter is for.
+    """
+    accepted = {"tolerance": 0.1}
+    for value in (True, "thin", None, [0.2]):
+        with caplog.at_level("ERROR"):
+            assert (
+                object_type_parameter(
+                    {"parameters": {"tolerance": {"default": value}}},
+                    accepted,
+                    "tolerance",
+                    "part",
+                    "bracket",
+                )
+                == 0.1
+            )
+    assert "non-numeric 'tolerance'" in caplog.text
+    # ...and a number, however it was written, is the number it is.
+    assert (
+        object_type_parameter({"parameters": {"tolerance": {"default": "0.5"}}}, accepted, "tolerance", "part", "b")
+        == 0.5
+    )

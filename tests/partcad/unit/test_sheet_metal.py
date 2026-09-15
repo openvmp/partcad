@@ -238,6 +238,18 @@ PACKAGE = {
             },
             "parameters": {"tolerance": 0.1},
         },
+        "faraway": {
+            "type": "stl",
+            "manufacturing": {
+                "method": "sheet_metal",
+                # A package this context has never heard of, as opposed to an
+                # object this package does not declare: a different branch of
+                # the resolver, and a different thing to tell the user.
+                "source": "//nosuch:blank",
+                "instructions": "bends",
+            },
+            "parameters": {"tolerance": 0.1},
+        },
         "machined": {
             "type": "stl",
             "manufacturing": {"method": "subtractive"},
@@ -358,6 +370,85 @@ def test_a_missing_reference_is_reported_by_the_check_and_not_by_the_resolver(ct
     assert "instructions sketch 'gone;include=BEND_UP' is not found" in caplog.text
     assert "Base object" not in caplog.text
     assert "not found in" not in caplog.text
+
+
+def test_a_blank_whose_shape_cannot_be_had_fails(ctx, monkeypatch, caplog):
+    """Not the same as a blank that is not flat, and not to be reported as one.
+
+    A part that is declared but whose geometry cannot be produced answers with
+    nothing, and "is it flat?" has no answer at all then - measuring the
+    envelope that is not there would be the check deciding for itself.
+    """
+    _arrange(monkeypatch)
+
+    async def nothing(self, ctx):
+        return None
+
+    monkeypatch.setattr(pc.shape.Shape, "get_wrapped", nothing)
+    with caplog.at_level("ERROR"):
+        assert _verdict(ctx, "bracket") is CamSheetMetalTest.TEST_FAILED
+    assert "Failed to get the shape of the sheet metal source part 'blank'" in caplog.text
+
+
+def test_a_reference_into_a_package_that_is_not_there_fails(ctx, monkeypatch, caplog):
+    """A package nobody imported, rather than an object nobody declared."""
+    _arrange(monkeypatch)
+    with caplog.at_level("ERROR"):
+        assert _verdict(ctx, "faraway") is CamSheetMetalTest.TEST_FAILED
+    assert "source part '//nosuch:blank' is not found" in caplog.text
+
+
+def test_an_angle_that_is_not_a_finite_number_is_refused():
+    """'nan' and 'inf' parse as floats and are not angles anything was bent to."""
+    for value in (float("nan"), float("inf"), float("-inf"), "nan", "inf"):
+        failure = bend_failure(_bend(angle=value))
+        assert failure and "non-numeric 'angle'" in failure
+
+
+def test_a_reference_that_cannot_be_keyed_still_produces_a_key(ctx, monkeypatch):
+    """The key is the point, not the keying.
+
+    An object that refuses to say what its cache key is - because the files it
+    is built from are not there, say - must not take the verdict's key with it:
+    the test is about to fail that part anyway, and a key that raised would
+    fail the run instead of the part.
+    """
+    _arrange(monkeypatch)
+
+    async def refuse(self):
+        raise RuntimeError("no key for you")
+
+    monkeypatch.setattr(pc.shape.Shape, "get_cache_key_async", refuse)
+    part = ctx.get_part("//test:bracket")
+    suffix = asyncio.run(CamSheetMetalTest().cache_key_suffix(ctx, part))
+    assert suffix.startswith(".sheet-metal=")
+
+
+def test_a_declaration_missing_a_reference_still_keys(ctx, monkeypatch):
+    """There is nothing to resolve, and a key is still owed.
+
+    The part fails the check either way, but it has to fail it *every* run: a
+    suffix that came out empty here would be the same suffix a complete
+    declaration gets, so filling the missing reference in would be answered
+    from the cache with the verdict of the declaration that lacked it.
+    """
+    _arrange(monkeypatch)
+    incomplete = asyncio.run(CamSheetMetalTest().cache_key_suffix(ctx, ctx.get_part("//test:incomplete")))
+    complete = asyncio.run(CamSheetMetalTest().cache_key_suffix(ctx, ctx.get_part("//test:bracket")))
+    assert incomplete.startswith(".sheet-metal=")
+    assert incomplete != complete
+
+
+def test_the_check_itself_passes_over_an_assembly(ctx):
+    """The other half of the question the key already asks.
+
+    'pc test' offers every shape to every check, and this one is about a part:
+    an assembly is not made by bending a blank, so it is not this check's to
+    fail.
+    """
+    assert (
+        asyncio.run(CamSheetMetalTest().test([], ctx, ctx.get_assembly("//test:rig"))) is CamSheetMetalTest.TEST_PASSED
+    )
 
 
 def test_an_assembly_is_not_read_as_though_it_were_a_part(ctx, caplog):
