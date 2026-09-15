@@ -176,7 +176,7 @@ def test_an_object_retunes_a_readers_parameter_for_itself(package):
 
 def test_every_builtin_reader_declares_what_it_produces(package):
     """A declaration that forgot 'kinds:' would silently accept both sections."""
-    for format_name in ("urdf", "mjcf", "world"):
+    for format_name in ("urdf",):
         declaration = builtin_import_declaration(format_name)
         assert declaration["kinds"], format_name
         assert set(declaration["kinds"]) <= {"assembly", "scene"}, format_name

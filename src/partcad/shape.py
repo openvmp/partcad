@@ -69,16 +69,20 @@ SKETCH_EXTENSION_MAPPING = {
 # The counterpart of the two mappings above for the third kind of object a file
 # can hold: an arrangement rather than a shape or a drawing. It exists for the
 # same reason they do -- to tell from a file name what a conversion should read
-# it as -- and it is what `pc open --with mujoco` uses to work out whether the
-# file it was handed already is a model MuJoCo reads.
+# it as.
+#
+# One entry, and it is the only one there can be: a scene format that belongs to
+# a simulation engine is declared by that engine's plugin package (`mjcf` by
+# `partcad/partcad-sim-mujoco`, `world` by `partcad/partcad-sim-gazebo`), and
+# this table is consulted where there is no package graph to resolve such a name
+# in. So it holds what PartCAD itself knows and nothing else -- a plugin format
+# is reached by asking the graph, not by looking it up here.
 #
 # 'assy' is in it and is not convertible ad-hoc (see
 # 'partcad.adhoc.adhoc.PACKAGE_ONLY_TYPES'): naming it is what lets the refusal
 # say what the file is instead of reporting an unknown extension.
 SCENE_EXTENSION_MAPPING = {
     "assy": "assy",
-    "world": "world",
-    "mjcf": "xml",
 }
 
 # The 2D projections '//builtin/render' implements, and the file extension each
