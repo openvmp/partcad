@@ -3907,9 +3907,12 @@ different from ``cae:``:
 The file it writes is named after the object alone -- ``panel.nc`` -- because an
 object has one route at a time and the extension already says what the file is.
 
-**Every parameter of the file type is also a key an object may set for itself**,
-and that is what makes this section and the object's own ``cam:`` section three
-layers of one namespace rather than two different things:
+**Every parameter of the file type that describes the cut is also a key an
+object may set for itself** -- the tool, the depth, the feed and the rest of the
+job, though not the parameters describing the file, which the paragraph after
+the example comes back to. That shared half is what makes this section and the
+object's own ``cam:`` section three layers of one namespace rather than two
+different things:
 
 .. code-block:: yaml
 
