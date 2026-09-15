@@ -26,27 +26,48 @@ docs:
     pc info warehouse
     ```
 
+    ### SDFormat is somebody else's package
+
+    PartCAD implements no simulation engine, and an engine's scene format
+    travels with it: reading a `.world`, writing one, launching Gazebo on one
+    and simulating in it are one body of knowledge, and it lives in
+    [partcad-sim-gazebo](https://github.com/partcad/partcad-sim-gazebo). This
+    package imports it below and names the type through it, which is what
+    `sim-gazebo:world` is. Nothing has to be installed by hand.
+
     Either scene exports to a Gazebo world, which is the format a scene has:
 
     ```shell
-    pc export -S -t world -O ./ bench
+    pc export -S -t sim-gazebo:world -O ./ bench
     ```
 
     And `pc convert scene` rewrites the package around one, in either
     direction: to `assy` it copies every shape the world places into the package
-    as a part of its own, and to `world` it writes the `.world` file and the
-    meshes it references.
+    as a part of its own, and to `sim-gazebo:world` it writes the `.world` file
+    and the meshes it references.
 
     ```shell
     pc convert scene -t assy warehouse
     ```
+
+dependencies:
+  # The package that implements SDFormat. Declared here rather than assumed:
+  # PartCAD ships no engine, so a package that reads or writes an engine's own
+  # scene format imports the package that owns it and says so.
+  #
+  # Pinned to 'main' rather than left to the repository's default branch, so
+  # that this example does not depend on a setting outside this tree.
+  sim-gazebo:
+    type: git
+    url: https://github.com/partcad/partcad-sim-gazebo.git
+    revision: main
 
 scenes:
   bench:
     type: assy
     desc: Two primitives standing where they stand
   warehouse:
-    type: world
+    type: sim-gazebo:world
     desc: A Gazebo world (SDFormat) used directly as a PartCAD scene
     # A link that states both a visual and a collision shape is built from the
     # collision one, which is what a simulator resolves contact against.

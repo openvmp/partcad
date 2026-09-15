@@ -169,8 +169,6 @@ def test_builtin_formats_cover_what_the_exporters_supported(ctx):
         "iges",
         "threejs",
         "urdf",
-        "world",
-        "mjcf",
     }
     assert set(output.builtin_formats(ctx, output.RENDER)) == {"svg", "png", "jpeg", "dxf"}
 
@@ -691,14 +689,14 @@ def test_the_builtin_implementations_still_get_their_own_requirements(ctx):
 
 
 def test_a_format_decodes_its_envelopes_unless_it_declares_otherwise(ctx):
-    """'decode' is off for the three tree exporters, and none may lose it silently.
+    """'decode' is off for the tree exporter, and it may not lose it silently.
 
-    The URDF, world and MJCF exporters are handed the assembly tree, one link
-    (one model, one body) per node; decoded geometry carries no node names,
-    labels or separate placements to build those from, so all three reject it
-    outright and the export fails with "needs a shape or an assembly to export".
-    They are the only built-in formats that ask for that, so this also guards the
-    other direction.
+    The URDF exporter is handed the assembly tree, one link per node; decoded
+    geometry carries no node names, labels or separate placements to build those
+    from, so it rejects it outright and the export fails with "needs a shape or
+    an assembly to export". It is the only built-in format that asks for that --
+    the engine scene exporters that also did are their plugins' now -- so this
+    guards the other direction too.
     """
     off = set()
     for section in output.SECTIONS:
@@ -707,7 +705,7 @@ def test_a_format_decodes_its_envelopes_unless_it_declares_otherwise(ctx):
             impl = output.Implementation(section, format_name, config)
             if not impl.decode:
                 off.add(format_name)
-    assert off == {"urdf", "world", "mjcf"}
+    assert off == {"urdf"}
 
 
 # --------------------------------------------------------------------------- #

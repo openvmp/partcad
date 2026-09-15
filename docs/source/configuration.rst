@@ -2110,8 +2110,9 @@ Assemblies are defined using the ``partcad.yaml`` file in the package folder. Th
 
   assemblies:
     <assembly name>:
-      type: <assy|step|urdf|mjcf>  # Assembly YAML, a STEP file with an assembly structure,
-                                   # a URDF robot description, or a MuJoCo model
+      type: <assy|step|urdf>  # Assembly YAML, a STEP file with an assembly structure,
+                              # or a URDF robot description. A format a plugin package
+                              # implements is named through it: "sim-mujoco:mjcf".
       path: <(optional) the source file path>
       fileFrom: <(optional) "url" to download the source file instead of keeping it in the package>
       fileUrl: <(fileFrom=url only) the URL to download the source file from>
@@ -2135,9 +2136,11 @@ Assemblies are defined using the ``partcad.yaml`` file in the package folder. Th
 
 The ``assy`` type is used to define assemblies in `Assembly YAML` format, and
 the ``step`` type reads the structure out of a STEP file (see :ref:`assembly_step`).
-The ``urdf`` and ``mjcf`` types read a robot description as an assembly directly
-(see :doc:`simulation`); ``mjcf`` is also a :ref:`scene <scenes>` type, and the
-section that declares it is what decides which it is.
+The ``urdf`` type reads a robot description as an assembly directly
+(see :doc:`simulation`). A format an engine's plugin package implements is named
+through that package -- ``sim-mujoco:mjcf`` for a MuJoCo model, which is also a
+:ref:`scene <scenes>` type, the section that declares it being what decides which
+it is.
 The ``path`` parameter specifies the source file path, and the ``parameters`` section allows for defining parameters that can be used within the assembly.
 The source file does not have to be a part of the package: ``fileFrom`` and
 ``fileUrl`` pull it from a remote location on first use, exactly as they do for
@@ -2510,7 +2513,9 @@ Declare scenes
 
   scenes:
     <scene name>:
-      type: <assy|world|mjcf>  # Assembly YAML read as a scene, a Gazebo world, or a MuJoCo model
+      type: <assy>  # Assembly YAML read as a scene. An engine's own scene format is
+                    # implemented by that engine's plugin package and named through it:
+                    # "sim-gazebo:world" (a Gazebo world), "sim-mujoco:mjcf" (a MuJoCo model).
       desc: <(optional) textual description>
       path: <(optional) the source file path>
       fileFrom: <(optional) "url" to download the source file instead of keeping it in the package>
@@ -2525,7 +2530,8 @@ Declare scenes
       offset: <(optional) OCCT Location object>
       manufacturable: <(optional) false by default; a scene is not a product to be made>
 
-      # 'world' type only
+      # 'sim-gazebo:world' only -- the reader's own parameters, declared by the
+      # package that implements it and passed straight through to it
       ignoreCollision: <(optional) build a link from its visual geometry instead>
       modelPaths: <(optional) roots to resolve 'model://' references against>
 
@@ -2542,7 +2548,7 @@ scene.
       desc: The robot, the fixture and the bin, where they stand on the bench
 
     warehouse:
-      type: world
+      type: sim-gazebo:world
       desc: A Gazebo world, used where it lies
 
 Scenes take parameters, aliases and enriches exactly as assemblies do:
@@ -2559,9 +2565,13 @@ Scenes take parameters, aliases and enriches exactly as assemblies do:
 Gazebo worlds
 -------------
 
-The ``world`` type reads an `SDFormat <http://sdformat.org/>`_ ``.world`` file --
-what Gazebo describes a simulation world in -- as a scene directly, with no
-conversion step. Every model is placed where its ``<pose>`` puts it, every link
+The ``sim-gazebo:world`` type reads an `SDFormat <http://sdformat.org/>`_
+``.world`` file -- what Gazebo describes a simulation world in -- as a scene
+directly, with no conversion step. It is declared by
+`partcad-sim-gazebo <https://github.com/partcad/partcad-sim-gazebo>`_ rather than
+by PartCAD itself, beside the exporter, the ``pc open`` entry and the simulator
+that share their knowledge of the format, so a package that uses it imports that
+package and names the type through it. Every model is placed where its ``<pose>`` puts it, every link
 where its own pose puts it inside the model, and every shape becomes a part of
 the package named ``<scene>/<model>/<link>``. Those parts are ordinary parts:
 they can be inspected, rendered and exported on their own.
@@ -2578,30 +2588,33 @@ settings and the ground plane are counted and reported rather than passed over
 in silence. ``pc info`` lists what was dropped. See :doc:`simulation` for the
 whole picture.
 
-The reverse direction is the ``world`` export file type:
+The reverse direction is the ``sim-gazebo:world`` export file type, declared by
+the same package:
 
 .. code-block:: shell
 
-  pc export -S -t world :workcell    # writes workcell.world plus its meshes
+  pc export -S -t sim-gazebo:world :workcell    # writes workcell.world plus its meshes
 
 and ``pc convert scene`` moves a scene between the two formats, rewriting the
 package around it:
 
 .. code-block:: shell
 
-  pc convert scene -t assy :warehouse   # the world's shapes become parts of the package
-  pc convert scene -t world :workcell   # the scene becomes a Gazebo world file
+  pc convert scene -t assy :warehouse                # the world's shapes become parts of the package
+  pc convert scene -t sim-gazebo:world :workcell     # the scene becomes a Gazebo world file
 
-``pc import scene warehouse.world`` does the first of those in one step for a
-file the package does not declare yet, leaving the package holding PartCAD's own
-objects. ``pc add scene world warehouse.world`` declares the file where it lies
-instead.
+``pc import scene -t sim-gazebo:world warehouse.world`` does the first of those
+in one step for a file the package does not declare yet, leaving the package
+holding PartCAD's own objects. ``pc add scene sim-gazebo:world warehouse.world``
+declares the file where it lies instead.
 
 MuJoCo models
 -------------
 
-The ``mjcf`` type reads a `MuJoCo <https://mujoco.org/>`_ model as a scene, the
-same way ``world`` reads a Gazebo one: every body is placed where its ``pos``
+The ``sim-mujoco:mjcf`` type reads a `MuJoCo <https://mujoco.org/>`_ model as a
+scene, the same way ``sim-gazebo:world`` reads a Gazebo one. It is declared by
+`partcad-sim-mujoco <https://github.com/partcad/partcad-sim-mujoco>`_, for the
+reason the world type is declared by the Gazebo one: every body is placed where its ``pos``
 and orientation put it inside the body that holds it, and every geom becomes a
 part of the package named ``<scene>/<body>``.
 
@@ -2616,27 +2629,27 @@ says so:
 
   assemblies:
     arm:
-      type: mjcf
+      type: sim-mujoco:mjcf
       path: arm.xml        # a product
 
   scenes:
     cell:
-      type: mjcf
+      type: sim-mujoco:mjcf
       path: cell.xml       # an arrangement
 
 It is a best-effort reader in the same way the world reader is: joints,
 actuators, tendons, sensors, lights, cameras, contacts and keyframes are counted
 and reported, and ``pc info`` lists what was dropped. The reverse direction is
-the ``mjcf`` export file type, which writes an ``.xml`` file plus the meshes it
-references:
+the ``sim-mujoco:mjcf`` export file type, which writes an ``.xml`` file plus the
+meshes it references:
 
 .. code-block:: shell
 
-  pc export -S -t mjcf :cell     # a scene
-  pc export -t mjcf :arm         # or an assembly
+  pc export -S -t sim-mujoco:mjcf :cell     # a scene
+  pc export -t sim-mujoco:mjcf :arm         # or an assembly
 
 It is also the format ``pc sim`` hands a scene to MuJoCo in, and the one
-``pc open --with mujoco`` converts to; see :ref:`simulate`.
+``pc open --with mujoco`` expects a file to already be in; see :ref:`simulate`.
 
 .. _import-section:
 
@@ -2644,10 +2657,13 @@ It is also the format ``pc sim`` hands a scene to MuJoCo in, and the one
 Importers
 =========
 
-``urdf``, ``mjcf`` and ``world`` are not object types PartCAD hard-codes. Each
-is one entry of an ``import:`` section -- a declaration saying which script
-reads that format, what its sandbox needs, and which object kinds it may
-produce -- and a package writes one to teach PartCAD a format of its own:
+``urdf``, ``sim-mujoco:mjcf`` and ``sim-gazebo:world`` are not object types
+PartCAD hard-codes. Each is one entry of an ``import:`` section -- a declaration
+saying which script reads that format, what its sandbox needs, and which object
+kinds it may produce -- and a package writes one to teach PartCAD a format of its
+own. That is not a hypothetical: ``urdf`` is the only one of the three PartCAD
+ships, and the other two are entries of exactly this kind in the plugin package
+for their engine.
 
 .. code-block:: yaml
 
@@ -2707,20 +2723,20 @@ anywhere in an index must not fail every command that merely walks past it. That
 package goes on providing everything else it declares; what is lost is exactly
 what the section named.
 
-PartCAD ships three of these, in ``//builtin/import``. ``urdf`` stays there
-because a URDF describes a robot rather than any one engine's world, and ROS,
-MuJoCo, PyBullet and Isaac all read it. ``mjcf`` and ``world`` belong to
+PartCAD ships **one** of these, in ``//builtin/import``: ``urdf``, which stays
+there because a URDF describes a robot rather than any one engine's world, and
+ROS, MuJoCo, PyBullet and Isaac all read it. ``mjcf`` and ``world`` belong to
 `partcad-sim-mujoco <https://github.com/partcad/partcad-sim-mujoco>`_ and
 `partcad-sim-gazebo <https://github.com/partcad/partcad-sim-gazebo>`_
 respectively, beside the exporter and the simulator that share their knowledge
 of the format: reading a format and writing it are one piece of knowledge, and
 this is what lets the pair travel together and be versioned together.
 
-Both of those packages declare the reader, the writer, the simulator and the
-``open:`` entry for their format, so ``type: sim-gazebo:world`` and
-``type: sim-mujoco:mjcf`` read through the plugin today. The wheel still carries
-a copy of each reader, which is what the bare ``type: world`` resolves to and
-which is on its way out; write the full path.
+Each of those packages declares the reader, the writer, the simulator and the
+``open:`` entry for its format, and the wheel carries none of them. So
+``type: sim-gazebo:world`` and ``type: sim-mujoco:mjcf`` are the spellings that
+resolve, in a package that imports the plugin; a bare ``type: world`` resolves to
+nothing and says which package to name.
 
 .. _open-section:
 
