@@ -73,6 +73,7 @@ from .document_pdf import render_pdf_async
 from .exception import EmptyShapesError, NeedsUpdateException, ObjectNameTakenError
 from .part import Part
 from .render import render_cfg_merge
+from .shape_config import NO_DEFAULT
 from .utils import (
     format_parameterized_name,
     normalize_resource_path,
@@ -205,6 +206,56 @@ def _readme_cell(text) -> str:
     """A value made safe to put in one cell of a generated markdown table."""
     text = "" if text is None else str(text)
     return text.replace("|", "\\|").replace("\n", "<br/>")
+
+
+def declare_object_type_parameters(factory_name: str, config: dict, params: dict) -> None:
+    """Declare the object-type parameters a reference sets but the object does not.
+
+    An object-type parameter belongs to the *type* rather than to the
+    declaration (see 'factory.accepted_object_type_parameters'), so it is there
+    to be set whether or not the package that wrote the object thought to
+    mention it. Without this, 'bends;include=BEND_UP,BEND_DOWN' would be refused
+    by the two checks below - the object "has no parameters", and then the
+    parameter "is not declared in" it - and a DXF sketch could only be read
+    layer by layer if every combination of layers had been declared in advance,
+    which is the opposite of what a parameter is for.
+
+    Only the names this reference actually sets are declared, and only where the
+    object declares nothing of that name itself: a declaration that is there is
+    the one that carries the 'desc', the 'enum' and the default its author
+    meant. The type's own default goes in as the default, so an unset parameter
+    reads back exactly as it did before anything was declared, and the type
+    witnesses its type ('config.declared_parameter_type').
+
+    A name the type does not contribute is left alone, and is rejected moments
+    later by 'apply_parameter_values' with the message it has always had. That
+    is the point of the registry: every other parameter name is the object's own
+    invention, and inventing a declaration for one would turn a typo into a
+    parameter nothing reads.
+    """
+    accepted = factory.accepted_object_type_parameters(factory_name, config.get("type"))
+    if not accepted:
+        return
+    parameters = config.get("parameters")
+    for name in params:
+        if name not in accepted:
+            continue
+        if isinstance(parameters, dict) and name in parameters:
+            continue
+        if not isinstance(parameters, dict):
+            parameters = {}
+            config["parameters"] = parameters
+        default = accepted[name]
+        # The default is the type's witness of what the parameter is, which is
+        # how it is read everywhere else ('shape_config.object_type_parameter').
+        # A parameter that has none - 'material' and 'color', where absent means
+        # absent - leaves the type unstated, and an unstated type is the one
+        # case 'coerce_parameter_value' takes the value exactly as written:
+        # right for both of them, and better than guessing at a type here.
+        declaration = {"type": pc_config.declared_parameter_type(default)}
+        if default is not NO_DEFAULT:
+            declaration["default"] = default
+        parameters[name] = declaration
 
 
 @telemetry.instrument()
@@ -1833,6 +1884,7 @@ class Project(project_config.Configuration):
                 return None
 
             config = copy.deepcopy(config)
+            declare_object_type_parameters(factory_name, config, params)
             if ("parameters" not in config or config["parameters"] is None) and (
                 config["type"] not in PARAMETER_PASSING_TYPES
             ):

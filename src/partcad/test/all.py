@@ -12,6 +12,7 @@ from .cad import CadTest
 from .cam import CamTest
 from .cam_additive_solid import CamAdditiveSolidTest
 from .cam_forming import CamFormingTest
+from .cam_sheet_metal import CamSheetMetalTest
 from .cam_subtractive import CamSubtractiveTest
 from .cfd import CfdTest
 from .connect import ConnectTest
@@ -43,6 +44,7 @@ def tests(concurrency_cap: int) -> list[Test]:
                 CamAdditiveSolidTest(),
                 CamSubtractiveTest(),
                 CamFormingTest(),
+                CamSheetMetalTest(),
                 ConnectTest(),
                 ConnectivityTest(),
                 DegenerateTest(),
