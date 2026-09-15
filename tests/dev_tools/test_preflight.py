@@ -48,6 +48,14 @@ USES = "./.github/actions/preflight"
 
 PATH = "/usr/bin:/bin:/usr/local/bin"
 
+# What stands in for the key. Deliberately not a real `-----BEGIN ... PRIVATE
+# KEY-----` header: the action only ever asks whether the value is non-empty, so
+# a realistic one buys these tests nothing, and it costs a `detect-private-key`
+# failure in "Lint (pre-commit)" -- which is what happened. Splicing the header
+# together at runtime to slip past that hook would be defeating a security gate
+# on purpose, so the value is simply not key-shaped.
+SECRET_SENTINEL = "a-key-would-be-here-and-must-never-be-printed"
+
 
 def _check_script():
     action = yaml.safe_load(ACTION.read_text())
@@ -242,15 +250,15 @@ def test_a_probe_that_cannot_run_assumes_writable_rather_than_crashing(tmp_path)
 
 
 def test_the_ssh_key_is_reported_as_present_without_being_printed(tmp_path):
-    outputs, rc, summary, out = preflight(tmp_path, ssh_key="-----BEGIN OPENSSH PRIVATE KEY-----")
+    outputs, rc, summary, out = preflight(tmp_path, ssh_key=SECRET_SENTINEL)
 
     assert rc == 0
     assert outputs["ssh-key"] == "true"
     # Never the value. GitHub masks registered secrets in its own log, but this
     # runs the script directly and the guarantee wanted here is that the script
     # does not print it in the first place.
-    assert "BEGIN OPENSSH" not in summary
-    assert "BEGIN OPENSSH" not in out
+    assert SECRET_SENTINEL not in summary
+    assert SECRET_SENTINEL not in out
 
 
 def test_a_private_repository_without_a_key_is_stopped(tmp_path):
@@ -273,7 +281,7 @@ def test_a_private_repository_without_a_key_is_stopped(tmp_path):
 
 
 def test_a_private_repository_with_a_key_carries_on(tmp_path):
-    outputs, rc, summary, _ = preflight(tmp_path, needs_ssh="true", ssh_key="-----BEGIN OPENSSH PRIVATE KEY-----")
+    outputs, rc, summary, _ = preflight(tmp_path, needs_ssh="true", ssh_key=SECRET_SENTINEL)
 
     assert rc == 0
     assert outputs["ssh-key"] == "true"
