@@ -193,6 +193,71 @@ def test_a_boolean_is_refused_rather_than_read_as_one_millimetre(tmp_path):
     assert _tolerance(part) == 0.05
 
 
+@pytest.mark.parametrize(
+    "declared",
+    [".nan", ".inf", "-.inf", "-5", "true", "yes"],
+    ids=["nan", "infinity", "negative-infinity", "negative", "true", "yes"],
+)
+def test_the_tolerance_parameter_is_held_to_the_same_rule_as_the_field(tmp_path, declared):
+    """The homogeneous types state this as a parameter, and it is still a length.
+
+    The same four spellings reach 'get_object_type_parameter()', whose
+    coercion turns 'True' into 1.0 and passes NaN, the infinities and negatives
+    straight through. NaN is the one that has to be stopped rather than merely
+    tidied: 'CamTest.tolerance_failure()' takes a NaN to mean "the file
+    tolerances this feature by feature" and passes it, so a NaN a declaration
+    produced would be reported as something no file ever said.
+    """
+    pc.logging.reset_errors()
+    (tmp_path / "partcad.yaml").write_text(
+        "parts:\n  body:\n    type: stl\n"
+        "    parameters:\n      tolerance:\n        type: float\n        default: %s\n" % declared
+    )
+    (tmp_path / "body.stl").write_text("")
+
+    part = pc.Context(str(tmp_path)).get_part("//:body")
+
+    # Read first: unlike the field, which the factory validates as the part is
+    # created, a parameter is checked when something asks for it.
+    assert _tolerance(part) == 0.0
+    assert pc.logging.had_errors is True
+
+
+def test_a_tolerance_parameter_that_is_a_length_still_reads_back(tmp_path):
+    """The rule refuses what is not a length, and nothing else."""
+    pc.logging.reset_errors()
+    (tmp_path / "partcad.yaml").write_text(
+        "parts:\n  body:\n    type: stl\n"
+        "    parameters:\n      tolerance:\n        type: float\n        default: 0.1\n"
+    )
+    (tmp_path / "body.stl").write_text("")
+
+    part = pc.Context(str(tmp_path)).get_part("//:body")
+
+    assert _tolerance(part) == 0.1
+    assert pc.logging.had_errors is False
+
+
+def test_only_a_file_can_produce_the_nan_the_cam_test_accepts(tmp_path):
+    """The invariant the two rules above exist to protect.
+
+    NaN means "the file tolerances this part feature by feature". Nothing a
+    declaration can write may mint one, on either path, or the CAM test would
+    pass a part on the strength of a sentence no file said.
+    """
+    tolerated = _step(0.05, 0.2)
+    ctx = _write_package(
+        tmp_path,
+        {"from_file": _part("step"), "from_field": _part("step", tolerance=0.1)},
+        contents={"from_file": tolerated, "from_field": tolerated},
+    )
+
+    # The same file, tolerated feature by feature, under both parts.
+    assert math.isnan(_tolerance(ctx.get_part("//:from_file")))
+    # ...and the declared length is what the second one answers with, not a NaN.
+    assert _tolerance(ctx.get_part("//:from_field")) == 0.1
+
+
 def test_a_declared_tolerance_of_zero_is_still_a_declaration(tmp_path):
     """The check refuses what is not a length, not what is not useful.
 

@@ -7,13 +7,13 @@
 # Licensed under Apache License, Version 2.0.
 #
 
-import math
 import typing
 
 from . import factory
 from . import logging as pc_logging
 from . import shape_envelope, telemetry
 from .part import Part
+from .shape_config import is_a_length
 from .shape_factory import ShapeFactory
 
 
@@ -198,7 +198,11 @@ class PartFactory(ShapeFactory):
           rather than the word, and a millimetre is plausible enough to go
           unnoticed while quietly outranking what the file states.
 
-        None of the four is a tolerance anybody can be asked to hold.
+        None of the four is a tolerance anybody can be asked to hold, and
+        'shape_config.is_a_length()' is the one statement of that - the
+        'tolerance' object-type parameter of the homogeneous types is read
+        through it too, so the two ways a part can state one cannot come to
+        disagree about what one is.
         """
         if not isinstance(config, dict):
             return None
@@ -215,7 +219,7 @@ class PartFactory(ShapeFactory):
         except (TypeError, ValueError):
             pc_logging.error("Part '%s' has a non-numeric 'tolerance': %r" % (config.get("name"), value))
             return None
-        if not math.isfinite(tolerance) or tolerance < 0.0:
+        if not is_a_length(tolerance):
             pc_logging.error("Part '%s' has a 'tolerance' that is not a length: %r" % (config.get("name"), value))
             return None
         return tolerance

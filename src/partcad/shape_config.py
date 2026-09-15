@@ -8,6 +8,7 @@
 #
 
 import asyncio
+import math
 import os
 import random
 import string
@@ -47,6 +48,27 @@ class _NotRead:
 
 
 _NOT_READ = _NotRead()
+
+
+def is_a_length(value) -> bool:
+    """Whether a number is one a manufacturing tolerance can be stated as.
+
+    Finite, not negative, and not a boolean - which is what the schema says
+    ('number', 'minimum: 0') and what nothing enforced while a package was
+    loaded. The three ways past it are all reachable from YAML and all pass
+    'float()': '.nan' and '.inf' convert, and 'True' is an int in Python and
+    converts to 1.0.
+
+    NaN is the one that has to be kept out rather than merely tidied away.
+    'CamTest.tolerance_failure()' takes a NaN to mean "the file tolerances this
+    part feature by feature" and passes it - so a NaN a *declaration* produced
+    would be reported as something no file ever said. Whatever states a
+    tolerance goes through here first, and NaN stays
+    'tolerance_inspect.reduce()'s alone to produce.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    return math.isfinite(value) and value >= 0.0
 
 
 def final_config(obj) -> dict:
@@ -221,6 +243,14 @@ class ShapeConfiguration:
 
         declared = self.get_object_type_parameter("tolerance")
         if declared is not None:
+            if not is_a_length(declared):
+                # An infinite or negative parameter, which the coercion above
+                # has no opinion about: 'tolerance' is the one numeric
+                # object-type parameter that is a length, so the rule about what
+                # a length may be lives here rather than there.
+                kind = getattr(self, "kind", "object").capitalize()
+                pc_logging.error(f"{kind} '{self.name}' has a 'tolerance' that is not a length: {declared!r}")
+                return 0.0
             return declared
 
         # A type that takes the field and whose file said nothing has said
@@ -315,6 +345,14 @@ class ShapeConfiguration:
 
         value = declared["default"]
         if isinstance(default, float):
+            # Before 'float()' rather than after: by then 'True' is an ordinary
+            # 1.0 and nothing can tell it from a number somebody wrote. Said
+            # here, of numeric object-type parameters in general, because a
+            # boolean is not a number for any of them.
+            if isinstance(value, bool):
+                kind = getattr(self, "kind", "object").capitalize()
+                pc_logging.error(f"{kind} '{self.name}' has a non-numeric '{name}': {value!r}")
+                return fallback
             try:
                 return float(value)
             except (TypeError, ValueError):
