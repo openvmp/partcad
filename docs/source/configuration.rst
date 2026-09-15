@@ -3752,12 +3752,17 @@ run -- and says which of the two would fix it.
 Built-in implementations
 ------------------------
 
-The formats PartCAD ships are not special-cased anywhere: they are declared in
-exactly the form above by two packages that live inside the ``partcad``
-installation and that every context can reach, ``//builtin/export`` and
-``//builtin/render``. They are the bottom layer of the configuration, so a
+The export and render formats PartCAD ships are not special-cased anywhere: they
+are declared in exactly the form above by two packages that live inside the
+``partcad`` installation and that every context can reach, ``//builtin/export``
+and ``//builtin/render``. They are the bottom layer of the configuration, so a
 package that sets a single parameter keeps the built-in implementation for
 everything else, and a package that sets ``path`` replaces it.
+
+Two of the other sections ship one the same way: ``//builtin/cam`` declares the
+``gcode`` file type ``pc cam`` writes (see :ref:`pc cam <cam>`), and
+``//builtin/open`` declares the applications ``pc open`` starts. ``cae:`` is the
+one that ships nothing, because PartCAD implements no solver.
 
 ``//builtin/export`` implements ``step``, ``brep``, ``stl``, ``3mf``, ``obj``,
 ``gltf``, ``iges``, ``threejs`` and ``urdf``. ``//builtin/render`` implements
