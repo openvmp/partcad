@@ -70,6 +70,12 @@ def _points(entity) -> list:
 
 
 def _point(value) -> list:
+    """One DXF point as an [x, y, z] list, with z filled in when the file omits it.
+
+    A DXF written in two dimensions states two ordinates, and a record whose
+    points had different lengths depending on how the file was drawn would be
+    one every reader had to check the length of.
+    """
     return [float(value[0]), float(value[1]), float(value[2]) if len(value) > 2 else 0.0]
 
 

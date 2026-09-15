@@ -21,6 +21,13 @@ import wrapper_common
 
 
 def free_bounds(request):
+    """How many free boundaries the shape has, which is how open it is.
+
+    A solid a machine can make is closed: every edge of it is shared by two
+    faces. A free boundary is an edge that is not, so a count above zero is a
+    shape with a hole in its surface - a surface model, or a solid that failed
+    to sew - and 'CamTest' reports it as a part nothing can be made from.
+    """
     from OCP.ShapeAnalysis import ShapeAnalysis_FreeBoundsProperties
 
     shape = request["shape"]
