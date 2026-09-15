@@ -16,9 +16,12 @@ So the questions are asked once, up front, and answered in terms of what to go
 and change. This file pins the one decision that is easy to get backwards:
 *when to stop*. Stopping a run that can be fixed is the point; stopping one that
 cannot be is a contributor's pull request blocked forever on a setting nobody
-can reach. The difference is whether the head is a fork, and the two halves are
+can reach. The difference is whether the head is in another repository -- not
+whether the head repository is a fork of one, which is a different question with
+a different answer for a pull request opened inside a fork. The two halves are
 `test_a_fork_is_told_where_to_get_the_coverage_not_failed` and
-`test_a_missing_write_that_can_be_fixed_stops_the_run` below.
+`test_a_missing_write_that_can_be_fixed_stops_the_run`; the distinction itself is
+`test_a_fork_is_its_head_being_elsewhere_not_its_repository_being_a_fork`.
 
 The library half of the same subject is `tests/partcad_utils/test_container_image.py`;
 the tag it threads is `tests/dev_tools/test_container_images.py`.
@@ -250,50 +253,77 @@ def test_the_ssh_key_is_reported_as_present_without_being_printed(tmp_path):
     assert "BEGIN OPENSSH" not in out
 
 
-def test_a_scenario_that_needs_the_key_stops_a_run_without_one(tmp_path):
-    """False for every run today, and the input exists so that it need not be.
+def test_a_private_repository_without_a_key_is_stopped(tmp_path):
+    """The rule the caller passes, exercised end to end.
 
-    The only scenario that clones over SSH is `@wip`, which `behave.ini`
-    excludes. Un-tagging it is a one-word change in the workflow rather than a
-    rediscovery of what the key was for -- and this is what that word buys.
+    A private fork's packages may depend on repositories that are private too,
+    and `pc install` cloning one is what the key is for. Left to the suite, a
+    missing key surfaces as a `git` authentication failure inside one behave
+    scenario in one shard, a long way from the cause.
     """
     outputs, rc, summary, out = preflight(tmp_path, needs_ssh="true", ssh_key="")
 
     assert rc == 1
+    assert outputs["ssh-key"] == "false"
     assert "::error" in out
     assert "SSH_PRIVATE_KEY_RO" in summary
     assert "deploy key" in summary
+    # A heuristic has to say how to turn it off, or it is a wall.
+    assert 'needs-ssh: "false"' in summary
 
 
-def test_nothing_that_runs_in_ci_clones_over_ssh():
-    """The claim `needs-ssh: "false"` rests on, checked rather than trusted.
+def test_a_private_repository_with_a_key_carries_on(tmp_path):
+    outputs, rc, summary, _ = preflight(tmp_path, needs_ssh="true", ssh_key="-----BEGIN OPENSSH PRIVATE KEY-----")
 
-    If a scenario outside `@wip` gains an `ssh://` or `git@` dependency, the
-    behave jobs start needing a key that a fork does not have, and the symptom
-    is a clone that hangs or a permission denied inside a scenario. This fails
-    instead, next to the input that has to change.
+    assert rc == 0
+    assert outputs["ssh-key"] == "true"
+    assert "private dependency" in summary
+
+
+@pytest.mark.parametrize("workflow", ["test.yml", "test-dev.yml"])
+def test_the_key_is_asked_for_where_the_repository_is_private(workflow):
+    """And nowhere else.
+
+    Hard-coded `"false"`, the key would be dead weight -- which is what it
+    looked like from the public upstream, whose own dependencies are public and
+    clone over https. Hard-coded `"true"`, every public fork would be stopped
+    for a credential it has no use for. The repository being private is the one
+    signal available here that correlates with "its dependencies are private
+    too".
     """
-    import re
+    (step,) = [s for s in _jobs(workflow)["preflight"]["steps"] if s.get("uses") == USES]
+    needs_ssh = " ".join(str(step["with"]["needs-ssh"]).split())
 
-    assert "tags = ~@wip" in (REPO_ROOT / "behave.ini").read_text()
+    assert "github.event.repository.private" in needs_ssh, needs_ssh
 
-    for feature in (REPO_ROOT / "features").rglob("*.feature"):
-        text = feature.read_text()
-        for match in re.finditer(r"^.*(?:git@|ssh://).*$", text, re.M):
-            line = match.group(0)
-            # A URL that is rewritten to https before it is used is not an SSH
-            # clone: "Install packages with ssh" declares the mapping and then
-            # asserts the rewrite happened.
-            if "https://" in line or "should contain" in line:
-                continue
-            # Everything else has to sit under `@wip`, which CI excludes.
-            preceding = text[: match.start()]
-            scenario = preceding.rfind("Scenario")
-            tags = preceding[preceding.rfind("\n", 0, scenario) if scenario != -1 else 0 : match.start()]
-            assert "@wip" in preceding[max(0, scenario - 400) : scenario] or "@wip" in tags, (
-                "%s clones over SSH outside @wip; set 'needs-ssh: true' in the preflight step "
-                "of test.yml and test-dev.yml, and give CI a key.\n  %s" % (feature, line.strip())
-            )
+
+@pytest.mark.parametrize("action", ["preflight", "container-images"])
+def test_a_fork_is_its_head_being_elsewhere_not_its_repository_being_a_fork(action):
+    """The distinction that decides whether a fork can test its own work.
+
+    GitHub's read-only-token rule turns on the head being in *another*
+    repository. `head.repo.fork` asks something else: whether the head
+    repository is a fork of anything. For a pull request opened inside a fork,
+    branch to branch, the two disagree -- `fork` is true (that repository is a
+    fork of this one) while the token is fully writable (the head is that same
+    repository).
+
+    Read the wrong one, and a contributor's own pull request in their own fork
+    is treated as untrusted there: no images published, no coverage of the
+    change it makes to them. That is the run they open to check their work
+    before sending it here, so it is the one that most needs to behave like a
+    pull request in this repository -- which is the whole ask.
+    """
+    lines = (REPO_ROOT / ".github" / "actions" / action / "action.yml").read_text().splitlines()
+    index = next(i for i, ln in enumerate(lines) if "FROM_A_FORK:" in ln)
+    expression = " ".join((lines[index] + " " + lines[index + 1]).split())
+
+    assert "head.repo.full_name != github.repository" in expression, expression
+
+    # Comments here name the wrong spelling in order to explain it, so only
+    # what is actually evaluated is checked.
+    code = "\n".join(ln for ln in lines if not ln.lstrip().startswith("#"))
+    assert "head.repo.fork" not in code, action
 
 
 def _jobs(name):

@@ -361,14 +361,29 @@ def test_the_fork_test_above_is_testing_the_fork_and_not_the_default(tmp_path):
     assert decide(tmp_path, wanted="true", fork="false")["push"] == "true"
 
 
-def test_only_a_pull_request_can_be_a_fork():
+def test_only_a_pull_request_whose_head_is_elsewhere_is_a_fork():
     """`github.event.pull_request` is empty on every other event, and a push to
     this repository's own `devel` is what the release publish is.
+
+    The head being in *another* repository is the test, not the head repository
+    being a fork of something. `head.repo.fork` -- which this read until a
+    contributor asked why their fork could not test its own work -- answers a
+    different question, and the two disagree for a pull request opened inside a
+    fork, branch to branch: that head repository is a fork, and its token is
+    fully writable because the head is that same repository. Reading the wrong
+    one made such a run publish nothing and test the upstream release's images,
+    in the contributor's own copy, with nothing untrusted anywhere in it.
+
+    Pinned as an exact string because it is an Actions expression the script
+    never sees: nothing else here can fail if it goes wrong.
     """
     (step,) = [s for s in _action()["runs"]["steps"] if s.get("id") == "decide"]
     condition = " ".join(step["env"]["FROM_A_FORK"].split())
 
-    assert condition == "${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}"
+    assert condition == (
+        "${{ github.event_name == 'pull_request'"
+        " && github.event.pull_request.head.repo.full_name != github.repository }}"
+    )
 
 
 def test_the_release_publish_is_the_bump_on_devel_and_a_dispatch():

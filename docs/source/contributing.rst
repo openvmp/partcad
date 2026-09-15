@@ -890,10 +890,17 @@ CI fans out over operating systems, and a pull request does not pay for all of t
 Running CI in your own fork
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A pull request from a fork runs with a **read-only token and no repository secrets**. That is GitHub's rule, not a
-setting either side can change, and it holds whether or not you have write access here -- what decides it is that the
-branch lives in your copy. Most of CI does not care: the tests, the linters, the extension and the bundles all run on
-a fork exactly as they run here.
+A pull request **against this repository whose branch lives in your fork** runs with a read-only token and no
+repository secrets. That is GitHub's rule, not a setting either side can change, and it holds whether or not you have
+write access here -- what decides it is that the head is somewhere else. Most of CI does not care: the tests, the
+linters, the extension and the bundles all run on a fork exactly as they run here.
+
+A pull request **inside your fork** -- branch to branch, both in your copy -- is a different thing and gets the full
+run: a writable token, your own secrets, your own container images. Nothing is held back there, because nothing about
+it is untrusted from your fork's point of view. That is the run to open when you want CI to behave exactly as it does
+on a pull request here, and it is worth knowing that the test for it is the head being in *another* repository and not
+the head repository being a fork of something -- the two differ for precisely this case, and reading the wrong one
+used to leave a fork unable to test its own work.
 
 One thing does. A change under ``tools/containers/`` (or a ``#images`` marker) means the run has to *build* PartCAD's
 container images and push them somewhere its own test jobs can pull them from, and a fork's pull request cannot push
@@ -924,10 +931,16 @@ Note that a fork's default branch is called ``devel`` too, and a push to it used
 job was skipped -- the ``Version updated`` rule below is about *this* repository, where a bump follows every merge
 within minutes, and a fork has no bump coming. It no longer applies to a fork.
 
-``SSH_PRIVATE_KEY_RO`` is the other secret this repository holds, and no run needs it today: the one scenario that
-clones over SSH is tagged ``@wip`` and ``behave.ini`` excludes it, so the behave jobs start no agent where there is no
-key. ``Prerequisites`` reports it as *not needed*, and a test fails if a scenario outside ``@wip`` ever starts
-needing one.
+``SSH_PRIVATE_KEY_RO`` is the other secret this repository holds, and what it is for is a dependency that is not
+public. These suites drive ``pc install``, and a PartCAD package may declare a ``git`` dependency on any repository --
+so a **private** fork testing its own packages clones its own private repositories in CI, and this is the credential
+that lets it. The public upstream needs none: its own dependencies are public and clone over https.
+
+So ``Prerequisites`` asks for it where the repository is private and reports it as *not needed* where it is public, and
+the behave jobs start no agent where there is no key -- unconditional, the agent action is handed an empty string and
+fails the whole job with "The ssh-private-key argument is empty". The privacy of the repository is a heuristic for
+"its dependencies are private too", not a fact: if your fork is private but everything it installs is public, set
+``needs-ssh: "false"`` on the ``Prerequisites`` job in your copy of ``test.yml`` and ``test-dev.yml``.
 
 A push to ``devel`` is the exception to all three: it runs no matrix at all unless its head commit message starts with
 ``Version updated``, which is the release commit. Every push to ``devel`` is followed by one of those within minutes

@@ -106,12 +106,24 @@ runs:
           && github.ref == 'refs/heads/devel'
           && startsWith(github.event.head_commit.message, 'Version updated'))
           || github.event_name == 'workflow_dispatch' }}
-        # A pull request from a fork, whose `GITHUB_TOKEN` is read-only however
-        # the workflow declares its permissions. Nothing here can publish, so
-        # nothing here may claim a tag that is going to be missing when the
-        # tests reach for it. Not a case for the release publish above: that is
-        # a push to this repository's own `devel`.
-        FROM_A_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
+        # A pull request whose head is in another repository, whose
+        # `GITHUB_TOKEN` is read-only however the workflow declares its
+        # permissions. Nothing there can publish, so nothing there may claim a
+        # tag that is going to be missing when the tests reach for it. Not a
+        # case for the release publish above: that is a push to this
+        # repository's own `devel`.
+        #
+        # The head being *elsewhere*, which is what GitHub's rule turns on --
+        # not the head repository being a fork of something. Those differ for
+        # the case that matters: a pull request opened inside a fork, branch
+        # to branch, has `head.repo.fork` true (that repository is a fork) and
+        # a fully writable token (the head is this repository). Read the wrong
+        # one and a fork's own pull requests are treated as untrusted in their
+        # own repository -- no images published, no coverage of what they
+        # changed -- which is exactly the run a contributor opens to check
+        # their work before sending it here.
+        FROM_A_FORK: ${{ github.event_name == 'pull_request'
+          && github.event.pull_request.head.repo.full_name != github.repository }}
       run: |
         set -euo pipefail
 

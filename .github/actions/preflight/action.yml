@@ -38,15 +38,22 @@ inputs:
     default: "false"
   needs-ssh:
     description: >
-      "true" when this run means to execute a scenario that clones over SSH.
-      False for every run today: the one scenario that does is tagged `@wip`
-      and "behave.ini" excludes `~@wip`. An input rather than a deletion, so
-      that un-tagging that scenario is a one-word change here rather than a
-      rediscovery of what the key was for.
+      "true" when this run may have to clone a dependency that is not public.
+
+      The suite drives `pc install`, and a PartCAD package can declare a `git`
+      dependency on any repository -- so this is a property of which
+      repositories this fork's packages point at, which nothing here can read.
+      Callers pass `github.event.repository.private`: a private repository is
+      one whose dependencies are likely private too, and a public one clones
+      public dependencies over https and needs no key. A heuristic, and the
+      failure message says so and says how to turn it off.
     required: false
     default: "false"
   ssh-key:
-    description: "secrets.SSH_PRIVATE_KEY_RO, tested for being set and nothing else."
+    description: >
+      secrets.SSH_PRIVATE_KEY_RO -- a private key whose public half is a
+      read-only deploy key on the repositories this fork's packages depend on.
+      Tested for being set and for nothing else.
     required: false
     default: ""
   registry:
@@ -79,12 +86,23 @@ runs:
         SSH_KEY: ${{ inputs.ssh-key }}
         REGISTRY: ${{ inputs.registry }}
         TOKEN: ${{ inputs.token }}
-        # A fork's pull request against this repository. It is the HEAD being a
-        # fork that decides, not who the author is: a collaborator with write
+        # A pull request whose head is in another repository -- which is what
+        # GitHub's read-only-token rule turns on, and what "a fork's pull
+        # request" means here. Not who the author is: a collaborator with write
         # access still gets a read-only token when the branch lives in their
-        # own copy, which is how a trusted contributor ends up with a weaker
-        # run than the same change pushed here would get.
-        FROM_A_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
+        # own copy.
+        #
+        # The head being *elsewhere*, which is what GitHub's rule turns on --
+        # not the head repository being a fork of something. Those differ for
+        # the case that matters: a pull request opened inside a fork, branch
+        # to branch, has `head.repo.fork` true (that repository is a fork) and
+        # a fully writable token (the head is this repository). Read the wrong
+        # one and a fork's own pull requests are treated as untrusted in their
+        # own repository -- no images published, no coverage of what they
+        # changed -- which is exactly the run a contributor opens to check
+        # their work before sending it here.
+        FROM_A_FORK: ${{ github.event_name == 'pull_request'
+          && github.event.pull_request.head.repo.full_name != github.repository }}
         REPO: ${{ github.repository }}
         OWNER: ${{ github.repository_owner }}
       run: |
@@ -214,21 +232,41 @@ runs:
 
         if [ -n "${SSH_KEY}" ]; then ssh_key=true; else ssh_key=false; fi
 
+        # What the key is for: cloning a PartCAD package this repository depends
+        # on which is not public. The suite drives `pc install`, and a package
+        # can declare a `git` dependency on any repository -- so whether a run
+        # needs a key is a property of *which repositories this fork's packages
+        # point at*, not of which scenario is running.
+        #
+        # Nothing here can read that, and the caller uses the one signal that
+        # correlates with it: a **private** repository is one whose dependencies
+        # are likely private too, and a public one clones public dependencies
+        # over https and needs nothing. That is a heuristic and it is stated as
+        # one -- a private fork with only public dependencies can set
+        # `needs-ssh: "false"` in its own copy of the workflow and lose nothing.
         if [ "${NEEDS_SSH}" = "true" ] && [ "${ssh_key}" != "true" ]; then
-          row "SSH_PRIVATE_KEY_RO" "**REQUIRED — missing**" "no deploy key is set for this repository"
+          row "SSH_PRIVATE_KEY_RO" "**REQUIRED — missing**" "this repository is private and has no deploy key"
           fatal=1
-          echo "::error title=A scenario in this run clones over SSH and no key is set::add SSH_PRIVATE_KEY_RO"
+          echo "::error title=A private repository with no deploy key::add SSH_PRIVATE_KEY_RO"
           say ""
           say "### No SSH deploy key"
           say ""
-          say "A behave scenario in this run clones a dependency over SSH and \`SSH_PRIVATE_KEY_RO\`"
-          say "is not set. Add it under **Settings → Secrets and variables → Actions → New"
-          say "repository secret**, named \`SSH_PRIVATE_KEY_RO\`, holding a private key whose public"
-          say "half is a read-only deploy key on the repository being cloned."
+          say "This repository is private, so the packages its suites install may depend on"
+          say "repositories that are private too -- and \`SSH_PRIVATE_KEY_RO\` is not set, so nothing"
+          say "in this run can clone one. Left to the suite, that surfaces as a \`git\` authentication"
+          say "failure inside one behave scenario, in one shard, a long way from the cause."
+          say ""
+          say "Add it under **Settings → Secrets and variables → Actions → New repository secret**,"
+          say "named \`SSH_PRIVATE_KEY_RO\`, holding a private key whose public half is a read-only"
+          say "deploy key on the repositories being cloned."
+          say ""
+          say "If this repository is private but every dependency it installs is public, it does not"
+          say "need one: set \`needs-ssh: \"false\"\` on the \`Prerequisites\` job in your copy of"
+          say "\`.github/workflows/test.yml\` and \`test-dev.yml\`."
         elif [ "${ssh_key}" = "true" ]; then
-          row "SSH_PRIVATE_KEY_RO" "available" "set for this repository"
+          row "SSH_PRIVATE_KEY_RO" "available" "a private dependency can be cloned over SSH"
         else
-          row "SSH_PRIVATE_KEY_RO" "not needed" "the only scenario that clones over SSH is \`@wip\`, which \`behave.ini\` excludes"
+          row "SSH_PRIVATE_KEY_RO" "not needed" "this repository is public, and a public dependency clones over https"
         fi
 
         echo "ghcr-write=${ghcr_write}" >> "${GITHUB_OUTPUT}"

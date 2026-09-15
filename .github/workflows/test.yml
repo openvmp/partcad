@@ -746,10 +746,17 @@ jobs:
           # "image-push" is already false for the fork that could not, which is
           # the case this exists to report. See the "degraded" output.
           needs-ghcr: ${{ needs.set-matrix.outputs.image-push == 'true' || needs.set-matrix.outputs.image-degraded == 'true' }}
-          # No scenario that runs in CI clones over SSH: the one that does is
-          # "@wip" and "behave.ini" excludes it. Flip this to "true" in the same
-          # commit that un-tags it.
-          needs-ssh: "false"
+          # A private repository is one whose PartCAD packages may depend on
+          # repositories that are private too, and cloning one needs the key.
+          # A public fork clones public dependencies over https and needs
+          # nothing. See the input's description for why this is the signal.
+          #
+          # An event whose payload carries no "repository" evaluates to the
+          # empty string here, which is not "true" and so does not require the
+          # key. That is the safe direction of the two: the cost is a private
+          # fork's nightly not being told, and the alternative would be a run
+          # blocked over a field that was never there.
+          needs-ssh: ${{ github.event.repository.private }}
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY_RO }}
           registry: ${{ env.CONTAINER_REGISTRY }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -1144,18 +1151,20 @@ jobs:
         shell: pwsh
 
       # Only where there is a key to load. It used to run unconditionally, and
-      # on a fork -- which has no such secret -- the action is handed an empty
-      # string and fails the whole job with "The ssh-private-key argument is
-      # empty", forty minutes of setup in and about the wrong thing.
+      # on a fork -- which has no such secret until somebody adds one -- the
+      # action is handed an empty string and fails the whole job with "The
+      # ssh-private-key argument is empty", forty minutes of setup in and about
+      # the wrong thing.
       #
-      # Nothing that runs in CI needs it today: the only scenario that clones
-      # over SSH is "Override git configuration" in "features/install.feature",
-      # which is tagged "@wip", and "behave.ini" sets "tags = ~@wip". The
-      # scenario named "Install packages with ssh" beside it is not one -- it
-      # rewrites "git@github.com:" to "https://github.com/" and clones a public
-      # repository, which is the whole point of it. So this is kept, for the day
-      # that "@wip" comes off, rather than relied upon; ".github/actions/preflight"
-      # reports which of the two the run is in.
+      # What it is for is a dependency that is not public. These suites drive
+      # "pc install", and a PartCAD package may declare a "git" dependency on
+      # any repository -- so a private fork testing its own packages clones its
+      # own private repositories here, and this is the credential that lets it.
+      # The public upstream needs none: its own dependencies are public and
+      # clone over https, which is why the key can be absent without anything
+      # being wrong. ".github/actions/preflight" reports which of the two this
+      # run is, and stops a private repository that has no key rather than
+      # letting it fail inside a scenario.
       - name: Start SSH Agent
         # Through "preflight" rather than "secrets.SSH_PRIVATE_KEY_RO != ''":
         # the "secrets" context is not readable from an "if:", and a step's own
